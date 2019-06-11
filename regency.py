@@ -15,26 +15,288 @@ class Regency(object):
 	Provences: [Provence, Domain, Regent, Terrain, Loyalty, Taxation, 
 				Population, Magic, Castle, Capital, Position, Troops]
 	Holdings: [Provence, Domain, Regent, Type, Level]
-	Regents: [Regent, Full Name, Player, Class, Level, Alignment, 
+	Regents: [Regent, Full Name, Player, Class, Level, Alignment, Race, 
 				Str, Dex, Con, Int, Wis, Cha, Insight, Deception, Persuasion, 
-				Regency Points, Gold Bars, Regency Bonus, Attitude, Lieutenants]
+				Regency Points, Gold Bars, Regency Bonus, Attitude]
 	Geography: [Provence, Neighbor, Border, Road, Caravan, Shipping]
 	Relationship: [Regent, Other, Diplomacy, Payment, Vassalage]
 	Troops: [Regent, Provence, Type, Cost, CR]
 	Seasons: A dctionary of season-dataframes (to keep track of waht happened)
+	Lieutenants: A List of regent lieutenant pairs
 	'''
 	
 	# Initialization
-	def __init__(self, world='Birthright'):
+	def __init__(self, world='Birthright', dwarves=False, elves=False, goblins=False, gnolls=False, halflings=False):
 		'''
 		initialization of Regency class.
 		Sets the dataframes based on saved-version
 		Birthright is Default.
 		'''
+		# Tables in use
+		if world == 'Birthright':
+			dwarves = True
+			elves = True
+			goblins = True
+			gnolls = True
+			halflings=True
+			
+		# Provence Taxation Table
+		dct = {}
+		dct['Population'] = [a for a in range(11)]
+		dct['Light'] = [(0,0), (-1,1), (0,1), (1,3), (1,4), (2,5), (2,7), (2,9), (2,11), (2,13), (2,16)]
+		dct['Moderate'] = [(0,0), (0,2), (1,3), (1,4), (2,5), (2,7), (2,9), (2,11), (2,13), (2,16), (4,18)]
+		dct['Severe'] =  [(-1,1), (1,3), (1,4), (2,5), (2,7), (2,9), (2,11), (2,13), (2,16), (4,18), (4,22)]
+		self.provence_taxation = pd.DataFrame(dct)
+		
+		# troops
+		dct = {}
+		dct['Unit Type'] = ['Archers', 'Archers', 'Archers'
+							, 'Artillerists'
+							, 'Cavalry'
+							, 'Infantry', 'Infantry', 'Infantry'
+							, 'Elite Infantry'
+							, 'Irregulars', 'Irregulars', 'Irregulars'
+							, 'Knights'
+							, 'Levies'
+							, 'Mercenary Cavalry', 'Mercenary Infantry', 'Mercenary Irregulars', 'Mercenary Archers', 'Mercenary Pikeman'
+							, 'Pikemen', 'Pikemen', 'Pikemen'
+							, 'Scouts', 'Scouts'
+							]  
+		dct['Type'] = ['Human', 'Human', 'Human'
+							, 'Human'
+							, 'Human'
+							, 'Human', 'Human', 'Human'
+							, 'Human'
+							, 'Human', 'Human', 'Human'
+							, 'Human'
+							, 'Human'
+							, 'Mercenary', 'Mercenary', 'Mercenary', 'Mercenary', 'Mercenary'
+							, 'Human', 'Human', 'Human'
+							, 'Human', 'Human'
+							]  
+		dct['Muster Cost'] = [2, 2, 2
+							  , 4
+							  , 4
+							  , 2, 2, 2
+							  , 4
+							  , 1, 1, 1
+							  , 6
+							  , 0
+							  , 6, 4, 4, 4, 4
+							  , 2, 2, 2
+							  , 2, 2
+							  ]
+		dct['Maintenance Cost'] = [1, 1, 1
+									, 2
+									, 2
+									, 1, 1, 1
+									, 2
+									, 1, 1, 1
+									, 2
+									, 1
+									, 2, 2, 1, 1, 1
+									, 1, 1, 1
+									, 1, 1
+									]
+		dct['Requirements Holdings'] = ['Law', 'Temple', 'Guild'
+										, 'Law'
+										, 'Law'
+										, 'Law', 'Temple', 'Guild'
+										, 'Law'
+										, 'Law', 'Temple', 'Guild'
+										, 'Law'
+										, 'Law'
+										, 'Mercenaries', 'Mercenaries', 'Mercenaries', 'Mercenaries', 'Mercenaries'
+										, 'Law', 'Temple', 'Guild'
+										, 'Law', 'Guild'
+										]
+		dct['Requirements Level'] = [1, 4, 4
+									, 5
+									, 3
+									, 1, 4, 4
+									, 3
+									, 1, 3, 3
+									, 4
+									, 1
+									, 0, 0, 0, 0, 0
+									, 2, 3, 3
+									, 1, 2
+									]
+		dct['BCR'] = [1, 1, 1
+						, 1
+						, 3
+						, 1, 1, 1
+						, 2
+						, 0.5, 0.5, 0.5
+						, 4
+						, 0.25
+						, 3, 2, 1, 1, 1
+						, 1, 1, 1
+						, 0.5, 0.5
+						]
+		# Dwarves
+		if dwarves:
+			dct['Unit Type'].append('Dwarf Guards')
+			dct['Type'].append('Dwarf')
+			dct['Muster Cost'].append(4)
+			dct['Maintenance Cost'].append(2)
+			dct['Requirements Holdings'].append('Law')
+			dct['Requirements Level'].append(4)
+			dct['BCR'].append(2)
+			dct['Unit Type'].append('Mercenary Dwarf Guards')
+			dct['Type'].append('Mercenary')
+			dct['Muster Cost'].append(4)
+			dct['Maintenance Cost'].append(2)
+			dct['Requirements Holdings'].append('Mercenaries')
+			dct['Requirements Level'].append(0)
+			dct['BCR'].append(2)
+			dct['Unit Type'].append('Dwarf Crossbows')
+			dct['Type'].append('Dwarf')
+			dct['Muster Cost'].append(4)
+			dct['Maintenance Cost'].append(2)
+			dct['Requirements Holdings'].append('Law')
+			dct['Requirements Level'].append(4)
+			dct['BCR'].append(2)
+			dct['Unit Type'].append('Mercenary Dwarf Crossbows')
+			dct['Type'].append('Mercenary')
+			dct['Muster Cost'].append(4)
+			dct['Maintenance Cost'].append(2)
+			dct['Requirements Holdings'].append('Mercenaries')
+			dct['Requirements Level'].append(0)
+			dct['BCR'].append(2)
+			dct['Unit Type'].append('Dwarf Engineers')
+			dct['Type'].append('Dwarf')
+			dct['Muster Cost'].append(5)
+			dct['Maintenance Cost'].append(2)
+			dct['Requirements Holdings'].append('Law')
+			dct['Requirements Level'].append(3)
+			dct['BCR'].append(1)
+			dct['Unit Type'].append('Mercenary Dwarf Engineers')
+			dct['Type'].append('Mercenary')
+			dct['Muster Cost'].append(5)
+			dct['Maintenance Cost'].append(2)
+			dct['Requirements Holdings'].append('Mercenaries')
+			dct['Requirements Level'].append(0)
+			dct['BCR'].append(1)
+		
+		# Elves		
+		if elves:
+			dct['Unit Type'].append('Elf Archers')
+			dct['Type'].append('Elf')
+			dct['Muster Cost'].append(4)
+			dct['Maintenance Cost'].append(1)
+			dct['Requirements Holdings'].append('Law')
+			dct['Requirements Level'].append(3)
+			dct['BCR'].append(2)
+			dct['Unit Type'].append('Mercenary Elf Archers')
+			dct['Type'].append('Mercenary')
+			dct['Muster Cost'].append(4)
+			dct['Maintenance Cost'].append(1)
+			dct['Requirements Holdings'].append('Mercenaries')
+			dct['Requirements Level'].append(0)
+			dct['BCR'].append(2)
+			dct['Unit Type'].append('Elf Cavalry')
+			dct['Type'].append('Elf')
+			dct['Muster Cost'].append(8)
+			dct['Maintenance Cost'].append(2)
+			dct['Requirements Holdings'].append('Law')
+			dct['Requirements Level'].append(4)
+			dct['BCR'].append(4)
+			dct['Unit Type'].append('Mercenary Elf Cavalry')
+			dct['Type'].append('Mercenary')
+			dct['Muster Cost'].append(8)
+			dct['Maintenance Cost'].append(2)
+			dct['Requirements Holdings'].append('Mercenaries')
+			dct['Requirements Level'].append(0)
+			dct['BCR'].append(4)
+		
+		# Goblins
+		if goblins:
+			dct['Unit Type'].append('Goblin Archers')
+			dct['Type'].append('Goblin')
+			dct['Muster Cost'].append(1)
+			dct['Maintenance Cost'].append(1)
+			dct['Requirements Holdings'].append('Law')
+			dct['Requirements Level'].append(2)
+			dct['BCR'].append(1)
+			dct['Unit Type'].append('Mercenary Goblin Archers')
+			dct['Type'].append('Mercenary')
+			dct['Muster Cost'].append(1)
+			dct['Maintenance Cost'].append(1)
+			dct['Requirements Holdings'].append('Mercenaries')
+			dct['Requirements Level'].append(0)
+			dct['BCR'].append(1)
+			dct['Unit Type'].append('Goblin Infantry')
+			dct['Type'].append('Goblin')
+			dct['Muster Cost'].append(1)
+			dct['Maintenance Cost'].append(1)
+			dct['Requirements Holdings'].append('Law')
+			dct['Requirements Level'].append(2)
+			dct['BCR'].append(1)
+			dct['Unit Type'].append('Mercenary Goblin Infantry')
+			dct['Type'].append('Mercenary')
+			dct['Muster Cost'].append(1)
+			dct['Maintenance Cost'].append(1)
+			dct['Requirements Holdings'].append('Mercenaries')
+			dct['Requirements Level'].append(0)
+			dct['BCR'].append(1)
+			dct['Unit Type'].append('Goblin Cavalry')
+			dct['Type'].append('Goblin')
+			dct['Muster Cost'].append(4)
+			dct['Maintenance Cost'].append(2)
+			dct['Requirements Holdings'].append('Law')
+			dct['Requirements Level'].append(3)
+			dct['BCR'].append(1)
+			dct['Unit Type'].append('Mercenary Goblin Cavalry')
+			dct['Type'].append('Mercenary')
+			dct['Muster Cost'].append(4)
+			dct['Maintenance Cost'].append(2)
+			dct['Requirements Holdings'].append('Mercenaries')
+			dct['Requirements Level'].append(0)
+			dct['BCR'].append(1)
+			
+		# Gnolls
+		if gnolls:
+			dct['Unit Type'].append('Mercenary Gnoll Marauders')
+			dct['Type'].append('Mercenary')
+			dct['Muster Cost'].append(2)
+			dct['Maintenance Cost'].append(1)
+			dct['Requirements Holdings'].append('Mercenaries')
+			dct['Requirements Level'].append(0)
+			dct['BCR'].append(3)
+			dct['Unit Type'].append('Mercenary Gnoll Infantry')
+			dct['Type'].append('Mercenary')
+			dct['Muster Cost'].append(3)
+			dct['Maintenance Cost'].append(1)
+			dct['Requirements Holdings'].append('Mercenaries')
+			dct['Requirements Level'].append(0)
+			dct['BCR'].append(2)
+			
+		# halflings
+		if halflings:
+			dct['Unit Type'].append('Halfling Scouts')
+			dct['Type'].append('Halfling')
+			dct['Muster Cost'].append(2)
+			dct['Maintenance Cost'].append(1)
+			dct['Requirements Holdings'].append('Law')
+			dct['Requirements Level'].append(1)
+			dct['BCR'].append(1)
+			dct['Unit Type'].append('Mercenary Halfling Scouts')
+			dct['Type'].append('Mercenary')
+			dct['Muster Cost'].append(2)
+			dct['Maintenance Cost'].append(1)
+			dct['Requirements Holdings'].append('Mercenaries')
+			dct['Requirements Level'].append(0)
+			dct['BCR'].append(1)
+		
+		# make the table...
+		self.troop_units = pd.DataFrame(dct)
+		
+		# Load the World
 		self.load_world(world)
 		
-	
-	
+		
+		
 	#  World Loading
 	def load_world(self, world):
 		'''
@@ -43,8 +305,8 @@ class Regency(object):
 		
 		try:
 			dct = pickle.load( open( world+'.pickle', "rb" ) )
-			lst = ['Provences', 'Holdings', 'Regents', 'Geography', 'Relationships', 'Troops', 'Seasons']
-			self.Provences, self.Holdings, self.Regents, self.Geography, self.Relationships, self.Troops, self.Seasons = [dct[a] for a in lst]
+			lst = ['Provences', 'Holdings', 'Regents', 'Geography', 'Relationships', 'Troops', 'Seasons', 'Lieutenants']
+			self.Provences, self.Holdings, self.Regents, self.Geography, self.Relationships, self.Troops, self.Seasons, self.Lieutenants = [dct[a] for a in lst]
 		except (OSError, IOError) as e:
 			self.new_world(world)
 
@@ -62,9 +324,9 @@ class Regency(object):
 		
 		# Regents
 		cols = ['Regent', 'Full Name', 'Player', 
-			 'Class', 'Level', 'Alignment', 'Str', 'Dex', 'Con', 'Int', 'Wis', 'Cha',
+			 'Class', 'Level', 'Alignment', 'Race', 'Str', 'Dex', 'Con', 'Int', 'Wis', 'Cha',
 			'Insight', 'Deception', 'Persuasion',
-			 'Regency Points', 'Gold Bars', 'Regency Bonus', 'Attitude', 'Lieutenants']
+			 'Regency Points', 'Gold Bars', 'Regency Bonus', 'Attitude']
 		self.Regents = pd.DataFrame(columns=cols)
 		
 		# Geography
@@ -78,6 +340,11 @@ class Regency(object):
 		# Troops
 		cols = ['Regent', 'Provence', 'Type', 'Cost', 'CR']
 		self.Troops = pd.DataFrame(columns=cols)
+		
+		# Lieutenants
+		cols = ['Regent', 'Lieutenant']
+		self.Lieutenants = pd.DataFrame(columns=cols)
+		
 		
 		# Seasons
 		self.Seasons = {}
@@ -97,6 +364,7 @@ class Regency(object):
 		dct['Relationships'] = self.Relationships
 		dct['Troops'] = self.Troops
 		dct['Seasons'] = self.Seasons
+		dct['Lieutenants'] = self.Lieutenants
 		with open(world + '.pickle', 'wb') as handle:
 			pickle.dump(dct, handle, protocol=pickle.HIGHEST_PROTOCOL)
 		
@@ -194,7 +462,22 @@ class Regency(object):
 		
 		self.Provences = df
 
-	def add_regent(self, Regent, Name, Player=False, Class='Noble', Level=2, Alignment = 'NN'
+	def add_lieutenant(self, Regent, Lieutenant):
+		'''
+		Adds a lieutenant
+		'''
+		df = self.Lieutenants.copy()
+		
+		temp = df[df['Regent']==Regent]
+		temp = temp.index[temp['Lieutenant']==Lieutenant].tolist()
+		index = self.get_my_index(df, temp)
+		
+		df.loc[index] = [Regent, Lieutenant]
+		
+		# set the df...
+		self.Lieutenants = df
+		
+	def add_regent(self, Regent, Name, Player=False, Class='Noble', Level=2, Alignment = 'NN', Race='Human'
 				   , Str = 0, Dex = 1, Con = 0, Int = 1, Wis = 2, Cha = 3
 				   , Insight = 4, Deception = 5, Persuasion = 5
 				   , Regency_Points = 0, Gold_Bars = 0, Regency_Bonus = 1
@@ -211,11 +494,13 @@ class Regency(object):
 			# set the stats based on archetype
 			Class, Level, Str, Dex, Con, Int, Wis, Cha, Insight, Deception, Persuasion = self.get_archetype(Archetype)
 
-		df.loc[df.shape[0]] = [Regent, Name, Player, Class, Level, Alignment, 
+		df.loc[df.shape[0]] = [Regent, Name, Player, Class, Level, Alignment, Race, 
 							   Str, Dex, Con, Int, Wis, Cha, Insight, Deception, Persuasion,
-							   Regency_Points, Gold_Bars, Regency_Bonus, Attitude, Lieutenants]
+							   Regency_Points, Gold_Bars, Regency_Bonus, Attitude]
 		df = df.drop_duplicates(subset='Regent', keep='last')
 		self.Regents = df
+		for Lieutenant in Lieutenants:
+			self.add_lieutenant(Regent, Lieutenant)
 
 	def get_archetype(self, Archetype):
 		'''
@@ -308,7 +593,22 @@ class Regency(object):
 		df.loc[index] = [Regent, Other, Diplomacy, Payment, Vassalage]
 		self.Relationships = df
 		
-	
+	def add_troops(self, Regent, Provence, Type):
+		'''
+		This is fired after a decision to buy a troop is made
+		OR for setting up troops in the begining
+		'''
+		df = self.Troops.copy()
+		
+		index = self.get_my_index(df, [])
+		
+		temp = self.troop_units[self.troop_units['Unit Type'] == Type]
+
+		df.loc[index] = [Regent, Provence, Type, temp['Maintenance Cost'].values[0], temp['BCR'].values[0]]
+		
+		# set the df...
+		self.Troops = df
+
 	# Show
 	def show_map(self, borders=False, roads=True, caravans=False, shipping=False, bg=True, adj=50, fig_size=(12,12),
 				 cam_map='Birthright', map_alpha = 0.5, axis=False):
@@ -613,12 +913,6 @@ class Regency(object):
 		
 		# 4.1 & 4.2 Taxation From Provences
 		df = pd.DataFrame()
-		dct = {}
-		dct['Population'] = [a for a in range(11)]
-		dct['Light'] = [(0,0), (-1,1), (0,1), (1,3), (1,4), (2,5), (2,7), (2,9), (2,11), (2,13), (2,16)]
-		dct['Moderate'] = [(0,0), (0,2), (1,3), (1,4), (2,5), (2,7), (2,9), (2,11), (2,13), (2,16), (4,18)]
-		dct['Severe'] =  [(-1,1), (1,3), (1,4), (2,5), (2,7), (2,9), (2,11), (2,13), (2,16), (4,18), (4,22)]
-		provence_taxation = pd.DataFrame(dct)
 		
 		for p in range(11):
 			temp = self.Provences[self.Provences['Population'] == p].copy()
@@ -626,7 +920,7 @@ class Regency(object):
 				for t in ['Light', 'Moderate', 'Severe']:
 					temp_ = temp[temp['Taxation'] == t]
 					if temp_.shape[0] > 0:
-						a,b = provence_taxation[provence_taxation['Population'] == p][t].values[0]
+						a,b = self.provence_taxation[self.provence_taxation['Population'] == p][t].values[0]
 						temp_['Revenue'] = np.random.randint(a,b,temp_.shape[0])
 						df = pd.concat((df, temp_[['Regent', 'Revenue']].copy()))
 		df = df[df['Revenue']>0].copy()
@@ -696,8 +990,6 @@ class Regency(object):
 		self.Seasons[self.Season] = pd.merge(self.Seasons[self.Season], temp_Regents[['Regent','Gold Bars', 'Revenue']], on='Regent', how='left').fillna(0)
 		self.Regents = temp_Regents[cols]
 	
-	
-		
 	def maintenance_costs(self):
 		'''
 		A domain does not support itself. Gold is required to keep the 
@@ -719,22 +1011,80 @@ class Regency(object):
 		df = pd.concat([df,temp[['Regent','Domain']]])
 		df = df[['Regent','Domain']].groupby('Regent').sum().reset_index().fillna(0)
 		df['Cost'] = ((df['Domain']+4)/5).astype(int)
+		df = df[['Regent','Cost']].groupby('Regent').sum().reset_index()
 		
 		# 5.2 Pay Armies
-		# DO THIS WHEN I HAVE ARMIES - use lieutenant code as base
+		temp = self.Troops[['Regent', 'Cost']].copy()  # this would be easy, but we have to disband if we can't pay
+		temp_ = temp.groupby('Regent').sum().reset_index()
+		check = pd.merge(self.Regents[['Regent', 'Gold Bars', 'Player']].copy(), df.copy(), on='Regent')
+		check['Gold Bars'] = check['Gold Bars'] - check['Cost']
+		temp_ = pd.merge(temp_, check[['Regent', 'Gold Bars', 'Player']], on='Regent', how='left').fillna(0)
+		
+		disband = temp_[temp_['Cost'] > temp_['Gold Bars']]
+		for i, row in disband.iterrows():
+			cost = row['Cost']
+			gb = row ['Gold Bars']
+			_temp = self.Troops.copy()
+			_temp = _temp[_temp['Regent'] == row['Regent']]
+			if row['Player']==False:
+				while cost > gb:
+					for j, _row in _temp.iterrows():
+						if cost > gb:
+							# start disbanding
+							if _row['Type'].find('Mercenary') >= 0:
+								# oh no, brigands!
+								print('Replace with a disband mercenary thing')
+							cost = cost - _row['Cost']  # make sure only the single troop cost
+							# disband the troop
+							self.Troops.drop(j, inplace=True)
+			else:
+				while cost > gb:
+					dbnd = -1
+					while dbnd not in list(_temp.index):
+						print(_temp)
+						print()
+						print('You cannot afford your troops!  You Have {} Gold Bars and a Maintenance Cost of {}.'.format(gb, cost))
+						dbnd = int(input('Pick a Unit to Disband (Type Index Number)'))
+					print('okay...')	
+					if _temp.loc[dbnd]['Type'].find('Mercenary') >= 0:
+						# oh no, brigands!
+						print('Replace with a disband mercenary thing')
+					cost = cost - int(_temp.loc[dbnd]['Cost'])  # make sure only the single troop cost
+					# disband the troop
+					self.Troops.drop(dbnd, inplace=True, axis=0)
+					_temp.drop(dbnd, inplace=True, axis=0)
+		# now the easy step
+		temp = self.Troops[['Regent', 'Cost']].copy()
+		df = pd.concat([df, temp[['Regent','Cost']]], sort=False)
+		df = df[['Regent','Cost']].groupby('Regent').sum().reset_index()	
 		
 		# 5.3 Lieutenants
-		temp = self.Regents[self.Regents['Lieutenants'].str.len()>0][['Regent', 'Lieutenants', 'Gold Bars']].copy()
-		temp = pd.merge(temp, df, on='Regent', how='left').fillna(0)
-		lst = []
-		for i, row in temp.iterrows():
-			lst.append(len(row['Lieutenants']))
-			# add in a way to disband if there is not enough money
-		temp['Cost'] = lst
-		df = pd.concat([df, temp[['Regent','Cost']]], sort=True)
+		temp = self.Lieutenants.copy()
+		temp_ = temp.copy()
+		temp_['Cost'] = 1
+		temp_ = temp_[['Regent','Cost']].groupby('Regent').sum().reset_index()
+		check = pd.merge(self.Regents[['Regent', 'Gold Bars']].copy(), df.copy(), on='Regent')
+		check['Gold Bars'] = check['Gold Bars'] - check['Cost']
+		temp_ = pd.merge(temp_, check[['Regent', 'Gold Bars']], on='Regent', how='left').fillna(0)
+		
+		disband = temp_[temp_['Cost'] > temp_['Gold Bars']]
+		for i, row in disband.iterrows():
+			cost = row['Cost']
+			gb = row ['Gold Bars']
+			_temp = self.Lieutenants.copy()
+			_temp = _temp[_temp['Regent'] == row['Regent']]
+			while cost > gb:
+				for j, _row in _temp.iterrows():
+					cost = cost - 1
+					# disband the troop
+					self.Lieutenants.drop(j, inplace=True)
+		# now the money
+		temp = self.Lieutenants.copy()
+		temp['Cost'] = 1
+		df = pd.concat([df, temp[['Regent','Cost']]], sort=False)
+		df = df[['Regent','Cost']].groupby('Regent').sum().reset_index()
 		
 		# 5.4 Court Expenses - what can we afford
-		df = df[['Regent','Cost']].groupby('Regent').sum().reset_index()
 		temp = self.Regents[['Regent', 'Gold Bars']]
 		temp = pd.merge(temp, df, on='Regent', how='left').fillna(0)
 		temp['Check'] = temp['Gold Bars'] - temp['Cost']
@@ -745,13 +1095,14 @@ class Regency(object):
 		temp_2 = temp_[temp_['Check'] >= 10].copy()
 		temp_1 = temp_[temp_['Check'] < 10].copy()
 		temp_0['Court'] = 'Dormant'  # no cost
+		
 		temp_1['Court'] = 'Bare'	# 2 bars
-		temp_1['Cost'] = temp_1['Cost'] = 2
+		temp_1['Cost'] = temp_1['Cost'] + 2
 		temp_2['Court'] = 'Average'  # 5 bars
 		temp_2['Cost'] = temp_2['Cost'] + 5
 		temp_3['Court'] = 'Rich'  # 8 bars
 		temp_3['Cost'] = temp_3['Cost'] + 8
-		df = pd.concat([temp_0, temp_1, temp_2, temp_3], sort=True)
+		df = pd.concat([temp_0, temp_1, temp_2, temp_3], sort=False)
 		
 		# add to the thing
 		temp = pd.merge(self.Seasons[self.Season], df[['Regent','Cost','Court']], on='Regent', how='left').fillna(0)
@@ -763,9 +1114,26 @@ class Regency(object):
 		temp = pd.merge(self.Regents[['Regent', 'Full Name', 'Player', 'Class', 'Level', 'Alignment', 
 										'Str', 'Dex', 'Con', 'Int', 'Wis', 'Cha',
 										'Insight', 'Deception', 'Persuasion',
-										'Regency Points', 'Regency Bonus', 'Attitude', 'Lieutenants']], temp[['Regent', 'Gold Bars']])
+										'Regency Points', 'Regency Bonus', 'Attitude']], temp[['Regent', 'Gold Bars']])
 		self.Regents = temp[['Regent', 'Full Name', 'Player', 
 							 'Class', 'Level', 'Alignment', 'Str', 'Dex', 'Con', 'Int', 'Wis', 'Cha',
 							 'Insight', 'Deception', 'Persuasion',
-							 'Regency Points', 'Gold Bars', 'Regency Bonus', 'Attitude', 'Lieutenants']]
+							 'Regency Points', 'Gold Bars', 'Regency Bonus', 'Attitude']]
+		
+	# here we go
+	def take_domain_actions(self):
+		'''
+		During each season, the regent takes a total of three domain 
+		actions. Each of these represents roughly a month of time 
+		in-world, thus there are twelve domain actions that can be 
+		taken in the course of a game year.
+
+		While most domain actions are fairly straightforward, there 
+		does exist the concept of the bonus action during a season. 
+		Bonus actions can be taken in addition to regular domain actions, 
+		but the player is limited to a single bonus action per action 
+		round, as with bonus actions during combat rounds.
+		
+		So, 1 Action and 1 Bonus Action, if applicable.
+		'''
 		
