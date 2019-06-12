@@ -5,6 +5,8 @@ import pandas as pd
 import networkx as nx
 from PIL import Image
 import matplotlib.pyplot as plt
+from IPython.display import clear_output
+
 
 class Regency(object):
     '''
@@ -26,12 +28,14 @@ class Regency(object):
     '''
     
     # Initialization
-    def __init__(self, world='Birthright', dwarves=False, elves=False, goblins=False, gnolls=False, halflings=False):
+    def __init__(self, world='Birthright', dwarves=False, elves=False, goblins=False, gnolls=False, halflings=False, jupyter=True):
         '''
         initialization of Regency class.
         Sets the dataframes based on saved-version
         Birthright is Default.
         '''
+        self.jupyter = jupyter
+        
         # Tables in use
         if world == 'Birthright':
             dwarves = True
@@ -295,6 +299,17 @@ class Regency(object):
         # Load the World
         self.load_world(world)
         
+    def clear_screen(self):
+        '''
+        For Jupyter notebook use
+        self.clear_screen
+        '''
+        if self.jupyter:
+            clear_output()
+        else:
+            print()
+            print()
+            print()
         
         
     #  World Loading
@@ -870,7 +885,8 @@ class Regency(object):
         except:
             self.Season = 0
         
-        self.Seasons[self.Season] = temp
+        self.Seasons[self.Season] = {}
+        self.Seasons[self.Season]['Season'] = temp
     
     def collect_regency_points(self):
         '''
@@ -910,7 +926,7 @@ class Regency(object):
         regents['Regency Points'] = regents['Regency Points'] + regents['Regency Bonus'] + regents['Regency Points Add'] - regents['Minus'] + regents['Vassalage']
         regents['Regency Points'] = regents['Regency Points'].astype(int)
         
-        self.Seasons[self.Season] = pd.merge(self.Seasons[self.Season], regents[['Regent', 'Regency Points']], on='Regent', how='left').fillna(0)
+        self.Seasons[self.Season]['Season'] = pd.merge(self.Seasons[self.Season]['Season'], regents[['Regent', 'Regency Points']], on='Regent', how='left').fillna(0)
         self.Regents = regents[keys]
         
     def domain_initiative(self):
@@ -935,8 +951,8 @@ class Regency(object):
         temp = self.Regents[['Regent', 'Regency Bonus']].copy()
         temp['Initiative'] =  np.random.randint(1,20,temp.shape[0]) + temp['Regency Bonus']
         
-        Season = pd.merge(self.Seasons[self.Season], temp[['Regent', 'Initiative']], on='Regent', how='left')
-        self.Seasons[self.Season] = Season.sort_values('Initiative', ascending=False)
+        Season = pd.merge(self.Seasons[self.Season]['Season'], temp[['Regent', 'Initiative']], on='Regent', how='left')
+        self.Seasons[self.Season]['Season'] = Season.sort_values('Initiative', ascending=False)
         
     def collect_gold_bars(self):
         '''
@@ -955,7 +971,7 @@ class Regency(object):
         for i, row in temp.iterrows():
             check = 0
             while check == 0:
-                print()
+                self.clear_screen()
                 print('Taxation Settings for {}'.format(row['Full Name']))
                 print('-'*33)
                 temp_ = self.Provences[self.Provences['Regent']==row['Regent']][['Provence','Population', 'Loyalty', 'Taxation']]
@@ -1052,7 +1068,7 @@ class Regency(object):
         
         # Results!
         temp_Regents['Revenue'] = temp_Regents['Revenue'].fillna(0).astype(int)
-        self.Seasons[self.Season] = pd.merge(self.Seasons[self.Season], temp_Regents[['Regent','Gold Bars', 'Revenue']], on='Regent', how='left').fillna(0)
+        self.Seasons[self.Season]['Season'] = pd.merge(self.Seasons[self.Season]['Season'], temp_Regents[['Regent','Gold Bars', 'Revenue']], on='Regent', how='left').fillna(0)
         self.Regents = temp_Regents[cols]
     
     def maintenance_costs(self):
@@ -1106,9 +1122,10 @@ class Regency(object):
                 while cost > gb:
                     dbnd = -1
                     while dbnd not in list(_temp.index):
+                        self.clear_screen()
                         print(_temp)
                         print()
-                        print('You cannot afford your troops!  You Have {} Gold Bars and a Maintenance Cost of {}.'.format(gb, cost))
+                        print('{} cannot afford their troops!  They Have {} Gold Bars and a Maintenance Cost of {}.'.format(row['Regent'], gb, cost))
                         dbnd = int(input('Pick a Unit to Disband (Type Index Number)'))
                     print('okay...')    
                     if _temp.loc[dbnd]['Type'].find('Mercenary') >= 0:
@@ -1150,7 +1167,8 @@ class Regency(object):
         df = df[['Regent','Cost']].groupby('Regent').sum().reset_index()
         
         # 5.4 Court Expenses - what can we afford
-        temp = self.Regents[['Regent', 'Gold Bars']]
+        temp_4 = self.Regents[self.Regents['Player'] == True][['Regent', 'Gold Bars']].copy()
+        temp = self.Regents[self.Regents['Player'] == False][['Regent', 'Gold Bars']].copy()
         temp = pd.merge(temp, df, on='Regent', how='left').fillna(0)
         temp['Check'] = temp['Gold Bars'] - temp['Cost']
         temp_0 = temp[temp['Check'] <= 1].copy()
@@ -1167,12 +1185,53 @@ class Regency(object):
         temp_2['Cost'] = temp_2['Cost'] + 5
         temp_3['Court'] = 'Rich'  # 8 bars
         temp_3['Cost'] = temp_3['Cost'] + 8
-        df = pd.concat([temp_0, temp_1, temp_2, temp_3], sort=False)
+        
+        # ask the player what they want to do
+        temp_4 = pd.merge(temp_4, df, on='Regent', how='left').fillna(0)
+        temp_4['Check'] = temp_4['Gold Bars'] - temp_4['Cost']
+        temp_4['Court'] = 'Dormant'
+        for i, row in temp_4.iterrows():
+            check = 0
+            while check == 0:
+                self.clear_screen()
+                print('-- Court Expenses --')
+                print(temp_4[temp_4['Regent']==row['Regent']][['Regent','Gold Bars','Cost']])
+                print()
+                most_can_spend = row['Gold Bars'] - row['Cost']
+                
+                print('[0] Dormant')
+                print('For zero Gold Bars, your court is dormant and only the mice rule the castle guest halls. This option saves money, but you are incapable of performing the Decree or Diplomacy actions on any of your action rounds this season.')
+                if most_can_spend >= 2:
+                    print()
+                    print('[2] - Bare')
+                    print('For two Gold Bars, your court is at the bare minimum to function. Your Decree and Diplomacy actions are at disadvantage for the domain action check; no one likes a stingy regent, especially expectant ambassadors.')
+                if most_can_spend >= 5:
+                    print()
+                    print('[5] - Average')
+                    print('For five Gold Bars, your court is of average standing and comfort. Your Decree and Diplomacy actions are at neither advantage nor disadvantage.')
+                if most_can_spend >= 8:
+                    print()
+                    print('[8] Rich')
+                    print('[8] For eight Gold Bars, your court is the talk of the realm. Fine wines, imported cuisine, mummers and bards -- you have it all, and the pomp is sure to impress the dignitaries. Your Decree and Diplomacy actions are made with advantage on the domain action check.')
+                print()
+                q = 'How much does {} want to spend on their court?'.format(row['Regent'])
+                ex = input(q)
+                if int(ex) in [0, 2, 5, 8] and int(ex) <= most_can_spend:
+                    temp_4.at[i, 'Cost'] =  row['Cost'] + int(ex)
+                    if ex == '2':
+                        temp_4.at[i, 'Court'] =  'Bare'  # 'Bare'
+                    elif ex == '5':
+                        temp_4.at[i, 'Court'] =  'Average'  # 'Average'
+                    elif ex == '8':
+                        temp_4.at[i, 'Court'] = 'Rich'  # 'Rich'
+                    print(temp_4[temp_4['Regent']==row['Regent']][['Regent','Gold Bars','Cost']])
+                    check = 1   
+        df = pd.concat([temp_0, temp_1, temp_2, temp_3, temp_4], sort=False)
         
         # add to the thing
-        temp = pd.merge(self.Seasons[self.Season], df[['Regent','Cost','Court']], on='Regent', how='left').fillna(0)
+        temp = pd.merge(self.Seasons[self.Season]['Season'], df[['Regent','Cost','Court']], on='Regent', how='left').fillna(0)
         temp['Cost'] = temp['Cost'].astype(int)
-        self.Seasons[self.Season] = temp
+        self.Seasons[self.Season]['Season'] = temp
         
         # lets clear the gold bars
         temp['Gold Bars'] = temp['Gold Bars'] - temp['Cost']
