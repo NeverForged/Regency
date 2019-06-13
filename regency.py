@@ -23,7 +23,7 @@ class Regency(object):
 	Regents: [Regent, Full Name, Player, Class, Level, Alignment, Race, 
 				Str, Dex, Con, Int, Wis, Cha, Insight, Deception, Persuasion, 
 				Regency Points, Gold Bars, Regency Bonus, Attitude]
-	Geography: [Provence, Neighbor, Border, Road, Caravan, Shipping]
+	Geography: [Provence, Neighbor, Border, Road, Caravan, Shipping, RiverChasm]
 	Relationship: [Regent, Other, Diplomacy, Payment, Vassalage]
 	Troops: [Regent, Provence, Type, Cost, CR]
 	Seasons: A dctionary of season-dataframes (to keep track of waht happened)
@@ -330,17 +330,20 @@ class Regency(object):
 
 	
 	# AGENT STUFF
-	def make_decision(self, attitude, N, type, state):
+	def make_decision(self, attitude, N, type, state, Regent):
 		'''
 		Have the Agent do a thing to make a decision.
 		'''
 		agent = self.agent[attitude]
 		
+		# get Int modifier
+		mod = self.Regents[self.Regents['Regent']==Regent]['Int'].values[0]
 		# predict action based on the old state
 		if type == 'Taxes':
 			prediction = agent.tax_model.predict(state.reshape((1,19)))
 		
-		if randint(0, 200) < agent.epsilon:
+		roll = randint(1, 20)
+		if roll < 5-mod or roll == 1:  # Fails a dc 5 int check and does something random
 			move =	to_categorical(randint(0, N-1), num_classes=N)
 		else:
 			move =	to_categorical(np.argmax(prediction[0]), num_classes=N)
@@ -349,12 +352,12 @@ class Regency(object):
 	# World Building
 	def new_world(self, world):
 		# Holdings
-		cols= ['Provence', 'Regent', 'Type', 'Level']
+		cols= ['Provence', 'Regent', 'Type', 'Level', 'Contested']
 		self.Holdings = pd.DataFrame(columns=cols)
 		
 		# Provences
 		cols = ['Provence', 'Domain', 'Region', 'Regent', 'Terrain', 'Loyalty', 'Taxation',
-				'Population', 'Magic', 'Castle', 'Capital', 'Position']
+				'Population', 'Magic', 'Castle', 'Capital', 'Position', 'Contested']
 		self.Provences = pd.DataFrame(columns=cols)
 		
 		# Regents
@@ -365,7 +368,7 @@ class Regency(object):
 		self.Regents = pd.DataFrame(columns=cols)
 		
 		# Geography
-		cols = ['Provence', 'Neighbor', 'Border', 'Road', 'Caravan', 'Shipping']
+		cols = ['Provence', 'Neighbor', 'Border', 'Road', 'Caravan', 'Shipping', 'RiverChasm']
 		self.Geography = pd.DataFrame(columns=cols)
 		
 		# Relationships
@@ -418,7 +421,7 @@ class Regency(object):
 				index=0
 		return index
 
-	def add_holding(self, Provence, Regent, Type='Law', Level=1):
+	def add_holding(self, Provence, Regent, Type='Law', Level=1, Contested=0):
 		'''
 		 Provence: match to provence
 		 Regent: match to regent
@@ -437,7 +440,7 @@ class Regency(object):
 		temp = temp.index[temp['Type']==Type].tolist()
 		index = self.get_my_index(df, temp)
 		
-		df.loc[index] = [Provence, Regent, Type, Level]
+		df.loc[index] = [Provence, Regent, Type, Level, Contested]
 		df['Level'] = df['Level'].astype(int)
 		
 		# set the df...
@@ -466,7 +469,7 @@ class Regency(object):
 	def add_provence(self, Provence, Domain, Region, Regent, x, y
 					 , Population=0, Magic=1, Law=None
 					 , Capital=False, Terrain='Plains', Loyalty='Average', Taxation='Moderate'
-					 , Castle=0):
+					 , Castle=0, Contested=0):
 		'''
 		Provence: pkey, Name
 		Domain: Name 
@@ -489,7 +492,7 @@ class Regency(object):
 		index = self.get_my_index(df, temp)
 				
 		df.loc[df.shape[0]] = [Provence, Domain, Region, Regent, Terrain, Loyalty, Taxation,
-							   Population, Magic, Castle, Capital, np.array([x, y])]
+							   Population, Magic, Castle, Capital, np.array([x, y]), 0]
 		df['Magic'] = df['Magic'].astype(int)
 		df['Population'] = df['Population'].astype(int)
 		df['Castle'] = df['Castle'].astype(int)
@@ -498,7 +501,7 @@ class Regency(object):
 		self.Provences = df
 
 	def change_provence(self, Provence, Regent=None, Region=None, Domain=None, Population_Change=0, Terrain=None, Loyalty=None
-						, Taxation=None, Castle=None, Capital=None, x=None, y=None):
+						, Taxation=None, Castle=None, Capital=None, x=None, y=None, Contested=None):
 		'''
 		None = not changed
 		'''
@@ -512,6 +515,8 @@ class Regency(object):
 			Region = old['Region']
 		if Terrain == None:
 			Terrain = old['Terrain']
+		if Contested == None:
+			Contested = old['Contested']
 		try:
 			loy = old['Loyalty'].replace('Rebellious','0').replace('Poor','1').replace('Average','2').replace('High','3')
 			new = int(loy) + int(Loyalty)
@@ -543,7 +548,7 @@ class Regency(object):
 		else:
 			pos = np.array(x, y)
 		self.Provences.loc[index] = [Provence, Domain, Region, Regent, Terrain, Loyalty, Taxation,
-									 Population, Magic, Castle, Capital, pos]
+									 Population, Magic, Castle, Capital, pos, Contested]
 
 	def add_lieutenant(self, Regent, Lieutenant):
 		'''
@@ -616,9 +621,11 @@ class Regency(object):
 		else:
 			return 'Noble', 2, 0, 1, 0, 1, 2, 3, 4, 5, 5
 		
-	def add_geo(self, Provence, Neighbor, Border=0, Road=0, Caravan=0, Shipping=0):
+	def add_geo(self, Provence, Neighbor, Border=0, Road=0, Caravan=0, Shipping=0, RiverChasm=0):
 		'''
 		Geography Connection
+		
+		RiverChasm -> this is for bridges, determines cost of getting a road between the two
 		'''
 		df = self.Geography
 		temp = df[df['Provence'] == Provence].copy()
@@ -634,14 +641,15 @@ class Regency(object):
 			Road = Road + temp_['Road'].values[0]
 			Caravan = Caravan + temp_['Road'].values[0]
 			Shipping = Shipping + temp_['Shipping'].values[0]
+			RiverChasm = RiverChasm + temp_['Shipping'].values[0]
 		# bi-directional
 
-		df.loc[index] = [Provence, Neighbor, Border, Road, Caravan, Shipping]
+		df.loc[index] = [Provence, Neighbor, Border, Road, Caravan, Shipping, RiverChasm]
 		temp = df[df['Provence'] == Neighbor].copy()
 		temp = temp.index[temp['Neighbor']==Provence].tolist()
 		index = self.get_my_index(df, temp)
 
-		df.loc[index] = [Neighbor, Provence, Border, Road, Caravan, Shipping]
+		df.loc[index] = [Neighbor, Provence, Border, Road, Caravan, Shipping, RiverChasm]
 		
 		# fix to zeroes and ones...
 		for col in ['Border', 'Road', 'Caravan', 'Shipping']:
@@ -825,7 +833,7 @@ class Regency(object):
 		if caravans:
 			edgelist = [(row['Provence'], row['Neighbor']) for i, row in Geography[Geography['Caravan']==1].iterrows() 
 						if row['Provence'] in Plist and	 row['Neighbor'] in Plist]
-			nx.draw_networkx_edges(G,pos,edgelist,width=2.0,alpha=0.3,edge_color='xkcd:gold',style='dotted')
+			nx.draw_networkx_edges(G,pos,edgelist,width=2.0,alpha=0.3,edge_color='xkcd:red',style='dotted')
 		if shipping:
 			edgelist = [(row['Provence'], row['Neighbor']) for i, row in Geography[Geography['Shipping']==1].iterrows() 
 						if row['Provence'] in Plist and	 row['Neighbor'] in Plist]
@@ -1067,7 +1075,7 @@ class Regency(object):
 			# pick for each... this can likely be more efficient
 			for j, row_ in temp_.iterrows():
 				state = self.agent[row['Attitude']].get_state('Taxes', row_)
-				tax = self.make_decision(row['Attitude'], 4, 'Taxes', state)
+				tax = self.make_decision(row['Attitude'], 4, 'Taxes', state, row['Regent'])
 				p = row_['Provence']
 				if tax[0] == 1:
 					self.change_provence(Provence=p, Taxation='None', Loyalty='1')
@@ -1097,8 +1105,9 @@ class Regency(object):
 			
 		# make reward vector
 		temp = self.Provences.copy()
-		temp['Relative'] = temp['Loyalty'].str.replace('Rebellious','6').replace('Poor','4').replace('Average','2').replace('High','1').astype(int)
-		temp['Tax Effect'] = temp['Relative']*(-1)*(temp['Taxation']=='Severe') + temp['Relative']*(temp['Taxation']=='None')
+		temp = pd.merge(temp, self.Holdings[self.Holdings['Type'] == 'Law'][['Provence', 'Type', 'Regent']], on=['Provence', 'Regent'], how='left').fillna('')
+		temp['Relative'] = temp['Loyalty'].str.replace('Rebellious','4').replace('Poor','3').replace('Average','2').replace('High','1').astype(int)
+		temp['Tax Effect'] = temp['Relative']*(-1)*((temp['Taxation']=='Severe') + (temp['Type'] != 'Law')*(temp['Taxation']=='Moderate')) + temp['Relative']*(temp['Taxation']=='None') + (-5)*(temp['Loyalty']=='Rebellious')
 		temp = temp[['Tax Effect', 'Provence']]
 		rewards = pd.merge(df, temp, on='Provence', how='left')	 # skips players
 		rewards = pd.merge(rewards, self.Regents[self.Regents['Player']==False][['Regent', 'Attitude']].copy(), on='Regent', how='left')
@@ -1384,5 +1393,110 @@ class Regency(object):
 		So, 1 Action and 1 Bonus Action, if applicable.
 		
 		1 Bonus Action per Lieutenant.
+		
+		ENEMY/FRIEND: get nordering regent that is freind/foe by best/worst diplomacy
+					if a vassal, friend = Liege
+					if at war enemy = occupying force
+		CAPITAL Provence
+		HIGHEST POP Provence (not capital)
+		LOWEST POP Provence
+		
+		
 		'''
+		
+		
+		
+	def domain_action_adventure(self, Regent):
+		'''
+		Cost: None
+		Success: Auto
+		
+		INFO NEEDED NONE
+		adventure
+		'''
+		
+	def domain_action_agitate(self, Regent, Target, Conflict, Bonus=False, Provences=None):
+		'''
+		Cost: 1 RP, 1 GB
+		Check: 10 (Persuasion)
+		
+		Target is a regent.  if a bonus action, will be a randomly determined provence
+		in their domain (or Provences if Player)
+		
+		if conflict==True:
+			DC increases by highest Law holding involved
+			
+		if conflict==False:
+			Advantage on the roll.
+			
+		nat 20: +2 or -2.
+		
+		INFO NEEDED 
+		Temple Holding in Friend/Liege Provence, 
+		Temple Holding in Enemy Provence
+		Has Temple Holding (can't do without)
+		
+		agitate_conflict_true
+		agitate_conflict_false
+		'''
+		
+	def domain_action_build_bonus(self, Regent, Provence, Road=None):
+		'''
+		Cost: varies
+		Base Success: 5
+		
+		Road = Target Provence
+		
+		Terrain (add both together)
+		'Desert', 'Tundra', 'Forest', 'Steppes' 2
+		'Mountain', 8
+		'Glacier', 8
+		'Hills', 'Swamp', 'Marsh' 4
+		'Plains', Farmland' 1
+		
+		if bridge needed: + 1d4+1
+		
+		(multiply by population of higher population provence)
+		Population < 2: 1
+		Population 3,4: 3/4
+		Population > 4: 1/2
+		
+		(add code to allow for timed project completion)
+		
+		INFO NEEDED:
+		CAPITAL HAS ROADS TO ALL BORDERING PROVENCES IN DOMAIN
+		not all provences connected by roads
+		UNROADED PROVENCE BETWEEN SELF AND FRIEND
+		
+		build_road (randomly pick a border to make a road on)
+		'''
+		
+	def domain_action_contest(self, Regent, Target):
+		'''
+		Cost: 1 RP
+		Sucess: DC 10
+		
+		INFO NEEDED:
+		enemy_has_(type)_holding in my lands
+		enemy_has_same_type_of_holding_as_me_somewhere_i_have_holding
+		i have contested holding
+		i have contested provence
+		enemy_has_contested_holding
+		enemy_has_contested_provence
+		enemy_has_no_law_holdings_and_rebellious_or_poor_loyalty_in_a_province
+		
+		
+		contest_holding
+		contest_provence
+		'''
+		
+	def domain-action_create_holding(self, Regent, Target):
+		'''
+		Base: 1 GB
+		Sucess: 10 (+ population) (Persuasion)
+		
+		INFO NEEDED:
+		space for a holding nearby where I don't have a holding of that type and it's a type I can make
+		'''
+		
 		
