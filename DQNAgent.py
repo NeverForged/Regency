@@ -50,7 +50,7 @@ class DQNAgent(object):
 			state = [1*(df['Population'] == a) for a in range(10)]	# population 0-9
 			if df['Population'] > 9:  # 9s the limit
 				state[-1] = 1
-			if df['Loyalty'] == 'Rebelious':
+			if df['Loyalty'] == 'Rebellious':
 				state.append(1)
 			else:
 				state.append(0)

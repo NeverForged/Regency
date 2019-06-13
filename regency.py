@@ -17,7 +17,7 @@ class Regency(object):
 	found here: https://www.gmbinder.com/share/-L4h_QHUKh2NeYhgD96A
 	
 	DataFrames:
-	Provences: [Provence, Domain, Regent, Terrain, Loyalty, Taxation, 
+	Provences: [Provence, Domain, Region, Regent, Terrain, Loyalty, Taxation, 
 				Population, Magic, Castle, Capital, Position]
 	Holdings: [Provence, Domain, Regent, Type, Level]
 	Regents: [Regent, Full Name, Player, Class, Level, Alignment, Race, 
@@ -31,7 +31,7 @@ class Regency(object):
 	'''
 	
 	# Initialization
-	def __init__(self, world='Birthright', dwarves=False, elves=False, goblins=False, gnolls=False, halflings=False, jupyter=True):
+	def __init__(self, world='Birthright', dwarves=True, elves=True, goblins=True, gnolls=True, halflings=True, jupyter=True):
 		'''
 		initialization of Regency class.
 		Sets the dataframes based on saved-version
@@ -45,13 +45,6 @@ class Regency(object):
 		self.agent['Peaceful'] = pickle.load( open( 'agent_p.pickle', "rb" ) )
 		self.agent['Aggresive'] = pickle.load( open( 'agent_a.pickle', "rb" ) )
 		
-		# Tables in use
-		if world == 'Birthright':
-			dwarves = True
-			elves = True
-			goblins = True
-			gnolls = True
-			halflings=True
 			
 		# Provence Taxation Table
 		dct = {}
@@ -148,7 +141,7 @@ class Regency(object):
 						, 0.5, 0.5
 						]
 		# Dwarves
-		if dwarves:
+		if dwarves == True:
 			dct['Unit Type'].append('Dwarf Guards')
 			dct['Type'].append('Dwarf')
 			dct['Muster Cost'].append(4)
@@ -307,6 +300,7 @@ class Regency(object):
 		
 		# Load the World
 		self.load_world(world)
+
 		
 	def clear_screen(self):
 		'''
@@ -359,7 +353,7 @@ class Regency(object):
 		self.Holdings = pd.DataFrame(columns=cols)
 		
 		# Provences
-		cols = ['Provence', 'Domain', 'Regent', 'Terrain', 'Loyalty', 'Taxation',
+		cols = ['Provence', 'Domain', 'Region', 'Regent', 'Terrain', 'Loyalty', 'Taxation',
 				'Population', 'Magic', 'Castle', 'Capital', 'Position']
 		self.Provences = pd.DataFrame(columns=cols)
 		
@@ -469,7 +463,7 @@ class Regency(object):
 		#done
 		self.Holdings = df
 
-	def add_provence(self, Provence, Domain, Regent, x, y
+	def add_provence(self, Provence, Domain, Region, Regent, x, y
 					 , Population=0, Magic=1, Law=None
 					 , Capital=False, Terrain='Plains', Loyalty='Average', Taxation='Moderate'
 					 , Castle=0):
@@ -494,7 +488,7 @@ class Regency(object):
 		temp = df.index[df['Provence'] == 'Provence'].tolist()
 		index = self.get_my_index(df, temp)
 				
-		df.loc[df.shape[0]] = [Provence, Domain, Regent, Terrain, Loyalty, Taxation,
+		df.loc[df.shape[0]] = [Provence, Domain, Region, Regent, Terrain, Loyalty, Taxation,
 							   Population, Magic, Castle, Capital, np.array([x, y])]
 		df['Magic'] = df['Magic'].astype(int)
 		df['Population'] = df['Population'].astype(int)
@@ -503,7 +497,7 @@ class Regency(object):
 		
 		self.Provences = df
 
-	def change_provence(self, Provence, Regent=None, Domain=None, Population_Change=0, Terrain=None, Loyalty=None
+	def change_provence(self, Provence, Regent=None, Region=None, Domain=None, Population_Change=0, Terrain=None, Loyalty=None
 						, Taxation=None, Castle=None, Capital=None, x=None, y=None):
 		'''
 		None = not changed
@@ -514,6 +508,8 @@ class Regency(object):
 			Regent = old['Regent']
 		if Domain == None:
 			Domain = old['Domain']
+		if Region == None:
+			Region = old['Region']
 		if Terrain == None:
 			Terrain = old['Terrain']
 		try:
@@ -546,7 +542,7 @@ class Regency(object):
 			pos = old['Position']
 		else:
 			pos = np.array(x, y)
-		self.Provences.loc[index] = [Provence, Domain, Regent, Terrain, Loyalty, Taxation,
+		self.Provences.loc[index] = [Provence, Domain, Region, Regent, Terrain, Loyalty, Taxation,
 									 Population, Magic, Castle, Capital, pos]
 
 	def add_lieutenant(self, Regent, Lieutenant):
@@ -855,7 +851,7 @@ class Regency(object):
 		
 		
 	# The Season
-	def random_events(self, override={}, style='Birthright', Threshold=50):
+	def random_events(self, override={}, style='Birthright', Threshold=50, Regions=None):
 		'''
 		At the beginning of the season, the Game Master checks for 
 		events that take place in each domain. A Game Master 
@@ -867,11 +863,20 @@ class Regency(object):
 		override = a diction of Regent Keys and assigned random events
 		style = 'Birthright' or 'Neverforged' [Replace Blood Challenge with Plague]
 		Threshold: Likliehood that an NPC gets an event
+		Regions = a list of regions to restrict to
 		'''
 
 		if Threshold < 1:  # flaot to int
 			Threshold = int(100*Threshold)
 		temp = self.Regents[['Regent', 'Player']].copy()
+		
+		# filter to Regions
+		if Regions != None:
+			filter = pd.concat([self.Provences[self.Provences['Region']==Region].cpopy() for Region in Regions])[['Regent', 'Provence']].copy()
+			filter_ = pd.merge(filter, self.Holdings.copy(), on='Provence', how='left')[['Regent', 'Provence']].copy()
+			filter = pd.concat([filter, filter_])[['Regent', 'Player']].copy()
+			temp = pd.merge(filter, temp, on='Regent', how='left')
+			
 		# seperate players from npcs
 		npcs = temp[temp['Player']==False].copy()
 		players = temp[temp['Player']==True].copy()
@@ -926,9 +931,9 @@ class Regency(object):
 		
 		for key in self.agent.keys():
 			if self.Season==0:
-				self.agent[key].epsilon = 200
+				self.agent[key].epsilon = 201
 			else:
-				self.agent[key].epsilon = 20 - self.Season
+				self.agent[key].epsilon = 80 - self.Season
 	
 	def collect_regency_points(self):
 		'''
@@ -1146,7 +1151,7 @@ class Regency(object):
 		temp['A'] = temp['Population']
 		temp['B'] = temp['Population']
 		df_ = pd.merge(df_, temp[['Provence', 'A']], on='Provence', how='left')
-		df_ = pd.merge(df_, temp[['Provence', 'B']], right_on='Provence', left_on='Neighbor', how='left')
+		df_ = pd.merge(df_, temp[['Provence', 'B']], right_on='Provence', left_on='Neighbor', how='left').fillna(1)
 		df_['Provence'] = df_['Provence_x']
 		df_['Revenue'] = ((df_['A']+df_['B']+2*df_['Shipping'])/2).astype(int)
 		df_ = pd.merge(df_, self.Provences.copy(), on='Provence', how='left')
