@@ -1,4 +1,5 @@
 import random
+import pickle
 import numpy as np
 import pandas as pd
 from operator import add
@@ -28,8 +29,6 @@ class DQNAgent(object):
 		# different models for different decisions
 		self.tax_model = self.network(N=4, K=19)
 		
-		
-		#self.model = self.network("weights.hdf5")
 		self.epsilon = 0
 		self.actual = []
 		self.memory = {}
@@ -88,20 +87,7 @@ class DQNAgent(object):
 				state.append(0)
 				
 			return np.asarray(state)
-		
-	def set_reward(self, step, df):
-		'''
-		Sets rewards based on input information
-		
-		Reward the Agent, then return self.reward
-		
-		Taxes takes a combination of Season[S]['Season']
-		and provences info
-		'''
-		if step == 'Taxes':
-			return None
 			
-		
 	def network(self, weights=None, N=3, K=11):
 		'''
 		Original had 3 outputs...
@@ -146,3 +132,13 @@ class DQNAgent(object):
 		target_f = model.predict(state.reshape(rs))
 		target_f[0][np.argmax(action)] = target
 		model.fit(state.reshape(rs), target_f, epochs=1, verbose=0)
+		
+	def save(self, filename=None):
+		'''
+		Save this using Pickle
+		'''
+		if filename == None:
+			filename = 'agent_' + attitude[0].lower() + '.pickle'
+		
+		with open(filename, 'wb') as handle:
+			pickle.dump(norm, handle, protocol=pickle.HIGHEST_PROTOCOL)

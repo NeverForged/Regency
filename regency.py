@@ -43,7 +43,7 @@ class Regency(object):
 		self.agent = {}
 		self.agent['Normal'] = pickle.load( open( 'agent_n.pickle', "rb" ) )
 		self.agent['Peaceful'] = pickle.load( open( 'agent_p.pickle', "rb" ) )
-		self.agent['Aggresive'] = pickle.load( open( 'agent_a.pickle', "rb" ) )
+		self.agent['Aggressive'] = pickle.load( open( 'agent_a.pickle', "rb" ) )
 		
 			
 		# Provence Taxation Table
@@ -694,14 +694,19 @@ class Regency(object):
 
 	# Show
 	def show_map(self, borders=False, roads=True, caravans=False, shipping=False, bg=True, adj=50, fig_size=(12,12),
-				 cam_map='Birthright', map_alpha = 0.5, axis=False):
+				 cam_map='Birthright', map_alpha = 0.5, axis=False, regions=None, castle=False):
 		'''
 		Map it
 		'''
 		Geography = self.Geography.copy()
-		Provences = self.Provences.copy()
+		if regions == None:
+			Provences = self.Provences.copy()
+		else:
+			Provences = pd.concat([ self.Provences[ self.Provences['Region']==Region] for Region in regions])
 		Regents = self.Regents.copy()
 		Diplomacy = self.Relationships.copy()
+		
+		
 			
 		plt.figure(figsize=fig_size)
 		if bg:
@@ -816,17 +821,22 @@ class Regency(object):
 
 
 		# edges
+		Plist = list(Provences['Provence'])
 		if caravans:
-			edgelist = [(row['Provence'], row['Neighbor']) for i, row in Geography[Geography['Caravan']==1].iterrows()]
+			edgelist = [(row['Provence'], row['Neighbor']) for i, row in Geography[Geography['Caravan']==1].iterrows() 
+						if row['Provence'] in Plist and	 row['Neighbor'] in Plist]
 			nx.draw_networkx_edges(G,pos,edgelist,width=2.0,alpha=0.3,edge_color='xkcd:gold',style='dotted')
 		if shipping:
-			edgelist = [(row['Provence'], row['Neighbor']) for i, row in Geography[Geography['Shipping']==1].iterrows()]
+			edgelist = [(row['Provence'], row['Neighbor']) for i, row in Geography[Geography['Shipping']==1].iterrows() 
+						if row['Provence'] in Plist and	 row['Neighbor'] in Plist]
 			nx.draw_networkx_edges(G,pos,edgelist,width=2.0,alpha=0.3,edge_color='xkcd:azure',style='dotted')
 		if borders:
-			edgelist = [(row['Provence'], row['Neighbor']) for i, row in Geography[Geography['Border']==1].iterrows()]
+			edgelist = [(row['Provence'], row['Neighbor']) for i, row in Geography[Geography['Border']==1].iterrows() 
+						if row['Provence'] in Plist and	 row['Neighbor'] in Plist]
 			nx.draw_networkx_edges(G,pos,edgelist,width=0.5,alpha=0.25,edge_color='xkcd:grey')
 		if roads:
-			edgelist = [(row['Provence'], row['Neighbor']) for i, row in Geography[Geography['Road']==1].iterrows()]
+			edgelist = [(row['Provence'], row['Neighbor']) for i, row in Geography[Geography['Road']==1].iterrows() 
+						if row['Provence'] in Plist and	 row['Neighbor'] in Plist]
 			nx.draw_networkx_edges(G,pos,edgelist,width=1.0,alpha=0.5,edge_color='xkcd:brown',style='dashed')
 		
 
@@ -1095,8 +1105,8 @@ class Regency(object):
 		rewards = rewards.dropna()
 		
 		# Aggro Regents don't care if the people are unhappy as much as peaceful Regents
-		rewards['tm'] = rewards['Attitude'].str.replace('Aggresive','1').replace('Normal','1').replace('Peaceful','2').astype(int)
-		rewards['rm'] = rewards['Attitude'].str.replace('Aggresive','2').replace('Normal','1').replace('Peaceful','1').astype(int)
+		rewards['tm'] = rewards['Attitude'].str.replace('Aggressive','1').replace('Normal','1').replace('Peaceful','2').astype(int)
+		rewards['rm'] = rewards['Attitude'].str.replace('Aggressive','2').replace('Normal','1').replace('Peaceful','1').astype(int)
 		rewards['Reward'] = rewards['Revenue']*rewards['rm'] + rewards['Tax Effect']*rewards['tm']
 		
 		# update memory
@@ -1372,5 +1382,7 @@ class Regency(object):
 		round, as with bonus actions during combat rounds.
 		
 		So, 1 Action and 1 Bonus Action, if applicable.
+		
+		1 Bonus Action per Lieutenant.
 		'''
 		
