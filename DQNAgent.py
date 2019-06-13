@@ -26,7 +26,7 @@ class DQNAgent(object):
 		self.learning_rate = 0.0005
 		
 		# different models for different decisions
-		self.tax_model = self.network(N=4, K=18)
+		self.tax_model = self.network(N=4, K=19)
 		
 		
 		#self.model = self.network("weights.hdf5")
@@ -79,6 +79,10 @@ class DQNAgent(object):
 			else:
 				state.append(0)
 			if df['Loyalty'] == 'Severe':
+				state.append(1)
+			else:
+				state.append(0)
+			if df['Type'] == 'Law':
 				state.append(1)
 			else:
 				state.append(0)
@@ -135,7 +139,7 @@ class DQNAgent(object):
 			
 	def train_short_memory(self, state, action, reward, next_state, type):
 		if type == 'Taxes':
-			rs = (1,18)
+			rs = (1,19)
 			model = self.tax_model
 		target = reward
 		target = reward + self.gamma * np.amax(model.predict(next_state.reshape(rs))[0])

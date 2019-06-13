@@ -344,12 +344,12 @@ class Regency(object):
 		
 		# predict action based on the old state
 		if type == 'Taxes':
-			prediction = agent.tax_model.predict(state.reshape((1,18)))
+			prediction = agent.tax_model.predict(state.reshape((1,19)))
 		
 		if randint(0, 200) < agent.epsilon:
-			move =  to_categorical(randint(0, N-1), num_classes=N)
+			move =	to_categorical(randint(0, N-1), num_classes=N)
 		else:
-			move =  to_categorical(np.argmax(prediction[0]), num_classes=N)
+			move =	to_categorical(np.argmax(prediction[0]), num_classes=N)
 		return move
 		
 	# World Building
@@ -516,8 +516,20 @@ class Regency(object):
 			Domain = old['Domain']
 		if Terrain == None:
 			Terrain = old['Terrain']
-		if Loyalty == None:
-			Loyalty = old['Loyalty']
+		try:
+			loy = old['Loyalty'].replace('Rebellious','0').replace('Poor','1').replace('Average','2').replace('High','3')
+			new = int(loy) + int(Loyalty)
+			if new <= 0:
+				Loyalty = 'Rebellious'
+			if new == 1:
+				Loyalty = 'Poor'
+			if new == 2:
+				Loyalty = 'Average'
+			if new >= 3:
+				Loyalty = 'High'
+		except:
+			if Loyalty == None:
+				Loyalty = old['Loyalty']
 		if Taxation == None:
 			Taxtion == old['Taxation']
 		   
@@ -998,6 +1010,9 @@ class Regency(object):
 		
 		# set taxtation
 		temp = self.Regents[self.Regents['Player']==True]
+		law = self.Holdings.copy()
+		law = law[law['Type']=='Law'].copy()
+		
 		for i, row in temp.iterrows():
 			check = 0
 			while check == 0:
@@ -1005,6 +1020,7 @@ class Regency(object):
 				print('Taxation Settings for {}'.format(row['Full Name']))
 				print('-'*33)
 				temp_ = self.Provences[self.Provences['Regent']==row['Regent']][['Provence','Population', 'Loyalty', 'Taxation']]
+				temp_ = pd.merge(temp_, law[law['Regent']==row['Regent']][['Provence', 'Type']].copy(), on='Provence', how='left').fillna('')
 				print(temp_)
 				print()
 				p = input('Type a Provence name, or "DONE" if done:	 ')
@@ -1015,32 +1031,40 @@ class Regency(object):
 						tax = input('Change Taxation to: [0]None, [1]Light, [2]Moderate, [3]Severe:	 ') 
 						
 						if int(tax) == 0:
-							self.change_provence(Provence=p, Taxation='None')
+							self.change_provence(Provence=p, Taxation='None', Loyalty='1')
 						elif int(tax) == 1:
 							self.change_provence(Provence=p, Taxation='Light')
 						elif int(tax) == 2:
-							self.change_provence(Provence=p, Taxation='Moderate')
+							if p in list(temp_[temp_['Type']=='Law']['Provence']):
+								self.change_provence(Provence=p, Taxation='Moderate')
+							else:
+								self.change_provence(Provence=p, Taxation='Moderate', Loyalty='-1')
 						elif int(tax) == 3:
-							self.change_provence(Provence=p, Taxation='Severe')
+							input('severe')
+							self.change_provence(Provence=p, Taxation='Severe', Loyalty='-1')
 		
 		# Agents need to pick now...
 		temp = self.Regents[self.Regents['Player']==False].copy()
 		save_states = pd.DataFrame(columns=['Regent', 'Provence', 'Agent', 'state', 'action'])
 		for i, row in temp.iterrows():
 			temp_ = self.Provences[self.Provences['Regent']==row['Regent']][['Provence','Population', 'Loyalty', 'Taxation']]
+			temp_ = pd.merge(temp_, law[law['Regent']==row['Regent']][['Provence', 'Type']].copy(), on='Provence', how='left').fillna('')
 			# pick for each... this can likely be more efficient
 			for j, row_ in temp_.iterrows():
 				state = self.agent[row['Attitude']].get_state('Taxes', row_)
 				tax = self.make_decision(row['Attitude'], 4, 'Taxes', state)
 				p = row_['Provence']
 				if tax[0] == 1:
-					self.change_provence(Provence=p, Taxation='None')
+					self.change_provence(Provence=p, Taxation='None', Loyalty='1')
 				elif tax[1] == 1:
 					self.change_provence(Provence=p, Taxation='Light')
 				elif tax[2] == 1:
-					self.change_provence(Provence=p, Taxation='Moderate')
+					if p in list(temp_[temp_['Type']=='Law']['Provence']):
+						self.change_provence(Provence=p, Taxation='Moderate')
+					else:
+						self.change_provence(Provence=p, Taxation='Moderate', Loyalty='-1')
 				elif tax[3] == 1:
-					self.change_provence(Provence=p, Taxation='Severe')
+					self.change_provence(Provence=p, Taxation='Severe', Loyalty='-1')
 				save_states.loc[save_states.shape[0]] = [row['Regent'], row_['Provence'], row['Attitude'], state, tax]
 				
 			
@@ -1058,7 +1082,7 @@ class Regency(object):
 			
 		# make reward vector
 		temp = self.Provences.copy()
-		temp['Relative'] = temp['Loyalty'].str.replace('Rebelious','6').replace('Poor','4').replace('Average','2').replace('High','1').astype(int)
+		temp['Relative'] = temp['Loyalty'].str.replace('Rebellious','6').replace('Poor','4').replace('Average','2').replace('High','1').astype(int)
 		temp['Tax Effect'] = temp['Relative']*(-1)*(temp['Taxation']=='Severe') + temp['Relative']*(temp['Taxation']=='None')
 		temp = temp[['Tax Effect', 'Provence']]
 		rewards = pd.merge(df, temp, on='Provence', how='left')	 # skips players
@@ -1078,6 +1102,7 @@ class Regency(object):
 			temp = self.Provences.copy()
 			temp = temp[temp['Regent'] == row['Regent']].copy()
 			temp = temp[temp['Provence'] == row['Provence']].copy()
+			temp = pd.merge(temp, law[law['Regent']==row['Regent']][['Provence', 'Type']].copy(), on='Provence', how='left').fillna('')
 			new_state = (self.agent[row['Agent']].get_state('Taxes', list(temp.iterrows())[0][1]))
 			self.agent[row['Agent']].remember(row['state'], row['action'], row['Reward'], new_state, 'Taxes')
 			self.agent[row['Agent']].train_short_memory(row['state'], row['action'], row['Reward'], new_state, 'Taxes')
@@ -1190,13 +1215,17 @@ class Regency(object):
 				while cost > gb:
 					for j, _row in _temp.iterrows():
 						if cost > gb and _temp.shape[0]>0:
-							# start disbanding
-							if _row['Type'].find('Mercenary') >= 0:
-								# oh no, brigands!
-								print('Replace with a disband mercenary thing')
-							cost = cost - _row['Cost']	# make sure only the single troop cost
-							# disband the troop
-							self.Troops.drop(j, inplace=True)
+							try:
+								# disband the troop
+								self.Troops.drop(j, inplace=True)
+								# start disbanding
+								if _row['Type'].find('Mercenary') >= 0:
+									# oh no, brigands!
+									print('Replace with a disband mercenary thing')
+								cost = cost - _row['Cost']	# make sure only the single troop cost
+							except:
+								None
+							
 			else:
 				while cost > gb:
 					dbnd = -1
