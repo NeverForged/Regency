@@ -85,8 +85,91 @@ class DQNAgent(object):
 				state.append(1)
 			else:
 				state.append(0)
-				
-			return np.asarray(state)
+		
+			if step == 'Action':
+				'''
+				is_action_1
+				is_action_2
+				is_action_3
+				is_bonus
+				has_provences
+				has_temples
+				has_law
+				has_guild
+				has_source
+				has_temple_in_friend
+				has_temple_in_enemy
+				has_law_in_enemy
+				has_temple_in_rando
+				capital_can_have_road
+				highpop_can_have_road
+				lowpop_can_have_road
+				not_all_provences_connected_by_roads
+				no_road_on_border_with_friend
+				no_road_on_border_with_rando
+				enemy_has_law_holding_in_my_lands
+				enemy_has_temple_holding_in_my_lands
+				enemy_has_source_holding_in_my_lands
+				enemy_has_guild_holding_in_my_lands
+				enemy_has_same_type_of_holding_as_me_somewhere_i_have_holding
+				i_have_contested_holding
+				i_have_contested_provence
+				enemy_has_contested_holding
+				enemy_has_contested_provence
+				enemy_has_no_law_holdings_and_rebellious_or_poor_loyalty_in_a_province
+				space_for_a_holding_nearby_that_i_can_make
+				i_am_at_war
+				arranged_trade_route_friend
+				arranged_trade_route_rando
+				rando_has_opened_caravans
+				friend_has_opened_caravans
+				rando_has_opened_waterway
+				friend_has_opened_waterway
+				i_have_military_units
+				i_have_levees
+				i_have_mercenaries
+				was_victim_of_espionage
+				i_have_ley_lines
+				number_of_ley_networks
+				capital_has_castle
+				highpop_has_castle
+				lowpop_has_castle
+				troops_garrisoned_capital
+				troops_garrisoned_high
+				troops_garrisoned_low
+				troops_garrisoned_low
+				contested_all_enemy_provinces
+				all_enemy_castles_0
+				friend_has_more_regency
+				friend_has_more_gold
+				diplomacy_friend_5_higher
+				diplomacy_friend_10_higher
+				diplomacy_enemy_5_lower
+				diplomacy_enemy_10_lower
+				enemy_has_more_regency
+				enemy_has_more_gold
+				enemy_troops_in_domain
+				enemy_troops_in_friends_domain
+				rando_has_more_regency
+				rando_has_more_gold
+				more_troops_than_enemy
+				my_holdings_can_increase_level
+				my_waterways_can_have_routes
+				my_provences_can_have_routes
+				i_have_10_gold_bars
+				i_have_20_gold_bars
+				i_have_30_gold_bars
+				i_have_40_gold_bars
+				i_have_50_gold_bars
+				i_have_100_gold_bars
+				i_have_10_rp
+				i_have_20_rp
+				i_have_30_rp
+				i_have_40_rp
+				i_have_50_rp
+				i_have_100_rp
+				'''
+		return np.asarray(state)
 			
 	def network(self, weights=None, N=3, K=11):
 		'''
