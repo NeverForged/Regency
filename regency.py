@@ -24,10 +24,11 @@ class Regency(object):
 				Str, Dex, Con, Int, Wis, Cha, Insight, Deception, Persuasion, 
 				Regency Points, Gold Bars, Regency Bonus, Attitude]
 	Geography: [Provence, Neighbor, Border, Road, Caravan, Shipping, RiverChasm]
-	Relationship: [Regent, Other, Diplomacy, Payment, Vassalage]
-	Troops: [Regent, Provence, Type, Cost, CR]
+	Relationship: [Regent, Other, Diplomacy, Payment, Vassalage, At War]
+	Troops: [Regent, Provence, Type, Cost, CR, Garrisoned]
 	Seasons: A dctionary of season-dataframes (to keep track of waht happened)
 	Lieutenants: A List of regent lieutenant pairs
+	LeyLines: [Regent, Provence, Other]
 	'''
 	
 	# Initialization
@@ -323,8 +324,8 @@ class Regency(object):
 		
 		try:
 			dct = pickle.load( open( world+'.pickle', "rb" ) )
-			lst = ['Provences', 'Holdings', 'Regents', 'Geography', 'Relationships', 'Troops', 'Seasons', 'Lieutenants']
-			self.Provences, self.Holdings, self.Regents, self.Geography, self.Relationships, self.Troops, self.Seasons, self.Lieutenants = [dct[a] for a in lst]
+			lst = ['Provences', 'Holdings', 'Regents', 'Geography', 'Relationships', 'Troops', 'Seasons', 'Lieutenants', 'LeyLines']
+			self.Provences, self.Holdings, self.Regents, self.Geography, self.Relationships, self.Troops, self.Seasons, self.Lieutenants, self.LeyLines = [dct[a] for a in lst]
 		except (OSError, IOError) as e:
 			self.new_world(world)
 
@@ -372,17 +373,20 @@ class Regency(object):
 		self.Geography = pd.DataFrame(columns=cols)
 		
 		# Relationships
-		cols = ['Regent', 'Other', 'Diplomacy', 'Payment', 'Vassalage']
+		cols = ['Regent', 'Other', 'Diplomacy', 'Payment', 'Vassalage', 'At War']
 		self.Relationships = pd.DataFrame(columns=cols)
 		
 		# Troops
-		cols = ['Regent', 'Provence', 'Type', 'Cost', 'CR']
+		cols = ['Regent', 'Provence', 'Type', 'Cost', 'CR', 'Garrisoned']
 		self.Troops = pd.DataFrame(columns=cols)
 		
 		# Lieutenants
 		cols = ['Regent', 'Lieutenant']
 		self.Lieutenants = pd.DataFrame(columns=cols)
 		
+		#Ley Lines
+		cols = ['Regent', 'Provence', 'Other']
+		self.LeyLines = pd.DataFrame(cols)
 		
 		# Seasons
 		self.Seasons = {}
@@ -403,6 +407,8 @@ class Regency(object):
 		dct['Troops'] = self.Troops
 		dct['Seasons'] = self.Seasons
 		dct['Lieutenants'] = self.Lieutenants
+		dct['LeyLines'] = self.LeyLines
+		
 		with open(world + '.pickle', 'wb') as handle:
 			pickle.dump(dct, handle, protocol=pickle.HIGHEST_PROTOCOL)
 		
@@ -657,7 +663,7 @@ class Regency(object):
 
 		self.Geography = df 
 
-	def add_relationship(self, Regent, Other, Diplomacy=0, Payment=0, Vassalage=0):
+	def add_relationship(self, Regent, Other, Diplomacy=0, Payment=0, Vassalage=0, At_War=0):
 		'''
 		Regent -> Whose Relationship
 		Other -> To whom
@@ -681,7 +687,7 @@ class Regency(object):
 			Vassalage = Vassalage + temp_['Vassalage'].values[0]
 		
 		index = self.get_my_index(df, temp)
-		df.loc[index] = [Regent, Other, Diplomacy, Payment, Vassalage]
+		df.loc[index] = [Regent, Other, Diplomacy, Payment, Vassalage, At_War]
 		self.Relationships = df
 		
 	def add_troops(self, Regent, Provence, Type):
@@ -695,7 +701,7 @@ class Regency(object):
 		
 		temp = self.troop_units[self.troop_units['Unit Type'] == Type]
 
-		df.loc[index] = [Regent, Provence, Type, temp['Maintenance Cost'].values[0], temp['BCR'].values[0]]
+		df.loc[index] = [Regent, Provence, Type, temp['Maintenance Cost'].values[0], temp['BCR'].values[0], 0]
 		
 		# set the df...
 		self.Troops = df
@@ -1420,7 +1426,7 @@ class Regency(object):
 		Cost: 1 RP, 1 GB
 		Check: 10 (Persuasion)
 		
-		Target is a regent.  if a bonus action, will be a randomly determined provence
+		Target is a regent.	 if a bonus action, will be a randomly determined provence
 		in their domain (or Provences if Player)
 		
 		if conflict==True:
@@ -1440,7 +1446,7 @@ class Regency(object):
 		agitate_conflict_false
 		'''
 		
-	def domain_action_build_bonus(self, Regent, Provence, Road=None):
+	def bonus_action_build(self, Regent, Provence, Road=None):
 		'''
 		Cost: varies
 		Base Success: 5
@@ -1467,6 +1473,7 @@ class Regency(object):
 		CAPITAL HAS ROADS TO ALL BORDERING PROVENCES IN DOMAIN
 		not all provences connected by roads
 		UNROADED PROVENCE BETWEEN SELF AND FRIEND
+        HAVE PROVENCES
 		
 		build_road (randomly pick a border to make a road on)
 		'''
@@ -1490,13 +1497,394 @@ class Regency(object):
 		contest_provence
 		'''
 		
-	def domain-action_create_holding(self, Regent, Target):
+	def domain_action_create_holding(self, Regent, Target):
 		'''
 		Base: 1 GB
 		Sucess: 10 (+ population) (Persuasion)
 		
 		INFO NEEDED:
 		space for a holding nearby where I don't have a holding of that type and it's a type I can make
+		
+		create_holding
 		'''
 		
+	
+	def domain_action_declare_war(self, Regent, Target):
+		'''
+		WA- (headline continued on page 3)
 		
+		INFO NEEDED:
+		at_war (someone declared war on me)
+		
+		
+		declare_war
+		'''
+		
+	def bonus_action_decree(self, Regent, Type='Asset Seizure'):
+		'''
+		Type: Bonus
+
+		Base Cost: 1 GB
+
+		Base Success: DC 10
+
+		A Decree encompasses a number of policies and processes that are not otherwise encompassed by other domain actions. While the list provided below is not the limit of what a Decree can do, any action that can be referred to as a Decree must fulfill the following criteria:
+
+		The decree cannot affect another regent’s holdings or provinces.
+		The decree cannot change the loyalty or level of any province or holding.
+		Decrees cannot affect armies or assets in any way.
+		Some examples of common Decrees are as follows. Game Masters and players are encouraged to use Decree whenever no other action is suitable, but care must be taken not to go overboard with what a Decree can accomplish.
+
+		A tax or asset seizure is enacted, generating 1d6 Gold Bars for your - treasury.
+		A roustabout or rumormonger is arrested.
+		A festival is declared throughout your domain.
+		A bounty is offered for local monsters, which may draw adventurers to your territory.
+		A minor act of legislation is passed regarding changes to the law, acceptable behaviors, or cultural integration.
+		A minor event is dealt with by placating the petitioning party through offerings and compensation.
+		Furthermore, the condition of the regent’s court may cause this check to be made at advantage or disadvantage, or not at all. See the section on Court Expenses for more details.
+		
+		
+		decree_festival
+		decree_asset_seizure
+		'''
+		
+	def domain_action_diplomacy(self, Regent, Target, Type='form_alliance'):
+		'''
+		ype: Domain
+
+		Base Cost: 1 RP, 1 GB
+
+		Base Success: DC 10+ (or Automatic)
+
+		Neighboring regents can generally be assumed to remain in correspondence with one another throughout the course of a season. The Diplomacy action has a much wider impact, and is typically a court affair with dignitaries, soirees, and document signings. Typically, this action is taken in relation to NPC regents or random events; if a player character regent is the target of the Diplomacy action, they can determine whether it is automatically successful (but the expense of GB and action must be made in order to gain the effects).
+
+		The DC of the domain action check depends on the specific action being taken. Diplomacy checks are typically simple affairs, but care must be taken with the proposals and the mood and standing of a regent. If a deal is outright insulting, the Game Master can rule the action has no chance of success.
+
+		Furthermore, the condition of the regent’s court may cause this check to be made at advantage or disadvantage, or not at all. See the section on Court Expenses for more details.
+
+		Regents on the sidelines who wish to influence the proceedings one way or another may spend GB and RP as usual, affecting the DC and roll bonus accordingly. This represents their dignitaries at the diplomatic function, currying favor and giving advice.
+
+		A Diplomacy action can encompass one of the following effects, each of which has its own DC.
+
+		DC 10: Form an alliance with another domain with whom you are already friendly.
+		DC 10: Create a trade agreement between two domains. This allows the Trade Route action to be taken.
+		DC 15: Allow troops to move through the targeted domain without the need to Declare War.
+		DC 15: Force a targeted regent to provide tribute or concessions.
+		DC 15: Respond to a domain event such as brigandage, unrest, or feuds, causing its effects to subside.
+		As it pertains to forcing tribute, a regent typically offers no more than a quarter of what they collect each turn in Gold bars; unless threatened with overwhelming force, a regent will never capitulate to more than that.
+
+		Critical Success: The RP and GB costs for this action are immediately recouped.
+		
+		
+		INFO NEEDED
+		arranged_trade_route
+		
+		
+		diplomacy_form_alliance
+		diplomacy_trade_agreement
+		diplomacy_allow_troop_movement
+		diplomacy_force_tribute
+		
+		diplomacy_respond_to_brigandage
+		diplomacy_respons_to_unrest
+		diplomacy_respond_to_feud
+		'''
+		
+	def bonus_action_disband(self, Regent):
+		'''
+		Type: Bonus
+
+		Base Cost: None
+
+		Base Success: DC 10 (or Automatic)
+
+		This action is used to break up units under the regent’s command. Any
+		number of units can be affected by this action, and if the units are of 
+		regular troops, the success is automatic. The spending of a bonus 
+		action represents the discharge papers, paying final expenses, and 
+		ensuring no soldier makes off with military equipment.
+   
+		If the targeted unit is a mercenary unit, a domain action check must be
+		rolled for each unit. On a success, nothing untoward happens. If the 
+		check fails, the mercenary units become units of brigands within the 
+		provinces where they were disbanded.
+		
+		The regent can also use this action to dismantle any holdings or assets
+		that they no longer wish to maintain. The effect is immediate, and the
+		holding/asset will no longer generate RP or GB for the regent starting 
+		on the next season.
+		
+		INFO NEEDED
+		has_military_units
+		has_levees
+		has_mercenaries
+		
+		
+		disband_army
+		disband_levees
+		disband_mercenaries
+		'''
+		
+	def domain_action_espionage(self, Regent, Target, Type, Bonus=False):
+		'''
+		Type: Action (or Bonus)
+
+		Base Cost: 1 GB
+		Base Success: DC 15
+
+		At the heart of being a regent is having a good spy network. The 
+		Espionage action covers all manner of skulduggery and legerdemain on 
+		behalf of your domain. The regent must declare the intent of the 
+		Espionage action before making their domain action check. Espionage can:
+
+		Uncover the details of diplomatic agreements between one domain and its 
+		allies, even ones otherwise kept secret (using the province rating of 
+		the capital).
+		
+		Determine troop movements and strength in foreign provinces.
+		
+		Create an assassination, intrigue, corruption, or heresy event in a 
+		target domain (using the province rating of the capital).
+		
+		Trace another Espionage action performed against you.
+		
+		Move individuals or transportable assets in secret from one location to another.
+		
+		Rescue hostages in a foreign province.
+
+		For hostile Espionage actions, the target DC is modified by the level of the province in which Espionage is being performed, as well as the levels of any Law holdings within those provinces. For example, Erin Velescarpe wishes to send agents to investigate rumors of Baron Gavin Tael forming a secret alliance with the Gorgon to expand his own holdings. Her base DC of 15 is increased by the level of the Baron’s capital province (6) and the Law holding in his capital province (4). This increases her DC to 25 -- Erin will be spending a great deal of gold financing this endeavor.
+
+		If the roll fails by 10 or more, then the regent’s spy is caught and 
+		imprisoned. They may attempt to rescue the agent with additional 
+		Espionage attempts, and the Game Master should secretly determine if 
+		the agent is successfully interrogated.
+
+		Espionage is dangerous, difficult, and requires a massive investment of 
+		Gold Bars to have a solid chance at success. However, the rewards for 
+		successful Espionage are rich and the destabilization it can create 
+		rivals that of invading troops.
+
+		Bonus Action: If you control a Guild holding in the target province, 
+		you may enact Espionage as a bonus action when targeting that province.
+		
+		Critical Success: The regent may select one other effect of Espionage 
+		to take place concurrently and at no extra cost.
+		
+		INFO NEEDED
+		was_victim_of_espionage
+		
+		espionage_diplomatic_details
+		espionage_discover_troop_movements
+		espionage_assassination
+		espionage_intrigue
+		espionage_corruption
+		espionage_heresy
+		espionage_trace_espionage
+		
+		'''
+		
+	def bonus_action_fianances(self, regent, number=1):
+		'''
+		Type: Bonus
+
+		Base Cost: None
+
+		Base Success: Automatic
+
+		Through this action, it is possible for regents to turn Gold Bars from 
+		their treasury into liquid assets to purchase personal equipment or pay
+		ransoms without using official channels. This action may be performed 
+		only once per season, and the number of Gold Bars that can be converted
+		is equal to the sum total of all Guild holding levels the regent 
+		controls, plus their Bloodline modifier. Each Gold Bar converted 
+		becomes 2000 gold pieces of currency in the regent’s possession.
+		
+
+		Thus, if Erin Velescarpe (Bloodline score 15) controls four guild 
+		holdings of levels 1, 2, 2, and 4, she can convert up to 11 Gold Bars 
+		into coins. Regents must be careful not to bankrupt their kingdoms 
+		using this action.
+		
+		
+		'''
+		
+	def domain_action_forge_ley_line(self, Provence, Holding):
+		'''
+		Forge Ley Line
+		Type: Action
+
+		Base Cost: 1 RP, 1 GB (see below)
+
+		Base Success: DC 5
+
+		When casting realm magic, arcane spellcasters require the use of a 
+		Source. However, they may find themselves in provinces where the Source 
+		is weak, and thus at a disadvantage when choosing from among their 
+		arsenal. By creating ley lines, the spellcaster can substitute the 
+		Source rating of one province with that of another.
+
+		Ley lines are a potentially hefty expenditure, requiring 1 Regency
+		Point and 1 Gold Bar for each province between the “home” Source and 
+		the destination of the ley line. Always use the shortest distance to 
+		determine the number of provinces crossed, geographical features 
+		notwithstanding.
+
+		Spellcasters can also expand on ley lines by creating “networks” 
+		stemming from the home Source province. Consider existing ley lines 
+		when calculating the cost of new ones; the spellcaster need only pay 
+		for extension of a ley line rather than recalculating from the home 
+		Source, if it is cost-effective.
+
+		Any contiguous ley line the spellcasting regent owns costs 1 Regency 
+		Point during the final step of the season. Multiple ley lines that are 
+		not connected each cost RP.
+
+		Should the source from which a ley line originates fall to level 0 for 
+		any reason, such ley lines immediately disappear and must be reforged.
+		
+
+		For example, a spellcasting regent, Calimor the Magnificent, wishes to
+		create a ley line connecting his Source holdings in the province of 
+		Sorelies (Source rating 4) to a weaker location in Alaroine (Source 
+		rating 0) so that he can cast useful realm magic while stationed in 
+		there. The distance between provinces is only two along the shortest
+		route (south through Hildon, and then to Alaroine), so the cost to 
+		build the ley line is 2 RP and 2 GB.
+
+		Calimor later decides to extend the ley line into enemy territory in 
+		the province of Ghiere, in Baron Gavin Tael’s domain of Ghoere. He pays 
+		only an additional 2 RP and 2 GB to push the ley line two more 
+		provinces south, but must still succeed at his domain action check to 
+		complete the forging. Now with a strong home Source at his command, 
+		Calimor can lead soldiers there and cast devastating realm magic 
+		against the warmongering Baron on his own turf.
+		
+		INFO NEEDED
+		lay_lines_from_highest_source
+		
+		
+		forge_ley_line
+		'''
+        
+    def domain_action_fortify(self, provence):
+        '''
+        Type: Action
+
+        Base Cost: 1 RP, Variable GB
+
+        Base Success: DC 5
+
+        Through use of the Fortify action, regents construct Castle assets to
+        protect their provinces (or expand upon existing Castles). A province 
+        can only hold a single Castle asset for purposes of this action, though
+        you may well have numerous smaller keeps and palaces in the area that 
+        do not necessarily contribute to defense in any meaningful way. You can 
+        only construct Castles in provinces you own, and Castles require a 
+        massive investment of gold to bring to completion.
+
+        To create a new Castle, a regent chooses the target province to begin 
+        construction. Castles, like provinces and holdings, have levels which 
+        dictate how impregnable they are and how well they defend holdings in 
+        their sphere of influence. Castles are unique in that they may be of 
+        higher level than the province in which they lie, but if the Castle’s 
+        target level exceeds the province level, costs quickly begin to multiply.
+        
+        The base cost of a Castle is 6 GB per level. If the Castle is greater 
+        level than the province, each level beyond the province level costs 9 
+        GB. For example, if Erin Velescarpe wants to build a level 6 Castle in 
+        a level 4 province on the border with Ghoere to deter any of the 
+        neighboring Baron’s aggression, she must pay 42 Gold Bars.
+
+        Castles are expensive, and can take years to build to completion. Once 
+        the desired level of the Castle is chosen and the initial cost is paid, 
+        progress continues automatically at a rate of 3 (or 1d6) GB each season 
+        and the regent does not need to continue to use this action unless they 
+        are adding features or upgrading the Castle level.
+
+        A standard Castle has the benefit of completely halting the advance of 
+        enemy troops through your provinces. Any enemy units that move into a 
+        province occupied by a Castle cannot move out of the province any 
+        direction save the way they came, until the Castle is neutralized or 
+        destroyed (see Conquest and Occupation section). Furthermore, holdings 
+        you own in provinces with a Castle are protected from total destruction 
+        using Pillage, as outlined in that action.
+
+        You may also garrison a number of units in the Castle equal to its 
+        level. Garrisoned units cost half of their maintenance each season, but 
+        are slow to bring back to muster in an emergency.
+        
+        INFO NEEDED
+        capital_has_castle
+        highpop_has_castle
+        lowpop_has_castle
+        troops_garrisoned_capital
+        troops_garrisoned_high
+        troops_garrisoned_low
+        '''
+        
+    def bonus_action_grant(self, Regent):
+        '''
+        Grant
+        Type: Bonus
+
+        Base Cost: Special
+
+        Base Success: DC 10 (Automatic, see below)
+
+        This domain action is used by regents who wish to reward helpful 
+        servants with titles or gifts of wealth. Typically, this is used when 
+        resolving a domain event that requires the appointing or appeasement of
+        a government official. It can also be used to give another regent money 
+        from your treasury in the form of Gold Bars.
+
+        Unlike other domain actions, the domain action check is made not to see 
+        if the action succeeds, but whether anyone is potentially angered by 
+        the Grant (especially in the case of giving out wealth). Every Gold Bar 
+        that exchanges hands in this way increases the DC by 1. Should anyone 
+        be offended by the use of a Grant, it will force a corruption, 
+        intrigue, or unrest event on the next season.
+        '''
+        
+    def domain_action_investiture(self, Regent, Target):
+        '''
+        Type: Action
+
+        Base Cost: Varies
+
+        Base Success: Varies
+
+        To enact Investiture, a priest capable of casting the realm spell of 
+        the same name must be present for the ceremony. This ceremony is 
+        critical for passing rightful ownership of holdings and provinces to 
+        new rulers, and without it, a regent cannot draw Regency Points or Gold 
+        Bars from either asset type.
+
+        To invest provinces and holdings, the asset in question must either be 
+        willingly given to the investing regent; otherwise, it must be 
+        conquered or contested by that regent, and there must not be an enemy 
+        Castle present that is not neutralized. The regent must pay Regency 
+        Points equal to the combined levels of all holdings, provinces, and 
+        castles being invested through the course of this domain action. If the 
+        former owner is an unwilling participant, the investing regent must 
+        succeed at a domain action check with a DC of 10 + the defending 
+        regent’s Bloodline modifier. The defending regent may also spend RP 
+        normally to make this more of a challenge for the would-be usurper. 
+        This process is known as divesting a regent.
+
+        Investiture is also used to formalize vassalage. Upon using Investiture
+        for this purpose, both regents contribute RP equal to the vassal’s 
+        Bloodline modifier. From this point on, the vassal contributes that 
+        value to their new lord every season, and no longer gains RP from their 
+        Bloodline modifier.
+
+        Finally, a blooded individual may be the target of Investiture, either 
+        willingly or unwillingly (though they must be present). This strips the
+        blooded individual of all derivation, Bloodline ability score, and 
+        blood abilities. If the recipient is not a blooded individual, they 
+        gain a Bloodline score of 11 and the derivation of the divested scion,
+        unless that scion’s Bloodline score was less than 11 (in which case,
+        the new value is equal to the scion’s previous value; for this reason,
+        Tainted bloodlines are almost never invested in this way). If the 
+        recipient of the investiture is already blooded, their Bloodline score
+        permanently increases by 1, to a maximum value of 20.
+        '''
