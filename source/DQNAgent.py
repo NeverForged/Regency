@@ -12,11 +12,11 @@ class DQNAgent(object):
 	Based on: https://github.com/maurock/snake-ga/blob/master/DQN.py 
 	'''
 
-	def __init__(self, attitude='Normal'):
+	def __init__(self, attitude='Normal', Regent='Default'):
 		'''
 		Attitude -> Normal, Peaceful, or Aggressive... defines the rewards 
 		'''
-		
+		self.Regent = Regent
 		self.attitude = attitude
 		self.reward = 0
 		self.gamma = 0.9
@@ -34,7 +34,7 @@ class DQNAgent(object):
 		self.memory = {}
 		self.memory['Taxes'] = []
 		
-	def get_state(self, step, df):
+	def get_state(self, step, df, action=1, ):
 		'''
 		In Original, returns an np.asarray of a list it looks like.
 		
@@ -44,6 +44,9 @@ class DQNAgent(object):
 		
 		step -> which decision I am training.
 				Taxes -> setting taxes
+				
+		df -> a row from a dataframe
+		action -> which action it is (1, 2, or 3) for Actions
 		'''
 		if step == 'Taxes':
 			state = [1*(df['Population'] == a) for a in range(10)]	# population 0-9
@@ -101,58 +104,31 @@ class DQNAgent(object):
 				has_temple_in_enemy
 				has_law_in_enemy
 				has_temple_in_rando
-				capital_can_have_road
-				highpop_can_have_road
-				lowpop_can_have_road
-				not_all_provences_connected_by_roads
-				no_road_on_border_with_friend
-				no_road_on_border_with_rando
-				enemy_has_law_holding_in_my_lands
-				enemy_has_temple_holding_in_my_lands
-				enemy_has_source_holding_in_my_lands
-				enemy_has_guild_holding_in_my_lands
-				enemy_has_same_type_of_holding_as_me_somewhere_i_have_holding
 				i_have_contested_holding
 				i_have_contested_provence
-				enemy_has_contested_holding
-				enemy_has_contested_provence
-				enemy_has_no_law_holdings_and_rebellious_or_poor_loyalty_in_a_province
-				space_for_a_holding_nearby_that_i_can_make
 				i_am_at_war
-				arranged_trade_route_friend
-				arranged_trade_route_rando
-				rando_has_opened_caravans
-				friend_has_opened_caravans
-				rando_has_opened_waterway
-				friend_has_opened_waterway
 				i_have_military_units
 				i_have_levees
 				i_have_mercenaries
 				was_victim_of_espionage
 				i_have_ley_lines
 				number_of_ley_networks
+				capital_can_have_road
+				highpop_can_have_road
+				lowpop_can_have_road
+				not_all_provences_connected_by_roads
+				space_for_a_holding_nearby_that_i_can_make
 				capital_has_castle
 				highpop_has_castle
 				lowpop_has_castle
 				troops_garrisoned_capital
-				troops_garrisoned_high
-				troops_garrisoned_low
-				troops_garrisoned_low
-				contested_all_enemy_provinces
-				all_enemy_castles_0
-				friend_has_more_regency
-				friend_has_more_gold
-				diplomacy_friend_5_higher
-				diplomacy_friend_10_higher
-				diplomacy_enemy_5_lower
-				diplomacy_enemy_10_lower
-				enemy_has_more_regency
-				enemy_has_more_gold
-				enemy_troops_in_domain
-				enemy_troops_in_friends_domain
-				rando_has_more_regency
-				rando_has_more_gold
-				more_troops_than_enemy
+				troops_garrisoned_highpop
+				troops_garrisoned_lowpop
+				border_provences_no_troops
+				border_provences_no_castle
+				capital_no_castle
+				highpop_no_castle
+				lowpop_no_castle
 				my_holdings_can_increase_level
 				my_waterways_can_have_routes
 				my_provences_can_have_routes
@@ -168,6 +144,47 @@ class DQNAgent(object):
 				i_have_40_rp
 				i_have_50_rp
 				i_have_100_rp
+				
+				no_road_on_border_with_friend
+				friend_has_opened_caravans
+				friend_has_opened_waterway
+				friend_has_more_regency
+				friend_has_more_gold
+				diplomacy_friend_5_higher
+				diplomacy_friend_10_higher
+				arranged_trade_route_friend
+				friend_max_pop_higher
+				friend_alive
+				
+				no_road_on_border_with_rando
+				arranged_trade_route_rando
+				rando_has_opened_waterway
+				rando_has_opened_caravans
+				diplomacy_rando_0
+				diplomacy_rando_plus
+				rando_has_more_regency
+				rando_has_more_gold
+				rando_max_pop_higher
+				rando_alive
+				
+				enemy_has_law_holding_in_my_lands
+				enemy_has_temple_holding_in_my_lands
+				enemy_has_source_holding_in_my_lands
+				enemy_has_guild_holding_in_my_lands
+				enemy_has_same_type_of_holding_as_me_somewhere_i_have_holding
+				enemy_has_contested_holding
+				enemy_has_contested_provence
+				enemy_has_no_law_holdings_and_rebellious_or_poor_loyalty_in_a_province
+				contested_all_enemy_provinces
+				all_enemy_castles_0
+				diplomacy_enemy_5_lower
+				diplomacy_enemy_10_lower
+				enemy_has_more_regency
+				enemy_has_more_gold
+				enemy_troops_in_domain
+				enemy_troops_in_friends_domain
+				enemy_has_more_troops
+				enemy_alive
 				'''
 		return np.asarray(state)
 			
@@ -221,7 +238,7 @@ class DQNAgent(object):
 		Save this using Pickle
 		'''
 		if filename == None:
-			filename = 'agent_' + attitude[0].lower() + '.pickle'
+			filename = 'agents/agent_' + self.Regent + '.pickle'
 		
 		with open(filename, 'wb') as handle:
-			pickle.dump(norm, handle, protocol=pickle.HIGHEST_PROTOCOL)
+			pickle.dump(self, handle, protocol=pickle.HIGHEST_PROTOCOL)

@@ -5,7 +5,7 @@ import pandas as pd
 import networkx as nx
 from PIL import Image
 from random import randint
-from DQNAgent import DQNAgent
+from source.DQNAgent import DQNAgent
 import matplotlib.pyplot as plt
 from keras.utils import to_categorical
 from IPython.display import clear_output
@@ -22,7 +22,7 @@ class Regency(object):
 	Holdings: [Provence, Domain, Regent, Type, Level]
 	Regents: [Regent, Full Name, Player, Class, Level, Alignment, Race, 
 				Str, Dex, Con, Int, Wis, Cha, Insight, Deception, Persuasion, 
-				Regency Points, Gold Bars, Regency Bonus, Attitude]
+				Regency Points, Gold Bars, Regency Bonus, Attitude, Alive]
 	Geography: [Provence, Neighbor, Border, Road, Caravan, Shipping, RiverChasm]
 	Relationship: [Regent, Other, Diplomacy, Payment, Vassalage, At War, Trade Permission]
 	Troops: [Regent, Provence, Type, Cost, CR, Garrisoned, Home]
@@ -40,11 +40,7 @@ class Regency(object):
 		'''
 		self.jupyter = jupyter
 		
-		# Agents...
-		self.agent = {}
-		self.agent['Normal'] = pickle.load( open( 'agent_n.pickle', "rb" ) )
-		self.agent['Peaceful'] = pickle.load( open( 'agent_p.pickle', "rb" ) )
-		self.agent['Aggressive'] = pickle.load( open( 'agent_a.pickle', "rb" ) )
+		
 		
 			
 		# Provence Taxation Table
@@ -302,7 +298,14 @@ class Regency(object):
 		# Load the World
 		self.load_world(world)
 
-		
+		# Agents...
+		self.agent = {}
+		for i, row in self.Regents.iterrows():
+			try:
+				self.agent[row['Regent']] = pickle.load( open( 'agents/agent_' + row['Regent'] + '.pickle', "rb" ) )
+			except:
+				self.agent[row['Regent']] = DQNAgent(attitude=row['Attitude'], Regent=row['Regent'])
+				self.agent[row['Regent']].save()
 	def clear_screen(self):
 		'''
 		For Jupyter notebook use
@@ -323,7 +326,7 @@ class Regency(object):
 		'''
 		
 		try:
-			dct = pickle.load( open( world+'.pickle', "rb" ) )
+			dct = pickle.load( open( 'worlds/' + world + '.pickle', "rb" ) )
 			lst = ['Provences', 'Holdings', 'Regents', 'Geography', 'Relationships', 'Troops', 'Seasons', 'Lieutenants', 'LeyLines']
 			self.Provences, self.Holdings, self.Regents, self.Geography, self.Relationships, self.Troops, self.Seasons, self.Lieutenants, self.LeyLines = [dct[a] for a in lst]
 		except (OSError, IOError) as e:
@@ -335,7 +338,7 @@ class Regency(object):
 		'''
 		Have the Agent do a thing to make a decision.
 		'''
-		agent = self.agent[attitude]
+		agent = self.agent[Regent]
 		
 		# get Int modifier
 		mod = self.Regents[self.Regents['Regent']==Regent]['Int'].values[0]
@@ -362,10 +365,7 @@ class Regency(object):
 		self.Provences = pd.DataFrame(columns=cols)
 		
 		# Regents
-		cols = ['Regent', 'Full Name', 'Player', 
-			 'Class', 'Level', 'Alignment', 'Race', 'Str', 'Dex', 'Con', 'Int', 'Wis', 'Cha',
-			'Insight', 'Deception', 'Persuasion',
-			 'Regency Points', 'Gold Bars', 'Regency Bonus', 'Attitude']
+		cols = ['Regent', 'Full Name', 'Player', 'Class', 'Level', 'Alignment', 'Race', 'Str', 'Dex', 'Con', 'Int', 'Wis', 'Cha', 'Insight', 'Deception', 'Persuasion', 'Regency Points', 'Gold Bars', 'Regency Bonus', 'Attitude', 'Alive']
 		self.Regents = pd.DataFrame(columns=cols)
 		
 		# Geography
@@ -409,7 +409,7 @@ class Regency(object):
 		dct['Lieutenants'] = self.Lieutenants
 		dct['LeyLines'] = self.LeyLines
 		
-		with open(world + '.pickle', 'wb') as handle:
+		with open('worlds/' + world + '.pickle', 'wb') as handle:
 			pickle.dump(dct, handle, protocol=pickle.HIGHEST_PROTOCOL)
 		
 	def get_my_index(self, df, temp):
@@ -452,7 +452,27 @@ class Regency(object):
 		# set the df...
 		self.Holdings = df
 
-	def remove_holding(self, Provence, Regent, Type, Level):
+	def change_holding(self, Provence, Regent, Type, Level=None, Contested=None, new_Regent = None, mult_level=1):
+		'''
+		'''
+		index = self.Holdings[self.Holdings['Provence'] == Provence].copy()
+		index = index[index['Regent']==Regent].copy()
+		index = index.index[indx['Type']==Type].tolist()[0]
+		
+		old = self.Holdings.iloc[index]
+		
+		if new_Regent == None:
+			new_Regent = old['Regent']
+		if Level == None:
+			Level = (old['Level'])*mult_level  # allows dropping to zero
+		else:
+			Level = old['Level'] + Level
+		if Contested == None:
+			Contested = old['Contested']
+		
+		self.Holdings.loc[index] = [Provence, new_Regent, Type, Level, Contested]
+		
+	def remove_holding(self, Provence, Regent, Type):
 		'''
 		Remove all rows where Regent, Provence, Type are
 		equakl to those set.
@@ -505,8 +525,7 @@ class Regency(object):
 		
 		self.Provences = df
 
-	def change_provence(self, Provence, Regent=None, Region=None, Domain=None, Population_Change=0, Terrain=None, Loyalty=None
-						, Taxation=None, Castle=None, Capital=None, x=None, y=None, Contested=None):
+	def change_provence(self, Provence, Regent=None, Region=None, Domain=None, Population_Change=0, Terrain=None, Loyalty=None, Taxation=None, Castle=None, Capital=None, x=None, y=None, Contested=None, Waterway=None):
 		'''
 		None = not changed
 		'''
@@ -591,12 +610,55 @@ class Regency(object):
 
 		df.loc[df.shape[0]] = [Regent, Name, Player, Class, Level, Alignment, Race, 
 							   Str, Dex, Con, Int, Wis, Cha, Insight, Deception, Persuasion,
-							   Regency_Points, Gold_Bars, Regency_Bonus, Attitude]
+							   Regency_Points, Gold_Bars, Regency_Bonus, Attitude, True]
 		df = df.drop_duplicates(subset='Regent', keep='last')
 		self.Regents = df
 		for Lieutenant in Lieutenants:
 			self.add_lieutenant(Regent, Lieutenant)
 
+	def change_Regent(self, Regent, Name=None, Player=False, Class=None, Level=None, reset_level=False, 		Alignment = None, Race=None, Str = None, Dex = None, Con = None, Int = None, Wis = None, Cha = None, Insight = None, Deception = None, Persuasion = None, Regency_Bonus = None, Alive=True):
+		
+		index = self.Regents.index[self.Regents['Regent'] == Regent].tolist()[0]
+		old = self.Regents.iloc[index]
+		
+		if Name == None:
+			Name = old['Name']
+		if Class == None:
+			Class = old['Class']
+		if Level == None:
+			Level = old['Level']
+		elif reset_level == False:
+			Level = old['Level'] + Level
+		if Alignment == None:
+			Alignmnet == old['Alignment']
+		if Race == None:
+			Race = old['Race']
+		if Str == None:
+			Str = old['Str']
+		if Dex == None:
+			Dex = old['Dex']
+		if Con == None:
+			Con = old['Con']
+		if Int == None:
+			Int = old['Int']
+		if Wis == None:
+			Wis = old['Wis']
+		if Cha == None:
+			Cha = old['Cha']
+		if Insight == None:
+			Insight = old['Insight']
+		if Deception == None:
+			Deception == old['Deception']
+		if Persuasion == None:
+			Persuasion == old['Persuasion']
+		if Regency_Bonus == None:
+			Regency_Bonus == old['Regency Bonus']
+		
+		
+		self.Regents.loc[df.shape[0]] = [Regent, Name, Player, Class, Level, Alignment, Race, 
+							   Str, Dex, Con, Int, Wis, Cha, Insight, Deception, Persuasion,
+							   old['Regency Points'], old['Gold_Bars'], Regency_Bonus, old['Attitude'], Alive]
+							   
 	def get_archetype(self, Archetype):
 		'''
 		return	Class, Level, Str, Dex, Con, Int, Wis, Cha, Insight, Deception, Persuasion
@@ -681,7 +743,7 @@ class Regency(object):
 		
 		 # only add what's being added
 		if len(temp) > 0:
-			temp_ = df[df['Regent'] == Provence].copy()
+			temp_ = df[df['Regent'] == Regent].copy()
 			temp_ = temp_[temp_['Other']==Neighbor]
 			Diplomacy = Diplomacy + temp_['Diplomacy'].values[0]
 			Paymernt = Paymernt + temp_['Paymernt'].values[0]
@@ -726,9 +788,9 @@ class Regency(object):
 		plt.figure(figsize=fig_size)
 		if bg:
 			if cam_map=='Birthright':
-				image = Image.open('615dbe4e4e5393bb6ff629b50f02a6ee.jpg')
+				image = Image.open('maps/615dbe4e4e5393bb6ff629b50f02a6ee.jpg')
 			else:
-				image = Image.open(cam_map)
+				image = Image.open('maps'+cam_map)
 			plt.imshow(image, alpha=map_alpha)
 			
 		
@@ -762,14 +824,26 @@ class Regency(object):
 
 		# node types
 		player_regents = Regents[Regents['Player']==True]
-		npc_regents = Regents[Regents['Player']==False]
 		
-		dip = pd.merge(Diplomacy,player_regents,on='Regent',how='left')
-		dip['Rank'] = dip['Diplomacy'] + dip['Vassalage']
-		dip = dip[['Other','Rank']].groupby('Other').sum().reset_index()
-		dip['Regent'] = dip['Other']
-		
-		npc_regents = pd.merge(npc_regents, dip[['Regent', 'Rank']], on='Regent', how='outer').fillna(0)
+		if player_regents.shape[0] > 0:
+			npc_regents = Regents[Regents['Player']==False]
+			
+			dip = pd.merge(Diplomacy,player_regents,on='Regent',how='left')
+			dip['Rank'] = dip['Diplomacy'] + dip['Vassalage']
+			dip = dip[['Other','Rank']].groupby('Other').sum().reset_index()
+			dip['Regent'] = dip['Other']
+			
+			npc_regents = pd.merge(npc_regents, dip[['Regent', 'Rank']], on='Regent', how='outer').fillna(0)
+		else:
+			# no players, go by attitude:
+			player_regents = Regents[Regents['Alignment'].str.contains('G')==True]
+			npc_regents = Regents[Regents['Alignment'].str.contains('G')==False]
+			npc_regents_e = npc_regents[npc_regents['Alignment'].str.contains('E')==True]
+			npc_regents_n = npc_regents[npc_regents['Alignment'].str.contains('E')==False]
+			npc_regents_e['Rank'] = -10
+			npc_regents_n['Rank'] = 3
+			npc_regents = pd.concat([npc_regents_e, npc_regents_n])
+			
 		# player nodes
 		nodes = []
 		capitals = []
@@ -948,8 +1022,10 @@ class Regency(object):
 		try:
 			# new season!
 			self.Season = max(self.Seasons.keys())+1
+			self.Action = 1
 		except:
 			self.Season = 0
+			self.Action = 1
 		
 		self.Seasons[self.Season] = {}
 		self.Seasons[self.Season]['Season'] = temp
@@ -995,7 +1071,7 @@ class Regency(object):
 		regents = regents.fillna(0)
 
 		# calculation
-		regents['Regency Points'] = regents['Regency Points'] + regents['Regency Bonus'] + regents['Regency Points Add'] - regents['Minus'] + regents['Vassalage']
+		regents['Regency Points'] = regents['Regency Points'].astype(int) + regents['Regency Bonus'].astype(int) + regents['Regency Points Add'].astype(int) - regents['Minus'].astype(int) + regents['Vassalage'].astype(int)
 		regents['Regency Points'] = regents['Regency Points'].astype(int)
 		
 		self.Seasons[self.Season]['Season'] = pd.merge(self.Seasons[self.Season]['Season'], regents[['Regent', 'Regency Points']], on='Regent', how='left').fillna(0)
@@ -1075,14 +1151,14 @@ class Regency(object):
 		
 		# Agents need to pick now...
 		temp = self.Regents[self.Regents['Player']==False].copy()
-		save_states = pd.DataFrame(columns=['Regent', 'Provence', 'Agent', 'state', 'action'])
+		save_states = pd.DataFrame(columns=['Regent', 'Provence', 'state', 'action'])
 		for i, row in temp.iterrows():
 			temp_ = self.Provences[self.Provences['Regent']==row['Regent']][['Provence','Population', 'Loyalty', 'Taxation']]
 			temp_ = pd.merge(temp_, law[law['Regent']==row['Regent']][['Provence', 'Type']].copy(), on='Provence', how='left').fillna('')
 			# pick for each... this can likely be more efficient
 			for j, row_ in temp_.iterrows():
-				state = self.agent[row['Attitude']].get_state('Taxes', row_)
-				tax = self.make_decision(row['Attitude'], 4, 'Taxes', state, row['Regent'])
+				state = self.agent[row['Regent']].get_state('Taxes', row_)
+				tax = self.make_decision(row['Regent'], 4, 'Taxes', state, row['Regent'])
 				p = row_['Provence']
 				if tax[0] == 1:
 					self.change_provence(Provence=p, Taxation='None', Loyalty='1')
@@ -1095,8 +1171,7 @@ class Regency(object):
 						self.change_provence(Provence=p, Taxation='Moderate', Loyalty='-1')
 				elif tax[3] == 1:
 					self.change_provence(Provence=p, Taxation='Severe', Loyalty='-1')
-				save_states.loc[save_states.shape[0]] = [row['Regent'], row_['Provence'], row['Attitude'], state, tax]
-				
+				save_states.loc[save_states.shape[0]] = [row['Regent'], row_['Provence'], state, tax]		
 			
 		# collect taxes
 		for p in range(11):
@@ -1134,9 +1209,11 @@ class Regency(object):
 			temp = temp[temp['Regent'] == row['Regent']].copy()
 			temp = temp[temp['Provence'] == row['Provence']].copy()
 			temp = pd.merge(temp, law[law['Regent']==row['Regent']][['Provence', 'Type']].copy(), on='Provence', how='left').fillna('')
-			new_state = (self.agent[row['Agent']].get_state('Taxes', list(temp.iterrows())[0][1]))
-			self.agent[row['Agent']].remember(row['state'], row['action'], row['Reward'], new_state, 'Taxes')
-			self.agent[row['Agent']].train_short_memory(row['state'], row['action'], row['Reward'], new_state, 'Taxes')
+			print(row['state'])
+			new_state = (self.agent[row['Regent']].get_state('Taxes', list(temp.iterrows())[0][1]))
+			self.agent[row['Regent']].remember(row['state'], row['action'], row['Reward'], new_state, 'Taxes')
+			self.agent[row['Regent']].train_short_memory(row['state'], row['action'], row['Reward'], new_state, 'Taxes')
+			
 		
 		# after rewards given
 		df = df[df['Revenue']>0].copy()
