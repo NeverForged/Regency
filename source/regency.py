@@ -344,7 +344,7 @@ class Regency(object):
 		mod = self.Regents[self.Regents['Regent']==Regent]['Int'].values[0]
 		# predict action based on the old state
 		if type == 'Taxes':
-			prediction = agent.tax_model.predict(state.reshape((1,19)))
+			prediction = agent.tax_model.predict(state.reshape((1,23)))
 		
 		roll = randint(1, 20)
 		if roll < 5-mod or roll == 1:  # Fails a dc 5 int check and does something random
@@ -616,7 +616,7 @@ class Regency(object):
 		for Lieutenant in Lieutenants:
 			self.add_lieutenant(Regent, Lieutenant)
 
-	def change_Regent(self, Regent, Name=None, Player=False, Class=None, Level=None, reset_level=False, 		Alignment = None, Race=None, Str = None, Dex = None, Con = None, Int = None, Wis = None, Cha = None, Insight = None, Deception = None, Persuasion = None, Regency_Bonus = None, Alive=True):
+	def change_Regent(self, Regent, Name=None, Player=False, Class=None, Level=None, reset_level=False,			Alignment = None, Race=None, Str = None, Dex = None, Con = None, Int = None, Wis = None, Cha = None, Insight = None, Deception = None, Persuasion = None, Regency_Bonus = None, Alive=True):
 		
 		index = self.Regents.index[self.Regents['Regent'] == Regent].tolist()[0]
 		old = self.Regents.iloc[index]
@@ -744,9 +744,9 @@ class Regency(object):
 		 # only add what's being added
 		if len(temp) > 0:
 			temp_ = df[df['Regent'] == Regent].copy()
-			temp_ = temp_[temp_['Other']==Neighbor]
+			temp_ = temp_[temp_['Other']==Other]
 			Diplomacy = Diplomacy + temp_['Diplomacy'].values[0]
-			Paymernt = Paymernt + temp_['Paymernt'].values[0]
+			Payment = Payment + temp_['Payment'].values[0]
 			Vassalage = Vassalage + temp_['Vassalage'].values[0]
 		
 		index = self.get_my_index(df, temp)
@@ -1151,11 +1151,17 @@ class Regency(object):
 		
 		# Agents need to pick now...
 		temp = self.Regents[self.Regents['Player']==False].copy()
+		costs = self.maintenance_costs(Update=False)
+		provences_owned = self.Provences[['Regent', 'Provence']].copy().groupby('Regent').count().reset_index()
+		costs = pd.merge(costs, provences_owned, on='Regent', how='left').fillna(1)
+		costs['Cost'] = (costs['Cost']/costs['Provence']).astype(int).fillna(0)
+		temp = pd.merge(temp, costs, on='Regent', how='left')
 		save_states = pd.DataFrame(columns=['Regent', 'Provence', 'state', 'action'])
 		for i, row in temp.iterrows():
 			temp_ = self.Provences[self.Provences['Regent']==row['Regent']][['Provence','Population', 'Loyalty', 'Taxation']]
 			temp_ = pd.merge(temp_, law[law['Regent']==row['Regent']][['Provence', 'Type']].copy(), on='Provence', how='left').fillna('')
 			# pick for each... this can likely be more efficient
+			temp_['Cost'] = row['Cost']
 			for j, row_ in temp_.iterrows():
 				state = self.agent[row['Regent']].get_state('Taxes', row_)
 				tax = self.make_decision(row['Regent'], 4, 'Taxes', state, row['Regent'])
@@ -1187,9 +1193,10 @@ class Regency(object):
 			
 		# make reward vector
 		temp = self.Provences.copy()
+		temp = pd.merge(temp, costs[['Regent', 'Cost']], on='Regent', how='left')
 		temp = pd.merge(temp, self.Holdings[self.Holdings['Type'] == 'Law'][['Provence', 'Type', 'Regent']], on=['Provence', 'Regent'], how='left').fillna('')
 		temp['Relative'] = temp['Loyalty'].str.replace('Rebellious','4').replace('Poor','3').replace('Average','2').replace('High','1').astype(int)
-		temp['Tax Effect'] = temp['Relative']*(-1)*((temp['Taxation']=='Severe') + (temp['Type'] != 'Law')*(temp['Taxation']=='Moderate')) + temp['Relative']*(temp['Taxation']=='None') + (-5)*(temp['Loyalty']=='Rebellious')
+		temp['Tax Effect'] = temp['Relative']*(-1)*((temp['Taxation']=='Severe') + (temp['Type'] != 'Law')*(temp['Taxation']=='Moderate')) + temp['Relative']*(temp['Taxation']=='None') + (-10)*(temp['Loyalty']=='Rebellious') -temp['Cost']
 		temp = temp[['Tax Effect', 'Provence']]
 		rewards = pd.merge(df, temp, on='Provence', how='left')	 # skips players
 		rewards = pd.merge(rewards, self.Regents[self.Regents['Player']==False][['Regent', 'Attitude']].copy(), on='Regent', how='left')
@@ -1206,10 +1213,10 @@ class Regency(object):
 		for i, row in save_states.iterrows():
 			# hate having to iterrow, but here we are
 			temp = self.Provences.copy()
+			temp = pd.merge(temp, costs[['Regent','Cost']], on='Regent', how='left').fillna(0)
 			temp = temp[temp['Regent'] == row['Regent']].copy()
 			temp = temp[temp['Provence'] == row['Provence']].copy()
 			temp = pd.merge(temp, law[law['Regent']==row['Regent']][['Provence', 'Type']].copy(), on='Provence', how='left').fillna('')
-			print(row['state'])
 			new_state = (self.agent[row['Regent']].get_state('Taxes', list(temp.iterrows())[0][1]))
 			self.agent[row['Regent']].remember(row['state'], row['action'], row['Reward'], new_state, 'Taxes')
 			self.agent[row['Regent']].train_short_memory(row['state'], row['action'], row['Reward'], new_state, 'Taxes')
@@ -1283,7 +1290,7 @@ class Regency(object):
 		self.Seasons[self.Season]['Season'] = pd.merge(self.Seasons[self.Season]['Season'], temp_Regents[['Regent','Gold Bars', 'Revenue']], on='Regent', how='left').fillna(0)
 		self.Regents = temp_Regents[cols]
 	
-	def maintenance_costs(self):
+	def maintenance_costs(self, Update=True):
 		'''
 		A domain does not support itself. Gold is required to keep the 
 		wheels of politics greased and ensure the people have enough 
@@ -1307,52 +1314,53 @@ class Regency(object):
 		df = df[['Regent','Cost']].groupby('Regent').sum().reset_index()
 		
 		# 5.2 Pay Armies
-		temp = self.Troops[['Regent', 'Cost']].copy()  # this would be easy, but we have to disband if we can't pay
-		temp_ = temp.groupby('Regent').sum().reset_index()
-		check = pd.merge(self.Regents[['Regent', 'Gold Bars', 'Player']].copy(), df.copy(), on='Regent')
-		check['Gold Bars'] = check['Gold Bars'] - check['Cost']
-		temp_ = pd.merge(temp_, check[['Regent', 'Gold Bars', 'Player']], on='Regent', how='left').fillna(0)
-		
-		disband = temp_[temp_['Cost'] > temp_['Gold Bars']]
-		for i, row in disband.iterrows():
-			cost = row['Cost']
-			gb = row ['Gold Bars']
-			_temp = self.Troops.copy()
-			_temp = _temp[_temp['Regent'] == row['Regent']]
-			if row['Player']==False:
-				while cost > gb:
-					for j, _row in _temp.iterrows():
-						if cost > gb and _temp.shape[0]>0:
-							try:
-								# disband the troop
-								self.Troops.drop(j, inplace=True)
-								# start disbanding
-								if _row['Type'].find('Mercenary') >= 0:
-									# oh no, brigands!
-									print('Replace with a disband mercenary thing')
-								cost = cost - _row['Cost']	# make sure only the single troop cost
-							except:
-								None
-							
-			else:
-				while cost > gb:
-					dbnd = -1
-					while dbnd not in list(_temp.index):
-						self.clear_screen()
-						print(_temp)
-						print()
-						print('{} cannot afford their troops!  They Have {} Gold Bars and a Maintenance Cost of {}.'.format(row['Regent'], gb, cost))
-						dbnd = int(input('Pick a Unit to Disband (Type Index Number)'))
-					print('okay...')	
-					if _temp.loc[dbnd]['Type'].find('Mercenary') >= 0:
-						# oh no, brigands!
-						print('Replace with a disband mercenary thing')
-					cost = cost - int(_temp.loc[dbnd]['Cost'])	# make sure only the single troop cost
-					# disband the troop
-					self.Troops.drop(dbnd, inplace=True, axis=0)
-					_temp.drop(dbnd, inplace=True, axis=0)
-		# now the easy step
-		temp = self.Troops[['Regent', 'Cost']].copy()
+		temp = self.Troops[['Regent', 'Cost']].copy()  # this would be easy,		but we have to disband if we can't pay
+		if Update:
+			temp_ = temp.groupby('Regent').sum().reset_index()
+			check = pd.merge(self.Regents[['Regent', 'Gold Bars', 'Player']].copy(), df.copy(), on='Regent')
+			check['Gold Bars'] = check['Gold Bars'] - check['Cost']
+			temp_ = pd.merge(temp_, check[['Regent', 'Gold Bars', 'Player']], on='Regent', how='left').fillna(0)
+			
+			disband = temp_[temp_['Cost'] > temp_['Gold Bars']]
+			for i, row in disband.iterrows():
+				cost = row['Cost']
+				gb = row ['Gold Bars']
+				_temp = self.Troops.copy()
+				_temp = _temp[_temp['Regent'] == row['Regent']]
+				if row['Player']==False:
+					while cost > gb:
+						for j, _row in _temp.iterrows():
+							if cost > gb and _temp.shape[0]>0:
+								try:
+									# disband the troop
+									self.Troops.drop(j, inplace=True)
+									# start disbanding
+									if _row['Type'].find('Mercenary') >= 0:
+										# oh no, brigands!
+										print('Replace with a disband mercenary thing')
+									cost = cost - _row['Cost']	# make sure only the single troop cost
+								except:
+									None
+								
+				else:
+					while cost > gb:
+						dbnd = -1
+						while dbnd not in list(_temp.index):
+							self.clear_screen()
+							print(_temp)
+							print()
+							print('{} cannot afford their troops!  They Have {} Gold Bars and a Maintenance Cost of {}.'.format(row['Regent'], gb, cost))
+							dbnd = int(input('Pick a Unit to Disband (Type Index Number)'))
+						print('okay...')	
+						if _temp.loc[dbnd]['Type'].find('Mercenary') >= 0:
+							# oh no, brigands!
+							print('Replace with a disband mercenary thing')
+						cost = cost - int(_temp.loc[dbnd]['Cost'])	# make sure only the single troop cost
+						# disband the troop
+						self.Troops.drop(dbnd, inplace=True, axis=0)
+						_temp.drop(dbnd, inplace=True, axis=0)
+			# now the easy step
+			temp = self.Troops[['Regent', 'Cost']].copy()
 		df = pd.concat([df, temp[['Regent','Cost']]], sort=False)
 		df = df[['Regent','Cost']].groupby('Regent').sum().reset_index()	
 		
@@ -1371,11 +1379,12 @@ class Regency(object):
 			gb = row ['Gold Bars']
 			_temp = self.Lieutenants.copy()
 			_temp = _temp[_temp['Regent'] == row['Regent']]
-			while cost > gb:
-				for j, _row in _temp.iterrows():
-					cost = cost - 1
-					# disband the troop
-					self.Lieutenants.drop(j, inplace=True)
+			if Update:
+				while cost > gb:
+					for j, _row in _temp.iterrows():
+						cost = cost - 1
+						# disband the troop
+						self.Lieutenants.drop(j, inplace=True)
 		# now the money
 		temp = self.Lieutenants.copy()
 		temp['Cost'] = 1
@@ -1444,21 +1453,26 @@ class Regency(object):
 					check = 1	
 		df = pd.concat([temp_0, temp_1, temp_2, temp_3, temp_4], sort=False)
 		
-		# add to the thing
-		temp = pd.merge(self.Seasons[self.Season]['Season'], df[['Regent','Cost','Court']], on='Regent', how='left').fillna(0)
-		temp['Cost'] = temp['Cost'].astype(int)
-		self.Seasons[self.Season]['Season'] = temp
-		
-		# lets clear the gold bars
-		temp['Gold Bars'] = temp['Gold Bars'] - temp['Cost']
-		temp = pd.merge(self.Regents[['Regent', 'Full Name', 'Player', 'Class', 'Level', 'Alignment', 
-										'Str', 'Dex', 'Con', 'Int', 'Wis', 'Cha',
-										'Insight', 'Deception', 'Persuasion',
-										'Regency Points', 'Regency Bonus', 'Attitude']], temp[['Regent', 'Gold Bars']])
-		self.Regents = temp[['Regent', 'Full Name', 'Player', 
-							 'Class', 'Level', 'Alignment', 'Str', 'Dex', 'Con', 'Int', 'Wis', 'Cha',
-							 'Insight', 'Deception', 'Persuasion',
-							 'Regency Points', 'Gold Bars', 'Regency Bonus', 'Attitude']]
+		if Update:
+			# add to the thing
+			temp = pd.merge(self.Seasons[self.Season]['Season'], df[['Regent','Cost','Court']], on='Regent', how='left').fillna(0)
+			temp['Cost'] = temp['Cost'].astype(int)
+			self.Seasons[self.Season]['Season'] = temp
+			
+			# lets clear the gold bars
+			temp['Gold Bars'] = temp['Gold Bars'] - temp['Cost']
+			temp = pd.merge(self.Regents[['Regent', 'Full Name', 'Player', 'Class', 'Level', 'Alignment', 
+											'Str', 'Dex', 'Con', 'Int', 'Wis', 'Cha',
+											'Insight', 'Deception', 'Persuasion',
+											'Regency Points', 'Regency Bonus', 'Attitude']], temp[['Regent', 'Gold Bars']])
+			
+			
+			self.Regents = temp[['Regent', 'Full Name', 'Player', 
+								 'Class', 'Level', 'Alignment', 'Str', 'Dex', 'Con', 'Int', 'Wis', 'Cha',
+								 'Insight', 'Deception', 'Persuasion',
+								 'Regency Points', 'Gold Bars', 'Regency Bonus', 'Attitude']]
+		else:  # Return for the gold thing
+			return df[['Regent', 'Cost']]
 		
 	# here we go
 	def take_domain_actions(self):

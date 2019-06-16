@@ -27,7 +27,7 @@ class DQNAgent(object):
 		self.learning_rate = 0.0005
 		
 		# different models for different decisions
-		self.tax_model = self.network(N=4, K=19)
+		self.tax_model = self.network(N=4, K=23)
 		
 		self.epsilon = 0
 		self.actual = []
@@ -49,14 +49,16 @@ class DQNAgent(object):
 		action -> which action it is (1, 2, or 3) for Actions
 		'''
 		if step == 'Taxes':
-			state = [1*(df['Population'] == a) for a in range(10)]	# population 0-9
-			if df['Population'] > 9:  # 9s the limit
-				state[-1] = 1
-			if df['Loyalty'] == 'Rebellious':
+			state = [1*(df['Population'] == a) for a in range(9)]	# population 0-8, 9
+			if df['Population'] >= 9:  # 9s the limit, 10
 				state.append(1)
 			else:
 				state.append(0)
-			if df['Loyalty'] == 'Poor':
+			if df['Loyalty'] == 'Rebellious':  # 11
+				state.append(1)
+			else:
+				state.append(0)
+			if df['Loyalty'] == 'Poor':	 #12
 				state.append(1)
 			else:
 				state.append(0)
@@ -64,7 +66,7 @@ class DQNAgent(object):
 				state.append(1)
 			else:
 				state.append(0)
-			if df['Loyalty'] == 'High':
+			if df['Loyalty'] == 'High':	 #14
 				state.append(1)
 			else:
 				state.append(0)
@@ -72,7 +74,7 @@ class DQNAgent(object):
 				state.append(1)
 			else:
 				state.append(0)
-			if df['Loyalty'] == 'Light':
+			if df['Loyalty'] == 'Light':  #16
 				state.append(1)
 			else:
 				state.append(0)
@@ -80,7 +82,7 @@ class DQNAgent(object):
 				state.append(1)
 			else:
 				state.append(0)
-			if df['Loyalty'] == 'Severe':
+			if df['Loyalty'] == 'Severe':  #18
 				state.append(1)
 			else:
 				state.append(0)
@@ -88,7 +90,23 @@ class DQNAgent(object):
 				state.append(1)
 			else:
 				state.append(0)
-		
+			if df['Cost'] >= 1:	 #20
+				state.append(1)
+			else:
+				state.append(0)
+			if df['Cost'] >= 2:
+				state.append(1)
+			else:
+				state.append(0)
+			if df['Cost'] >= 4:	 #22
+				state.append(1)
+			else:
+				state.append(0)
+			if df['Cost'] >= 10:  #23
+				state.append(1)
+			else:
+				state.append(0)
+			
 			if step == 'Action':
 				'''
 				is_action_1
@@ -185,6 +203,9 @@ class DQNAgent(object):
 				enemy_troops_in_friends_domain
 				enemy_has_more_troops
 				enemy_alive
+                
+                
+                
 				'''
 		return np.asarray(state)
 			
@@ -225,7 +246,7 @@ class DQNAgent(object):
 			
 	def train_short_memory(self, state, action, reward, next_state, type):
 		if type == 'Taxes':
-			rs = (1,19)
+			rs = (1,23)
 			model = self.tax_model
 		target = reward
 		target = reward + self.gamma * np.amax(model.predict(next_state.reshape(rs))[0])
