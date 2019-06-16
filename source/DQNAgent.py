@@ -204,7 +204,9 @@ class DQNAgent(object):
 				enemy_has_more_troops
 				enemy_alive
                 
-                
+                random_event_monsters
+                brigandage
+                great_captain_heresy
                 
 				'''
 		return np.asarray(state)

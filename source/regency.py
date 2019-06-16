@@ -1036,6 +1036,226 @@ class Regency(object):
 			else:
 				self.agent[key].epsilon = 80 - self.Season
 	
+    def random_event_assassination(self, df):
+        '''
+        An enemy of the regent, whether it be one they have feuded with before or one that has an otherwise 
+        hidden grievance with the scion, sends agents to extinguish their life. Typically, this is played out
+        as an encounter with an assassin, or group of assassins, as determined by the Game Master. These 
+        events typically lead to further intrigue -- assuming the regent survives -- as the organizer(s) of 
+        the attempt are sought.
+        
+        -Determine Who Sent the Assassin
+        -Assign them assassination action?
+        '''
+        
+    def random_event_blood_challenege(self, df):
+        '''
+        A blooded champion or an awnsheghlien comes looking for the regent and issues them a challenge, in 
+        the form of a duel, insult, or announcement of impending invasion. The ultimate goal of this agent is
+        to conquer the regent and usurp their bloodline by force
+  
+        - Determine if the regent survives; if so, add 1 to therir Regency_Bonus.  If not, well, that happened.
+        '''
+        
+    def random_event_brigandage_or_monsters(self, df):
+        '''
+        A group of bandits, a single monster such as a griffon or wyvern, or a similar threat manifests 
+        itself somewhere in the regent’s domain. If left to fester without being tended to, the targeted 
+        provinces decline in loyalty by one grade for each season the threat is allowed to remain unchallenged.
+
+        To deal with this event, the regent may dispatch a lieutenant for the season to raise local 
+        adventurers to deal with the threat (losing their provided bonus action) or issue a Decree to that 
+        effect. If the danger is particularly severe, the regent may find themselves forced to raise a levy 
+        or dispatch units of troops to deal with the threat.   
+
+        - Monster -> Lieutenant [Lietenant is marked busy the entire season]
+        - Brigandage -> Troops need to be moved to the provence
+        - Ignore if Regent does not have a provence.
+        
+        brigandage
+        '''
+        
+    def random_event_corruption(self, df):
+        '''
+        An agent of the regent’s court, a high-ranking priest, or a devious guildmaster are publicly accused 
+        of corruption. A particularly influential regent may be able to safely ignore this accusation, but 
+        for a fresh, inexperienced ruler this may be a stain they must scrub out immediately.
+        
+        The Game Master determines whether or not the accusations are true, and the regent’s response 
+        determines the outcome. This may take the form of ordering and funding an investigation, which costs
+        1d4 GB each season it continues, or calling all parties to court to deal with the matter personally
+        (which requires that the regent expended funds on court costs this season).
+        
+        NPCs lose 1d4 GB
+        '''
+        
+    def random_event_diplomatic_mission(self, df):
+        '''
+        The agents of a foreign ruler arrive in the regent’s domain and expect hospitality and the attentions 
+        of the regent for at least part of the season. If the regent does not have court costs for this 
+        season, the mission leaves and the realm’s reputation with that foreign regime declines.
+
+        If the diplomats remain, they may ask a favor of the regent or offer some manner of mutual agreement, 
+        as determined by the Game Master. Typically, this involves a trade route request (which may require 
+        the regent build roads) or similar mutually-beneficial arrangement.
+        
+        Pick a random NPC regent as a target.  
+        If the regent with this event has a court, add 1 to diplomacy and a trade-route permission to both
+        Else, -1 diplomacy.
+        '''
+        
+    def random_event_festival(self, df):
+        '''
+        A local festival springs up in one of the regent’s provinces, its exact nature determined by the Game 
+        Master. Possibilities include a religious holiday or a festival celebrating a local hero. These kinds 
+        of events can net the regent great goodwill from the people if time and resources are expended to 
+        support it, or better yet, attend in person.
+
+        The regent can ignore this event safely, or expend 1d4 GB to send gifts and support to the festival. 
+        Loyalty in the province increases by one grade if this is done.
+        
+        
+        Ask Players if they want to spend money on gifts.
+        
+        NPCs spend it if they have 10+ GB.
+        
+        If spent, random provence increases in Loyalty by 1.
+        '''
+        
+    def random_event_feud(self, df):
+        '''
+        Two influential forces collide in the regent’s domain. Possibilities include religious leaders, local 
+        heroes, brawling adventurers, or even foreign agents on holiday. Ignoring this event has consequences
+        in the form of damages to the realm that cost 1d6 GB to fix, and may also cause loyalty to degrade.
+
+        Addressing the problem can be trickier. Even if one side is grievously out of line, siding with one 
+        party or the other causes strain between the regent that the party that is ruled against. This party 
+        may become a future thorn in their side.
+        
+        for NPCs, just -1d6 GB and drop loyalty in a provence by 1 f chosen provence is Average or High.
+        '''
+        
+    def random_event_great_captain_or_heresy(self, df):
+        '''
+        A mighty individual rises to prominence in the regent’s domain. The Game Master determines the traits 
+        and goals of the individual in question; they may be a potential ally or lieutenant, or a demagogue 
+        attempting to rally the people against the regent. In the case of the former, this may lead to an 
+        Unrest event on the following season.
+        
+        INFO great_captain_heresy
+        
+        If the Liuetenent event is played, all is well.  if not, Unrest added to Override.
+        '''
+        
+    def random_event_intrigue(self, df):
+        '''
+        What’s a good story of lords and ladies without some court intrigue? Gossip, rumor-mongering, or even
+        a death by poison may be the impetus for this event, where the regent and their court become 
+        embroiled in the affair. Poorly handled, this event can cause degradations in loyalty and reputation.
+        
+        The regent must determine a course of action when this event arises, even if it is a simple Decree. 
+        If left unaddressed, this event has a high chance of turning into a Feud or Matter of Justice on the 
+        next season.
+        
+        if no decree action, then Feud or Matter of Justice next season (for npcs)
+        '''
+        
+    def random_event_magical_event(self, df):
+        '''
+        A supernatural event takes place somewhere in the regent’s domain. The exact nature of this event 
+        varies depending on the events of the campaign and the Game Master’s whim, but some possible random 
+        outcomes are as follows. Roll 1d6 and consult the list below.
+        
+        for NPCs, all Liutenants busy.
+        
+        1 - Bizarre Weather (+2)
+        A supernatural storm, bizarre heat wave, or summer snow washes over a province in the regent’s 
+        domain. The source of the event might be the result of a wizard conducting experiments in secret with
+        grave consequences, or the stirring of an elemental spirit long imprisoned. Loyalty and holding 
+        income is at risk until the situation is resolved.
+
+        2 - Mebhaighl Surge (+3)
+        Sources and ley lines run amok. Through the assault of a distant mage-regent or the presence of a 
+        magic-devouring entity, Source holdings become tainted and ley lines sputter and atrophy in a random 
+        province until the source of the event can be dislodged.
+
+        3 - Shadow Incursion (+3)
+        The Shadow World’s touch grows strong in a place within one of the regent’s provinces. A graveyard, 
+        battlefield, or blighted temple all make good centers for the event. The incursion is strong enough 
+        to allow creatures from the Shadow World to invade by night, ravaging surrounding villages and 
+        causing loyalty in the province to steadily decay until the problem is dealt with.
+
+        4 - Starfall (+2)
+        A celestial object impacts somewhere within a random province the regent controls. Loyalty in that 
+        province immediately decays by one grade as fear and superstition run wild in the land. The object 
+        may be a simple meteorite of precious metals and iron (+1d6 GB) or a gruesome monster long banished 
+        in the heavens. Either way, the situation must be handled quickly before the populace’s fear gets the
+        better of them.
+
+        5 - Supernatural Army (+4)
+        A previously unknown force emerges somewhere within the regent’s domain. A 1d3 units of monsters 
+        (typically of the fiend or undead type) are summoned or tear their way through a rift into Cerilia 
+        and begin to occupy the province, slaughtering its people on each domain turn until nothing remains 
+        but death and ruin. The force always moves together, and each season it remains without being 
+        completely destroyed allows another unit of the same type to manifest at the beginning of the 
+        following season.
+
+        6 - Dragon Awakens (+5)
+        One of Cerilia’s few remaining dragons awakens in a province, tearing the earth apart in the throes 
+        its fitful slumber. The dragon begins devastating the local terrain until it can be slain or 
+        convinced to go elsewhere. Be warned: Cerilia’s dragons are creatures of raw, elemental power and all 
+        are of ancient strength. They care nothing for the politics of humans, elves, or dwarves and will 
+        devour all indiscriminately in their elemental urges.
+        '''
+        
+    def random_event_matter_of_justice(self, df):
+        '''
+        The regent is personally called upon to adjudicate a legal matter, typically between greater powers
+        in their domain or even other regents who require an impartial voice of equal standing. The encounter
+        should be played out, and the regent must expend 1d4 GB to fund the proceedings in their realm. 
+        Successfully mediating the dispute causes the regent’s reputation with one or both parties to 
+        increase, depending on the ruling.
+
+        The regent may decline to preside over the affair if they wish with no ill effects, but a regent that
+        repeatedly does this whenever this event arises may suffer the consequences of their insular nature.
+        
+        NPCs lose 1d4 Gold Bars
+        '''
+        
+    def random_event_natural_event(self, df):
+        '''
+        An earthquake, flood, landslide, or other natural disaster strikes somewhere in the regent’s domain. The regent may ignore the event and lose one level of loyalty in the affected province. If the regent
+        expends 1d4 GB or dispatches a lieutenant to deal with the aftermath, this loss can be prevented.
+        
+        NPCs make 1 lieutenant busy or lose 1d4 Gold Bars
+        '''
+        
+    def random_event_trade_dispute(self, df):
+        '''
+        A trade route or guild holding that the regent owns or connects to falls under dispute, and does not 
+        generate GB this season. If the regent has no trade routes or guild holdings, this instead counts as 
+        no event. As long as the regent ignores this event, the effect persists.  
+
+        The regent will need to engage in a Diplomacy or Grant action in order to mediate the dispute and 
+        return the holding or route to functioning order.
+        
+        disrupt a trade route or contest a holding until Grant or Diplomacy is done.
+        '''
+        
+    def random_event_unrest(self, df):
+        '''
+        Grave unrest takes hold in a random province within the regent’s domain. The cause may be a rebel 
+        leader, the antagonism of a distant ruler inciting rebellion, or other event as the Game Master 
+        determines. The province immediately drops in loyalty by two grades. If this results in the province 
+        becoming rebellious, the province immediately raises as many levies as possible, which are hostile to
+        the regent.
+
+        These units will rampage across the regent’s domain until quelled by force or negotiation. The 
+        loyalty effects endure until the regent finds another way to return the province to its previous 
+        state of affairs.
+        
+        enemy gains population in levies in the target's domain if rebellious hit.
+        '''
 	def collect_regency_points(self):
 		'''
 		As outlined previously, a regent collects Regency Points 
