@@ -112,19 +112,21 @@ class DQNAgent(object):
                 is_action_2
                 is_action_3
                 is_bonus
+				i_am_dead
                 i_am_evil
                 i_am_good
                 i_am_lawful
                 i_am_chaotic
-                has_provences
-                has_temples
-                has_law
-                has_guild
-                has_source
-                has_temple_in_friend
-                has_temple_in_enemy
-                has_law_in_enemy
-                has_temple_in_rando
+                i_have_provences
+				i_have_a_brigand_problem
+                i_have_temples
+                i_have_law
+                i_have_guild
+                i_have_source
+                i_have_temple_in_friend
+                i_have_temple_in_enemy
+                i_have_law_in_enemy
+                i_have_temple_in_rando
                 i_have_contested_holding
                 i_have_contested_provence
                 i_am_at_war
@@ -147,9 +149,6 @@ class DQNAgent(object):
                 troops_garrisoned_lowpop
                 border_provences_no_troops
                 border_provences_no_castle
-                capital_no_castle
-                highpop_no_castle
-                lowpop_no_castle
                 my_holdings_can_increase_level
                 my_waterways_can_have_routes
                 my_provences_can_have_routes
