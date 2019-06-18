@@ -761,6 +761,27 @@ class Regency(object):
             df[col] = (1*(df[col]>=1)).astype(int)
 
         self.Geography = df 
+        
+    def change_geography(self, Provence, Neighbor, Border=None, Road=None, Caravan=None, Shipping=None, RiverChasm=None, repeat=True):
+        temp = self.Geography[self.Geography['Provence']==Provence]
+        index = temp.index[temp['Neighbor'] == Neighbor].tolist()[0]
+        old = self.Geography.iloc[index]
+        if Border == None:
+            Border = old['Border']
+        if Road == None:
+            Road = old['Road']
+        if Caravan == None:
+            Caravan = old['Caravan']
+        if Shipping == None:
+            Shipping = old['Shipping']
+        if RiverChasm == None:
+            RiverChasm = old['RiverChasm']
+            
+        self.Geography.loc[index] = [Neighbor, Provence, Border, Road, Caravan, Shipping, RiverChasm]
+        
+        if repeat == True:
+            self.change_geography(Provence=Neighbor, Neighbor=Provence, Border=Border, Road=Road, Caravan=Caravan, Shipping=Shipping, RiverChasm=RiverChasm, repeat=False)
+        
 
     def add_relationship(self, Regent, Other, Diplomacy=0, Payment=0, Vassalage=0, At_War=0, Trade_Permission=0):
         '''
@@ -789,7 +810,7 @@ class Regency(object):
         df.loc[index] = [Regent, Other, Diplomacy, Payment, Vassalage, At_War, Trade_Permission]
         self.Relationships = df
         
-    def add_troops(self, Regent, Provence, Type):
+    def add_troops(self, Regent, Provence, Type, home_provence=''):
         '''
         This is fired after a decision to buy a troop is made
         OR for setting up troops in the begining
@@ -800,11 +821,28 @@ class Regency(object):
         
         temp = self.troop_units[self.troop_units['Unit Type'] == Type]
 
-        df.loc[index] = [Regent, Provence, Type, temp['Maintenance Cost'].values[0], temp['BCR'].values[0], 0, '']
+        df.loc[index] = [Regent, Provence, Type, temp['Maintenance Cost'].values[0], temp['BCR'].values[0], 0, home_provence]
         
         # set the df...
         self.Troops = df
 
+    def disband_troops(self, Regent, Provence, Type, Killed=False):
+        '''
+        '''
+        # disband the troop
+        temp = self.Troops[self.Troops['Regent'] == Regent].copy()
+        temp = temp[temp['Provence'] == Provence].copy()
+        temp = temp.index[temp['Type'] == Type].tolist()
+        
+        old = self.Troops.iloc[temp[0]]
+        self.Troops.drop(temp[0], inplace=True)
+        # start disbanding
+        if 'Mercenary' in Type.split():
+            # oh no, brigands!
+            print('Replace with a disband mercenary thing')
+        if 'Levies' in Type.split() and Killed == False:  # disbanded, so go back to their stuff.
+            self.change_provence(old['Home Provence'], Population_Change = 1)
+            
     # Show
     def show_map(self, borders=False, roads=True, caravans=False, shipping=False, bg=True, adj=50, fig_size=(12,12),
                  cam_map='Birthright', map_alpha = 0.5, axis=False, regions=None, castle=False):
@@ -1091,13 +1129,14 @@ class Regency(object):
                 self.random_event_intrigue(df_temp)
             elif event == 'Magical Event':
                 self.random_event_magical_event(df_temp)    
-            # elif event == 'Matter of Justice':
-                # random_event_matter_of_justice(df_temp)
-            # elif event == 'Natural Event':
-                # random_event_natural_event(df_temp)
-            # elif event == 'Trade Dispute':
-                # random_event_trade_dispute(df_temp)
-                         
+            elif event == 'Matter of Justice':
+                self.random_event_matter_of_justice(df_temp)
+            elif event == 'Natural Event':
+                self.random_event_natural_event(df_temp)
+            elif event == 'Trade Dispute':
+                self.random_event_trade_dispute(df_temp)
+            elif event == 'Unrest or Rebellion':
+                self.random_event_trade_dispute(df_temp) 
                 
     def random_event_assassination(self, df):
         '''
@@ -1490,6 +1529,7 @@ class Regency(object):
         
         if no decree action, then Feud or Matter of Justice next season (for npcs)
         '''
+        df = df.copy()
         # add Mater of Jutice or Feud to Override
         df['Roll'] = np.random.randint(1,3,df.shape[0])
         for i, row in df.iterrows():
@@ -1589,10 +1629,25 @@ class Regency(object):
         The regent may decline to preside over the affair if they wish with no ill effects, but a regent that
         repeatedly does this whenever this event arises may suffer the consequences of their insular nature.
         
-        NPCs lose 1d4 Gold Bars
+        NPCs lose 1d4 Gold Bars (so do PCs, this is an rp opertunity for pcs)
         '''
-        None
+         # roll 1d4
+        df = pd.merge(df, self.Regents[['Regent', 'Gold Bars']], on='Regent', how='left')
+        # df = df[df['Gold Bars']>10]
+        df['Cost'] = np.random.randint(1,4,df.shape[0])
         
+        # shouldn't cause them to go into negatives
+        df1 = df[df['Cost']> df['Gold Bars']]
+        df2 = df[df['Cost']<=df['Gold Bars']]
+        df1['Cost'] = df1['Gold Bars']
+        df = pd.concat([df1, df2])
+       
+        lst = []
+        for i, row in df.iterrows():
+            if row['Regent'] not in lst:    
+                self.change_regent(row['Regent'], Gold_Bars = row['Gold Bars'] - row['Cost'])
+                lst.append(row['Regent'])
+                   
     def random_event_natural_event(self, df):
         '''
         An earthquake, flood, landslide, or other natural disaster strikes somewhere in the regent’s domain. The regent may ignore the event and lose one level of loyalty in the affected province. If the regent
@@ -1600,8 +1655,48 @@ class Regency(object):
         
         NPCs make 1 lieutenant busy or lose 1d4 Gold Bars
         '''
-        None
+        # see if there are provences...
+        df = pd.merge(df, self.Provences[['Provence', 'Regent', 'Loyalty']].copy(), on='Regent', how='inner')
+        df = pd.merge(df, self.Regents[['Regent', 'Gold Bars', 'Attitude']].copy(), on='Regent', how='left')
+        # in case they cheap out
+        df['Loyalty'] = df['Loyalty'].str.replace('Poor','Rebellious').replace('Average', 'Poor').replace('High','Average')
+        df['Roll'] = np.random.randint(1, 1000, df.shape[0])
+        df = pd.merge(df[['Regent', 'Roll']].groupby('Regent').max().reset_index(), df, on=['Regent', 'Roll'])
+        df['Cost'] = np.random.randint(1, 4, df.shape[0])
+        dfn = df[df['Player'] == False].copy()
+        dfp = df[df['Player'] == True].copy()
         
+        for i, row in dfn.iterrows():
+            temp = list(self.Lieutenants[self.Lieutenants['Regent'] == row['Regent']]['Lieutenant'].copy())
+            if len(temp) > 0:
+                self.change_lieutenant(row['Regent'], temp[0], Busy=True)
+            elif row['Cost'] >= row['Gold Bars'] and row['Attitude'] != 'Aggressive':
+                self.change_regent(row['Regent'],Gold_Bars = row['Gold Bars'] - row['Cost'])
+            else:
+                self.change_provence(row['Provence'], Loyalty=row['Loyalty'])
+        for i, row in dfp.iterrows():
+            temp = list(self.Lieutenants[self.Lieutenants['Regent'] == row['Regent']]['Lieutenant'].copy())
+            ans = 0
+            while ans == 0:
+                self.clear_screen()
+                print('   --- Natural Disaster ---  ')
+                print('A Natural disaster has struck in {}.  How will {} respond?'.format(row['Provence'], self.Regents[self.Regents['Regent']==row['Regent']]['Full Name']))
+                print()
+                print('[1] Ignore it and let {} fall to {} loyalty.'.format(row['Provence'], row['Loyalty']))
+                if row['Cost'] <= row['Gold Bars']:
+                    print('[2] Pay {} Gold Bars in relief aid.'.format(row['Cost']))
+                if len(temp) > 0:
+                    print('[3] Send a Lieutenant to deal with the disaster.')
+                ans = input()
+                if ans == '1':
+                    self.change_provence(row['Provence'], Loyalty=row['Loyalty'])
+                elif ans == '2' and row['Cost'] <= row['Gold Bars']:
+                    self.change_regent(reg,Gold_Bars = row['Gold Bars'] - row['Cost'])
+                elif ans == '3' and len(temp) > 0:
+                    self.change_lieutenant(reg, lst[0], Busy=True)
+                else:
+                    ans = 0
+                    
     def random_event_trade_dispute(self, df):
         '''
         A trade route or guild holding that the regent owns or connects to falls under dispute, and does not 
@@ -1612,8 +1707,29 @@ class Regency(object):
         return the holding or route to functioning order.
         
         disrupt a trade route or contest a holding until Grant or Diplomacy is done.
+        (gonna get ride of the trade route to make life easier)
         '''
-        None
+        df2 = df.copy()
+        # get guilds
+        df1 = pd.merge(df, self.Holdings[self.Holdings['Type']=='Guild'][['Regent', 'Provence', 'Type']], on='Regent', how='left').fillna(0)
+        df1 = df1[df1['Provence'] != 0].copy()
+        # get trade routes
+        df2 = pd.merge(df2, self.Provences[['Regent', 'Provence']].copy(), on='Regent', how='left')
+        df2 = pd.merge(df2, pd.concat([self.Geography[self.Geography['Caravan']==1].copy(),self.Geography[self.Geography['Shipping']==1].copy()]), on='Provence', how='left')               
+         
+        df = pd.concat([df1, df2]).fillna(0)
+        df['roll'] = np.random.randint(1,100,df.shape[0])
+        df = df.sort_values('roll')
+        lst = []
+        for i, row in df.iterrows():
+            if row['Regent'] not in lst:
+                if row['Type'] == 'Law':
+                    self.change_holding(row['Regent'], row['Provence'], Contested = 1)
+                    lst.append(row['Regent'])
+                if row['Caravan'] == 1:
+                    self.change_geography(row['Provence'], row['Neighbor'], Caravan=0)
+                if row['Shipping'] == 1:
+                    self.change_geography(row['Provence'], row['Neighbor'], Shipping=0)
         
     def random_event_unrest(self, df):
         '''
@@ -1627,10 +1743,28 @@ class Regency(object):
         loyalty effects endure until the regent finds another way to return the province to its previous 
         state of affairs.
         
-        enemy gains population in levies in the target's domain if rebellious hit....all levies have that
+        New regent Created, gains population in levies in the target's domain if rebellious hit....all levies have that
         provence set to home.
         '''
-        None
+        df = pd.merge(df, self.Provences[['Regent', 'Provence', 'Loyalty', 'Population']].copy(), on='Regent')
+        df['Roll'] = np.random.randint(1, 1000, df.shape[0])
+        df = df.sort_values('Roll')
+
+        lst = []
+        for i, row in df.iterrows():
+            if row['Regent'] not in lst:
+                lst.append(row['Regent'])
+                if row['Loyalty'] == 'High':
+                    self.change_provence(row['Provence'], Loyalty='Poor')
+                elif row['Loyalty'] == 'Average':
+                    self.change_provence(row['Provence'], Loyalty='Rebellious')
+                else:
+                    enemy = self.Relationships[self.Relationships['Other']==row['Regent']].copy()
+                    enemy = enemy.sort_values('Diplomacy').reset_index()
+                    
+                    self.change_provence(row['Provence'], Loyalty='Rebellious', Population_Change=-1*row['Population'])
+                    for a in range(row['Population']):
+                        self.add_troops(enemy.iloc[0]['Regent'], row['Provence'], 'Levies', home_provence=row['Provence'])
         
         
     # Next Step
@@ -1745,7 +1879,7 @@ class Regency(object):
         # Agents need to pick now...
         temp = self.Regents[self.Regents['Player']==False].copy()
         costs = self.maintenance_costs(Update=False)
-        provences_owned = self.Provences[['Regent', 'Provence']].copy().groupby('Regent').count().reset_index()
+        provences_owned = self.Provences[self.Provences['Contested']==False][['Regent', 'Provence']].copy().groupby('Regent').count().reset_index()
         costs = pd.merge(costs, provences_owned, on='Regent', how='left').fillna(1)
         costs['Cost'] = (costs['Cost']/costs['Provence']).astype(int).fillna(0)
         temp = pd.merge(temp, costs, on='Regent', how='left')
@@ -1771,10 +1905,10 @@ class Regency(object):
                 elif tax[3] == 1:
                     self.change_provence(Provence=p, Taxation='Severe', Loyalty='-1')
                 save_states.loc[save_states.shape[0]] = [row['Regent'], row_['Provence'], state, tax]       
-            
         # collect taxes
         for p in range(11):
             temp = self.Provences[self.Provences['Population'] == p].copy()
+            temp = temp[temp['Contested']==False]
             if temp.shape[0] > 0:
                 for t in ['Light', 'Moderate', 'Severe']:
                     temp_ = temp[temp['Taxation'] == t].copy()
@@ -1782,8 +1916,6 @@ class Regency(object):
                         a,b = self.provence_taxation[self.provence_taxation['Population'] == p][t].values[0]
                         temp_['Revenue'] = np.random.randint(a,b,temp_.shape[0])
                         df = pd.concat((df, temp_[['Regent', 'Revenue', 'Provence']].copy()))
-        
-            
         # make reward vector
         temp = self.Provences.copy()
         temp = pd.merge(temp, costs[['Regent', 'Cost']], on='Regent', how='left')
@@ -1794,11 +1926,9 @@ class Regency(object):
         rewards = pd.merge(df, temp, on='Provence', how='left')  # skips players
         rewards = pd.merge(rewards, self.Regents[self.Regents['Player']==False][['Regent', 'Attitude']].copy(), on='Regent', how='left')
         rewards = rewards.dropna()
-        
         # Aggro Regents don't care if the people are unhappy as much as peaceful Regents
         rewards['tm'] = rewards['Attitude']
         rewards['rm'] = rewards['Attitude']
-        
         for Attitude in list(set(self.Regents['Attitude'].copy())):
             if Attitude != 'Peaceful' and Attitude != 'Aggressive':  # the rest care evenly
                 rewards['tm'] = rewards['tm'].str.replace(Attitude,'1')
@@ -1810,11 +1940,9 @@ class Regency(object):
                 rewards['tm'] = rewards['tm'].str.replace(Attitude,'1')
                 rewards['rm'] = rewards['rm'].str.replace(Attitude,'2')
         rewards['Reward'] = rewards['Revenue']*rewards['rm'].astype(int) + rewards['Tax Effect']*rewards['tm'].astype(int)
-        
         # update memory
         save_states = pd.merge(save_states, rewards[['Provence', 'Reward']], on='Provence', how='left').fillna(0)
         lst = []
-        
         for i, row in save_states.iterrows():
             # hate having to iterrow, but here we are
             Attitude = self.Regents[self.Regents['Regent'] == row['Regent']]['Attitude'].values[0]
@@ -1826,16 +1954,14 @@ class Regency(object):
             new_state = (self.agent[Attitude].get_state('Taxes', list(temp.iterrows())[0][1]))
             self.agent[Attitude].remember(row['state'], row['action'], row['Reward'], new_state, 'Taxes')
             self.agent[Attitude].train_short_memory(row['state'], row['action'], row['Reward'], new_state, 'Taxes')
-            
-        
         # after rewards given
         df = df[df['Revenue']>0].copy()
-        
         
         # 4.3 Taxation From Guild and Temple Holdings
         lst = [(0,1), (1,2), (1,3), (2,4), (2,5), (2,6)]
         for h in ['Guild', 'Temple']:
             temp = self.Holdings[self.Holdings['Type'] == h].copy()
+            temp = temp[temp['Contested']==0].copy()
             for i in range(6):
                 temp_ = temp[temp['Level']==i].copy()
                 if temp_.shape[0] > 0:
@@ -1847,8 +1973,8 @@ class Regency(object):
                 df = pd.concat([df, temp_[['Regent', 'Revenue']].copy()], sort='True')
         
         # 4.4 Claims from Law Holdings
-        temp = pd.merge(self.Holdings.copy(),self.Provences.copy(), on='Provence')
-        temp = temp[temp['Type']=='Law']
+        temp = pd.merge(self.Holdings[self.Holdings['Contested']==0].copy(),self.Provences.copy(), on='Provence')
+        temp = temp[temp['Type']=='Law'].copy()
         temp = temp[temp['Regent_x'] != temp['Regent_y']].copy()
         temp['Level'] = (temp['Level']/2).astype(int)
         temp = temp[temp['Level']>0]
@@ -1872,7 +1998,6 @@ class Regency(object):
         df_['Revenue'] = ((df_['A']+df_['B']+2*df_['Shipping'])/2).astype(int)
         df_ = pd.merge(df_, self.Provences.copy(), on='Provence', how='left')
         df = pd.concat([df, df_[['Regent', 'Revenue']]], sort=True)
-        
         
         # 4.6 Tribute (the greatest code in the world)
         temp = self.Relationships[self.Relationships['Payment']>0].copy()
@@ -1937,17 +2062,8 @@ class Regency(object):
                     while cost > gb and self.Troops[self.Troops['Regent']==row['Regent']].shape[0] > 0:
                         for j, _row in _temp.iterrows():
                             if cost > gb and _temp.shape[0]>0:
-                                try:
-                                    # disband the troop
-                                    self.Troops.drop(j, inplace=True)
-                                    # start disbanding
-                                    if _row['Type'].find('Mercenary') >= 0:
-                                        # oh no, brigands!
-                                        print('Replace with a disband mercenary thing')
-                                    cost = cost - _row['Cost']  # make sure only the single troop cost
-                                except:
-                                    None
-                                
+                                self.disband_troops(_row['Regent'], _row['Provence'], _row['Type'])
+                                cost = cost - _row['Cost']  # make sure only the single troop cost
                 else:
                     while cost > gb:
                         dbnd = -1
@@ -2102,8 +2218,7 @@ class Regency(object):
         
         '''
         
-        
-        
+    # Domain Actions    
     def domain_action_adventure(self, Regent):
         '''
         Cost: None
