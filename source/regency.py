@@ -839,7 +839,7 @@ class Regency(object):
         # start disbanding
         if 'Mercenary' in Type.split():
             # oh no, brigands!
-            print('Replace with a disband mercenary thing')
+            self.change_province(Provence, Brigands=True)
         if 'Levies' in Type.split() and Killed == False:  # disbanded, so go back to their stuff.
             self.change_provence(old['Home Provence'], Population_Change = 1)
             
@@ -2207,16 +2207,14 @@ class Regency(object):
         So, 1 Action and 1 Bonus Action, if applicable.
         
         1 Bonus Action per Lieutenant.
-        
-        ENEMY/FRIEND: get nordering regent that is freind/foe by best/worst diplomacy
-                    if a vassal, friend = Liege
-                    if at war enemy = occupying force
-        CAPITAL Provence
-        HIGHEST POP Provence (not capital)
-        LOWEST POP Provence
-        
-        
+		
         '''
+		for I in reversed(list(set(self.Seasons[self.Season]['Season']['Initiative']))):
+			# grab the regents that are acting this round
+			df = self.Seasons[self.Season]['Season'][self.Seasons[self.Season]['Season']['Initiative'] == I].copy()
+			for i, row in df.iterrows():
+				# we now have the regent we need...
+
         
     # Domain Actions    
     def domain_action_adventure(self, Regent):
