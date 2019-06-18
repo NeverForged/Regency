@@ -208,7 +208,9 @@ class DQNAgent(object):
                 
                 random_event_monsters
                 brigandage
-                great_captain_heresy
+                unrest_in_override
+				feud_in_override
+				matter_of_justie_in_override
                 
                 '''
         return np.asarray(state)
