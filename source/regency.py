@@ -2207,14 +2207,14 @@ class Regency(object):
         So, 1 Action and 1 Bonus Action, if applicable.
         
         1 Bonus Action per Lieutenant.
-		
+        
         '''
-		for I in reversed(list(set(self.Seasons[self.Season]['Season']['Initiative']))):
-			# grab the regents that are acting this round
-			df = self.Seasons[self.Season]['Season'][self.Seasons[self.Season]['Season']['Initiative'] == I].copy()
-			for i, row in df.iterrows():
-				# we now have the regent we need...
-
+        for I in reversed(list(set(self.Seasons[self.Season]['Season']['Initiative']))):
+            # grab the regents that are acting this round
+            df = self.Seasons[self.Season]['Season'][self.Seasons[self.Season]['Season']['Initiative'] == I].copy()
+            for i, row in df.iterrows():
+                # we now have the regent we need...
+                None
         
     # Domain Actions    
     def domain_action_adventure(self, Regent):

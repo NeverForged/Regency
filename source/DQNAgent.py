@@ -33,7 +33,7 @@ class DQNAgent(object):
 		self.memory = {}
 		self.memory['Taxes'] = []
 		
-	def get_state(self, step, df, action=1, bonus=0, regent, provences=None):
+	def get_state(self, step, df, action=1, bonus=0, regent=None, provences=None):
 		'''
 		In Original, returns an np.asarray of a list it looks like.
 		
@@ -135,11 +135,11 @@ class DQNAgent(object):
 				if bonus == 1:  # 3
 					lst[3] = 1
 				for i, a in enumerate(lst['Bare', 'Average', 'Rich']):  #4, 5, 6
-					if df['Court'] == a
+					if df['Court'] == a:
 						lst[i+4] = 1
-				for i, a in enumerate([1 if df['Gold Bars'] > a else 0 for i,a in enumerate([10,20,30,40,50,100]) ])
+				for i, a in enumerate([1 if df['Gold Bars'] > a else 0 for i,a in enumerate([10,20,30,40,50,100])]):
 					lst[6+i] = a
-				for i, a in enumerate([1 if df['Regency Points'] > a else 0 for i,a in enumerate([10,20,30,40,50,100]) ])
+				for i, a in enumerate([1 if df['Regency Points'] > a else 0 for i,a in enumerate([10,20,30,40,50,100])]):
 					lst[12+i] = a
 				'''
 				i_am_dead  7
