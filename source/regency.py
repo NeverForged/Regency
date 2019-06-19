@@ -398,7 +398,7 @@ class Regency(object):
         
         #Ley Lines
         cols = ['Regent', 'Provence', 'Other']
-        self.LeyLines = pd.DataFrame(cols)
+        self.LeyLines = pd.DataFrame(columns=cols)
         
         # Seasons
         self.Seasons = {}
@@ -2209,13 +2209,17 @@ class Regency(object):
         1 Bonus Action per Lieutenant.
         
         '''
-        for I in reversed(list(set(self.Seasons[self.Season]['Season']['Initiative']))):
-            # grab the regents that are acting this round
-            df = self.Seasons[self.Season]['Season'][self.Seasons[self.Season]['Season']['Initiative'] == I].copy()
-            for i, row in df.iterrows():
-                # we now have the regent we need...
-                None
+        self.Action=1
         
+        while self.Action < 4:
+            for I in reversed(list(set(self.Seasons[self.Season]['Season']['Initiative']))):
+                # grab the regents that are acting this round
+                df = self.Seasons[self.Season]['Season'][self.Seasons[self.Season]['Season']['Initiative'] == I].copy()
+                for i, row in df.iterrows():
+                    # we now have the regent we need...
+                    None
+            # last bit in function while loop
+            self.Action = self.Action+1
     # Domain Actions    
     def domain_action_adventure(self, Regent):
         '''
@@ -2946,3 +2950,15 @@ class Regency(object):
         create_caravan
         create_shipping_line
         '''
+    
+    # tools 
+    def detect_espionage(self, Regent):
+        temp = pd.DataFrame()
+        if self.Season > 0:
+            temp = pd.concat([self.Seasons[self.Season-1]['Actions'][a][self.Seasons[self.Season-1]['Actions'][a]['Target Regent']==Regent] for a in range(1,3)])
+            temp = temp[temp['Action'].str.lower().srt.contains('espionage')]
+        a = 1
+        while a < self.Action:
+            temp = pd.concat([temp, self.Seasons[self.Season-1]['Actions'][a][self.Seasons[self.Season-1]['Actions'][a]['Target Regent']==Regent]])
+            temp = temp[temp['Action'].str.lower().srt.contains('espionage')]
+        return temp
