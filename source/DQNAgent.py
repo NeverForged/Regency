@@ -13,11 +13,11 @@ class DQNAgent(object):
     Based on: https://github.com/maurock/snake-ga/blob/master/DQN.py 
     '''
 
-    def __init__(self, attitude='Normal', Regent='Default'):
+    def __init__(self):
         '''
         Attitude -> Normal, Peaceful, or Aggressive... defines the rewards 
         '''
-        self.attitude = attitude
+        # self.attitude = attitude
         self.reward = 0
         self.gamma = 0.9
         self.dataframe = pd.DataFrame()
@@ -26,15 +26,18 @@ class DQNAgent(object):
         self.agent_predict = 0
         self.learning_rate = 0.0005
         
-        # different models for different decisions
-        self.tax_model = self.network(N=4, K=23)
+        self.action_size = 90
+        self.action_choices = 2
         
+        # different models for different decisions
+        self.tax_model = self.network(N=4, K=25)
+        self.action_model = self.network(N=self.action_choices, K=self.action_size)
         self.epsilon = 0
         self.actual = []
         self.memory = {}
         self.memory['Taxes'] = []
         
-    def get_state(self, step, df):
+    def get_tax_state(self, Game, df, Regent):
         '''
         In Original, returns an np.asarray of a list it looks like.
         
@@ -48,68 +51,75 @@ class DQNAgent(object):
         df -> a row from a dataframe
         action -> which action it is (1, 2, or 3) for Actions
         '''
-        if step == 'Taxes':
-            state = [1*(df['Population'] == a) for a in range(9)]   # population 0-8, 9
-            if df['Population'] >= 9:  # 9s the limit, 10
-                state.append(1)
-            else:
-                state.append(0)
-            if df['Loyalty'] == 'Rebellious':  # 11
-                state.append(1)
-            else:
-                state.append(0)
-            if df['Loyalty'] == 'Poor':  #12
-                state.append(1)
-            else:
-                state.append(0)
-            if df['Loyalty'] == 'Average':
-                state.append(1)
-            else:
-                state.append(0)
-            if df['Loyalty'] == 'High':  #14
-                state.append(1)
-            else:
-                state.append(0)
-            if df['Taxation'] == 'None':
-                state.append(1)
-            else:
-                state.append(0)
-            if df['Loyalty'] == 'Light':  #16
-                state.append(1)
-            else:
-                state.append(0)
-            if df['Loyalty'] == 'Moderate':
-                state.append(1)
-            else:
-                state.append(0)
-            if df['Loyalty'] == 'Severe':  #18
-                state.append(1)
-            else:
-                state.append(0)
-            if df['Type'] == 'Law':
-                state.append(1)
-            else:
-                state.append(0)
-            if df['Cost'] >= 1:  #20
-                state.append(1)
-            else:
-                state.append(0)
-            if df['Cost'] >= 2:
-                state.append(1)
-            else:
-                state.append(0)
-            if df['Cost'] >= 4:  #22
-                state.append(1)
-            else:
-                state.append(0)
-            if df['Cost'] >= 10:  #23
-                state.append(1)
-            else:
-                state.append(0)
-                
-        return np.asarray(state) 
-
         
+        state = [1*(df['Population'] == a) for a in range(9)]   # population 0-8, 9
+        if df['Population'] >= 9:  # 9s the limit, 10
+            state.append(1)
+        else:
+            state.append(0)
+        if df['Loyalty'] == 'Rebellious':  # 11
+            state.append(1)
+        else:
+            state.append(0)
+        if df['Loyalty'] == 'Poor':  #12
+            state.append(1)
+        else:
+            state.append(0)
+        if df['Loyalty'] == 'Average':
+            state.append(1)
+        else:
+            state.append(0)
+        if df['Loyalty'] == 'High':  #14
+            state.append(1)
+        else:
+            state.append(0)
+        if df['Taxation'] == 'None':
+            state.append(1)
+        else:
+            state.append(0)
+        if df['Loyalty'] == 'Light':  #16
+            state.append(1)
+        else:
+            state.append(0)
+        if df['Loyalty'] == 'Moderate':
+            state.append(1)
+        else:
+            state.append(0)
+        if df['Loyalty'] == 'Severe':  #18
+            state.append(1)
+        else:
+            state.append(0)
+        if df['Type'] == 'Law':
+            state.append(1)
+        else:
+            state.append(0)
+        if df['Cost'] >= 1:  #20
+            state.append(1)
+        else:
+            state.append(0)
+        if df['Cost'] >= 2:
+            state.append(1)
+        else:
+            state.append(0)
+        if df['Cost'] >= 4:  #22
+            state.append(1)
+        else:
+            state.append(0)
+        if df['Cost'] >= 10:  #23
+            state.append(1)
+        else:
+            state.append(0)
+        my_stats = Game.Regents[Game.Regents['Regent']==Regent].copy()
+        if my_stats['Attitude'].values[0] == 'Aggressive':
+           state.append(1)  # 24
+        else:
+            state.append(0)
+        if my_stats['Attitude'].values[0] == 'Peaceful':
+           state.append(1)  # 25
+        else:
+               state.append(0)
+        return np.asarray(state) 
+      
     def get_action_state(self, Regent, Game):
         '''
         State variable for actions
@@ -133,7 +143,7 @@ class DQNAgent(object):
         prov_regent_list = temp.copy()
 
         # start the work
-        state = [0 for a in range(99)]
+        state = [0 for a in range(self.action_size)]
         '''
                 is_action_1   
                 is_action_2
@@ -488,6 +498,10 @@ class DQNAgent(object):
                 state[86] = 1  # random_event_matter_of_justice
         except:
             None
+            
+        for i, a in enumerate(['Aggressive', 'Normal', 'Peaceful', 'Xenophobic']):
+            if regent['Attitude'].values[0] == a:
+                state[87+i] = 1
         return np.asarray(state), capital, high_pop, low_pop, friend, enemy, rando
             
     def network(self, weights=None, N=3, K=11):
@@ -528,8 +542,11 @@ class DQNAgent(object):
             
     def train_short_memory(self, state, action, reward, next_state, type, done=False):
         if type == 'Taxes':
-            rs = (1,23)
+            rs = (1,25)
             model = self.tax_model
+        if type == 'Action':
+            rs = (1,self.action_size)
+            model = self.action_model
         target = reward
         if done == False:    
             target = reward + self.gamma * np.amax(model.predict(next_state.reshape(rs))[0])
@@ -542,7 +559,7 @@ class DQNAgent(object):
         Save this using Pickle
         '''
         if filename == None:
-            filename = 'agents/agent_' + self.attitude[0] + '.pickle'
+            filename = 'agents/agent.pickle'
         
         with open(filename, 'wb') as handle:
             pickle.dump(self, handle, protocol=pickle.HIGHEST_PROTOCOL)

@@ -29,6 +29,7 @@ class Regency(object):
     Seasons: A dctionary of season-dataframes (to keep track of waht happened)
     Lieutenants: A List of regent lieutenant pairs, with a marker for 'busy'
     LeyLines: [Regent, Provence, Other]
+    Projects: ['Regent', 'Project Type', 'Details', 'Gold Bars Left']
     '''
     
     # Initialization
@@ -300,13 +301,11 @@ class Regency(object):
 
         # Agents...
         self.agent = {}
-        lst = list(set(self.Regents['Attitude'].copy()))
-        for attitude in lst:
-            try:
-                self.agent[attitude] = pickle.load( open( 'agents/agent_' + attitude[0] + '.pickle', "rb" ) )
-            except:
-                self.agent[attitude] = DQNAgent(attitude=attitude)
-                self.agent[attitude].save()
+        try:
+            self.agent = pickle.load( open( 'agents/agent.pickle', "rb" ) )
+        except:
+            self.agent = DQNAgent()
+            self.agent.save()
                 
     def clear_screen(self):
         '''
@@ -339,8 +338,8 @@ class Regency(object):
         
         try:
             dct = pickle.load( open( 'worlds/' + world + '.pickle', "rb" ) )
-            lst = ['Provences', 'Holdings', 'Regents', 'Geography', 'Relationships', 'Troops', 'Seasons', 'Lieutenants', 'LeyLines']
-            self.Provences, self.Holdings, self.Regents, self.Geography, self.Relationships, self.Troops, self.Seasons, self.Lieutenants, self.LeyLines = [dct[a] for a in lst]
+            lst = ['Provences', 'Holdings', 'Regents', 'Geography', 'Relationships', 'Troops', 'Seasons', 'Lieutenants', 'LeyLines', 'Projects']
+            self.Provences, self.Holdings, self.Regents, self.Geography, self.Relationships, self.Troops, self.Seasons, self.Lieutenants, self.LeyLines, self.Projects = [dct[a] for a in lst]
         except (OSError, IOError) as e:
             self.new_world(world)
 
@@ -350,14 +349,15 @@ class Regency(object):
         '''
         Have the Agent do a thing to make a decision.
         '''
-        agent = self.agent[attitude]
+        agent = self.agent
         
         # get Int modifier
         mod = self.Regents[self.Regents['Regent']==Regent]['Int'].values[0]
         # predict action based on the old state
         if type == 'Taxes':
-            prediction = agent.tax_model.predict(state.reshape((1,23)))
-        
+            prediction = agent.tax_model.predict(state.reshape((1,25)))
+        else:  # action
+            prediction = agent.action_model.predict(state.reshape((1,self.agent.action_size)))
         roll = randint(1, 20)
         if roll < 5-mod or roll == 1:  # Fails a dc 5 int check and does something random
             move =  to_categorical(randint(0, N-1), num_classes=N)
@@ -402,7 +402,10 @@ class Regency(object):
         
         # Seasons
         self.Seasons = {}
-    
+        
+        # Projects
+        cols = ['Regent', 'Project Type', 'Details', 'Gold Bars Left']
+        self.Projects = pd.DataFrame(columns=cols)
         # Save it...
         self.save_world(world)
         
@@ -420,7 +423,7 @@ class Regency(object):
         dct['Seasons'] = self.Seasons
         dct['Lieutenants'] = self.Lieutenants
         dct['LeyLines'] = self.LeyLines
-        
+        dct['Projects'] = self.Projects
         with open('worlds/' + world + '.pickle', 'wb') as handle:
             pickle.dump(dct, handle, protocol=pickle.HIGHEST_PROTOCOL)
         
@@ -471,7 +474,7 @@ class Regency(object):
         index = index[index['Regent']==Regent].copy()
         index = index.index[indx['Type']==Type].tolist()[0]
         
-        old = self.Holdings.iloc[index]
+        old = self.Holdings.loc[index]
         
         if new_Regent == None:
             new_Regent = old['Regent']
@@ -546,7 +549,7 @@ class Regency(object):
         None = not changed
         '''
         index = self.Provences.index[self.Provences['Provence'] == Provence].tolist()[0]
-        old = self.Provences.iloc[index]
+        old = self.Provences.loc[index]
         if Regent == None:
             Regent = old['Regent']
         if Domain == None:
@@ -639,57 +642,65 @@ class Regency(object):
 
     def change_regent(self, Regent, Name=None, Player=False, Class=None, Level=None, reset_level=False, Alignment = None, Race=None, Str = None, Dex = None, Con = None, Int = None, Wis = None, Cha = None, Insight = None, Deception = None, Persuasion = None, Regency_Bonus = None, Alive=True, Regency_Points=None, Gold_Bars=None, Attitude=None):
         
-        index = self.Regents.index[self.Regents['Regent'] == Regent].tolist()[0]
-        old = self.Regents.iloc[index]
-        
-        if Name == None:
-            Name = old['Full Name']
-        if Class == None:
-            Class = old['Class']
-        if Level == None:
-            Level = old['Level']
-        elif reset_level == False:
-            Level = old['Level'] + Level
-        if Alignment == None:
-            Alignment = old['Alignment']
-        if Race == None:
-            Race = old['Race']
-        if Str == None:
-            Str = old['Str']
-        if Dex == None:
-            Dex = old['Dex']
-        if Con == None:
-            Con = old['Con']
-        if Int == None:
-            Int = old['Int']
-        if Wis == None:
-            Wis = old['Wis']
-        if Cha == None:
-            Cha = old['Cha']
-        if Insight == None:
-            Insight = old['Insight']
-        if Deception == None:
-            Deception = old['Deception']
-        if Persuasion == None:
-            Persuasion = old['Persuasion']
-        if Regency_Bonus == None:
-            Regency_Bonus = old['Regency Bonus']
-        if Regency_Points == None:
-            Regency_Points = old['Regency Points']
-        if Gold_Bars == None:
-            Gold_Bars = old['Gold Bars']
-        if Attitude == None:
-            Attitude = old['Attitude']
-        if Alive==False:  # remove references
-            # Dead regents are removed at end of season, but their legacy dies now.
-            self.Holdings = self.Holdings[self.Holdings['Regent'] != Regent]
-            self.Relationships = self.Relationships[self.Relationships['Regent'] != Regent]
-            self.Relationships = self.Relationships[self.Relationships['Other'] != Regent]
-            self.Provences['Regent'] = self.Provences['Regent'].str.replace('Regent','')
-        
-        self.Regents.loc[index] = [Regent, Name, Player, Class, Level, Alignment, Race, 
-                               Str, Dex, Con, Int, Wis, Cha, Insight, Deception, Persuasion,
-                               Regency_Points, Gold_Bars, Regency_Bonus, Attitude, Alive]
+        if Regent in list(self.Regents['Regent']):
+            index = self.Regents.index[self.Regents['Regent'] == Regent].tolist()[0]
+            try:
+                old = self.Regents.loc[index]
+            except:
+                print('{} Errored Out...'.format(Regent))
+            if Name == None:
+                Name = old['Full Name']
+            if Class == None:
+                Class = old['Class']
+            if Level == None:
+                Level = old['Level']
+            elif reset_level == False:
+                Level = old['Level'] + Level
+            if Alignment == None:
+                Alignment = old['Alignment']
+            if Race == None:
+                Race = old['Race']
+            if Str == None:
+                Str = old['Str']
+            if Dex == None:
+                Dex = old['Dex']
+            if Con == None:
+                Con = old['Con']
+            if Int == None:
+                Int = old['Int']
+            if Wis == None:
+                Wis = old['Wis']
+            if Cha == None:
+                Cha = old['Cha']
+            if Insight == None:
+                Insight = old['Insight']
+            if Deception == None:
+                Deception = old['Deception']
+            if Persuasion == None:
+                Persuasion = old['Persuasion']
+            if Regency_Bonus == None:
+                Regency_Bonus = old['Regency Bonus']
+            if Regency_Points == None:
+                Regency_Points = old['Regency Points']
+            if Gold_Bars == None:
+                Gold_Bars = old['Gold Bars']
+            if Attitude == None:
+                Attitude = old['Attitude']
+            if Alive==False:  # remove references
+                # Dead regents are removed at end of season, but their legacy dies now.
+                self.Holdings = self.Holdings[self.Holdings['Regent'] != Regent]
+                self.Relationships = self.Relationships[self.Relationships['Regent'] != Regent]
+                self.Relationships = self.Relationships[self.Relationships['Other'] != Regent]
+                self.Provences['Regent'] = self.Provences['Regent'].str.replace('Regent','')
+            
+            self.Regents.loc[index] = [Regent, Name, Player, Class, Level, Alignment, Race, 
+                                   Str, Dex, Con, Int, Wis, Cha, Insight, Deception, Persuasion,
+                                   Regency_Points, Gold_Bars, Regency_Bonus, Attitude, Alive]
+        else:
+            print('-'*50)
+            print('REGENT ERROR: {} not in Regents'.format(Regent))
+            print('-'*50)
+            input()
     
     def kill_regent(self, Regent):
         '''
@@ -769,7 +780,7 @@ class Regency(object):
     def change_geography(self, Provence, Neighbor, Border=None, Road=None, Caravan=None, Shipping=None, RiverChasm=None, repeat=True):
         temp = self.Geography[self.Geography['Provence']==Provence]
         index = temp.index[temp['Neighbor'] == Neighbor].tolist()[0]
-        old = self.Geography.iloc[index]
+        old = self.Geography.loc[index]
         if Border == None:
             Border = old['Border']
         if Road == None:
@@ -837,15 +848,14 @@ class Regency(object):
         temp = self.Troops[self.Troops['Regent'] == Regent].copy()
         temp = temp[temp['Provence'] == Provence].copy()
         temp = temp.index[temp['Type'] == Type].tolist()
-        
-        old = self.Troops.iloc[temp[0]]
-        self.Troops.drop(temp[0], inplace=True)
-        # start disbanding
-        if 'Mercenary' in Type.split():
-            # oh no, brigands!
-            self.change_province(Provence, Brigands=True)
-        if 'Levies' in Type.split() and Killed == False:  # disbanded, so go back to their stuff.
-            self.change_provence(old['Home Provence'], Population_Change = 1)
+        if len(temp) > 0:
+            # start disbanding
+            if 'Mercenary' in Type.split():
+                # oh no, brigands!
+                self.change_provence(Provence, Brigands=True)
+            if 'Levies' in Type.split() and Killed == False:  # disbanded, so go back to their stuff.
+                self.change_provence(slef.Troops.iloc[temp[0]]['Home'], Population_Change=1)
+            self.Troops.drop(temp[0], inplace=True)
             
     # Show
     def show_map(self, borders=False, roads=True, caravans=False, shipping=False, bg=True, adj=50, fig_size=(12,12),
@@ -1033,6 +1043,7 @@ class Regency(object):
         
         
     # The Season
+    # 1. RANDOM EVENTS 
     def random_events(self, override={}, style='Birthright', Threshold=50, Regions=None):
         '''
         At the beginning of the season, the Game Master checks for 
@@ -1220,6 +1231,7 @@ class Regency(object):
                     df['Alignment'] = df['Alignment'].replace(al,'-5')
                 else:
                     df['Alignment'] = df['Alignment'].replace(al,'0')
+        df = df.fillna(0)
         df['Likliehood'] = -1*df['Diplomacy'] + 5*df['At War'] - 10*df['Vassalage'] + df['Payment'] + df['Alignment'].astype(int)+3*df['Rivals']
 
         df2 = df[['Regent', 'Likliehood']].groupby('Regent').max().reset_index()
@@ -1380,6 +1392,7 @@ class Regency(object):
         
         assign diplomatic_mission
         '''
+        df = df.copy()
         temp = pd.merge(self.Regents[['Regent']].copy(), df, on='Regent', how='outer').fillna(0)
         temp = temp[temp['Random Event'] == 0].copy()
         temp = pd.merge(self.Provences.copy(), temp, on='Regent', how='left')
@@ -1775,44 +1788,7 @@ class Regency(object):
                     for a in range(row['Population']):
                         self.add_troops(enemy.iloc[0]['Regent'], row['Provence'], 'Levies', home_provence=row['Provence'])
         
-        
-    # Next Step
-    def collect_regency_points(self):
-        '''
-        As outlined previously, a regent collects Regency Points 
-        equivalent to their Domain Power (sum of all levels of all 
-        holdings and provinces) plus their Bloodline score modifier.
-        '''
-        # collect keys
-        regents = self.Regents.copy()
-        keys = list(regents.copy().keys())
-
-        # Provinces
-        df = self.Provences.copy()
-        df['Regency Points Add'] = df['Population']
-        df = df[['Regent', 'Regency Points Add']]
-
-        # holdings
-        temp = self.Holdings.copy()
-        temp['Regency Points Add'] = temp['Level']
-        df = pd.concat([df, temp[['Regent','Regency Points Add']]])
-       
-        # tribute from Vassalage
-        temp = self.Relationships[['Other', 'Vassalage']].copy()
-        temp['Regent'] = temp['Other']
-        temp['Regency Points Add'] = temp['Vassalage']
-        df = pd.concat([df, temp[['Regent','Regency Points Add']]])  # add to the liege
-        temp = self.Relationships[['Regent', 'Vassalage']].copy()
-        temp['Regency Points Add'] = -1*temp['Vassalage']
-        df = pd.concat([df, temp[['Regent','Regency Points Add']]])  # take from the others
-        
-        # calculation
-        df = df.groupby('Regent').sum().reset_index()  # this should be it
-        temp = pd.merge(self.Regents.copy(),df,on='Regent', how='left')
-        temp['Regency Points'] = temp['Regency Points'].astype(int) + temp['Regency Points Add'].astype(int)
-        self.Seasons[self.Season]['Season'] = pd.merge(self.Seasons[self.Season]['Season'], temp[['Regent','Regency Points']], on='Regent', how='left').fillna(0)
-        self.Regents = temp[keys]
-        
+    # 2. DOMAIN INITIATIVE  
     def domain_initiative(self):
         '''
         This step is only necessary when there are domains in 
@@ -1837,7 +1813,48 @@ class Regency(object):
         
         Season = pd.merge(self.Seasons[self.Season]['Season'], temp[['Regent', 'Initiative']], on='Regent', how='left')
         self.Seasons[self.Season]['Season'] = Season.sort_values('Initiative', ascending=False)
+    
+    # 3. COLLECT REGENCY POINTS
+    def collect_regency_points(self):
+        '''
+        As outlined previously, a regent collects Regency Points 
+        equivalent to their Domain Power (sum of all levels of all 
+        holdings and provinces) plus their Bloodline score modifier.
+        '''
+        # collect keys
+        regents = self.Regents.copy()
+        keys = list(regents.copy().keys())
+
+        # Provinces
+        df = self.Provences.copy()
+        df = df[df['Contested'] == False]  # no rp from contested holding
+        df['Regency Points Add'] = df['Population']
+        df = df[['Regent', 'Regency Points Add']]
+
+        # holdings
+        temp = self.Holdings.copy()
+        temp = temp[temp['Contested'] == 0]  # no rp from contested holding
+        temp['Regency Points Add'] = temp['Level']
+        df = pd.concat([df, temp[['Regent','Regency Points Add']]])
+       
+        # tribute from Vassalage
+        temp = self.Relationships[['Other', 'Vassalage']].copy()
+        temp['Regent'] = temp['Other']
+        temp['Regency Points Add'] = temp['Vassalage']
+        df = pd.concat([df, temp[['Regent','Regency Points Add']]])  # add to the liege
+        temp = self.Relationships[['Regent', 'Vassalage']].copy()
+        temp['Regency Points Add'] = -1*temp['Vassalage']
+        df = pd.concat([df, temp[['Regent','Regency Points Add']]])  # take from the others
         
+        # calculation
+        df = df.groupby('Regent').sum().reset_index()  # this should be it
+        temp = pd.merge(self.Regents.copy(),df,on='Regent', how='left').fillna(0)
+        temp['Regency Points'] = temp['Regency Points'].astype(int) + temp['Regency Points Add'].astype(int)
+        self.Seasons[self.Season]['Season'] = pd.merge(self.Seasons[self.Season]['Season'], temp[['Regent','Regency Points']], on='Regent', how='left').fillna(0)
+        self.Regents = temp[keys]
+        
+    # 4. TAXATION, COLLECTION, AND TRADE
+    # STILL NEED OCCUPIED FORCES THING
     def collect_gold_bars(self):
         '''
         At this phase of the season, each regent declares taxation and 
@@ -1853,6 +1870,7 @@ class Regency(object):
         # set taxtation
         temp = self.Regents[self.Regents['Player']==True]
         law = self.Holdings.copy()
+        law = law[law['Contested'] == 0]  # no gb from contested holdings
         law = law[law['Type']=='Law'].copy()
         
         for i, row in temp.iterrows():
@@ -1899,7 +1917,7 @@ class Regency(object):
             # pick for each... this can likely be more efficient
             temp_['Cost'] = row['Cost']
             for j, row_ in temp_.iterrows():
-                state = self.agent[row['Attitude']].get_state('Taxes', row_)
+                state = self.agent.get_tax_state(self, row_, row['Regent'])
                 tax = self.make_decision(row['Attitude'], 4, 'Taxes', state, row['Regent'])
                 p = row_['Provence']
                 if tax[0] == 1:
@@ -1917,7 +1935,7 @@ class Regency(object):
         # collect taxes
         for p in range(11):
             temp = self.Provences[self.Provences['Population'] == p].copy()
-            temp = temp[temp['Contested']==False]
+            temp = temp[temp['Contested']==False]  # no gb from contested holdings
             if temp.shape[0] > 0:
                 for t in ['Light', 'Moderate', 'Severe']:
                     temp_ = temp[temp['Taxation'] == t].copy()
@@ -1960,9 +1978,9 @@ class Regency(object):
             temp = temp[temp['Regent'] == row['Regent']].copy()
             temp = temp[temp['Provence'] == row['Provence']].copy()
             temp = pd.merge(temp, law[law['Regent']==row['Regent']][['Provence', 'Type']].copy(), on='Provence', how='left').fillna('')
-            new_state = (self.agent[Attitude].get_state('Taxes', list(temp.iterrows())[0][1]))
-            self.agent[Attitude].remember(row['state'], row['action'], row['Reward'], new_state, 'Taxes')
-            self.agent[Attitude].train_short_memory(row['state'], row['action'], row['Reward'], new_state, 'Taxes')
+            new_state = self.agent.get_tax_state(self, list(temp.iterrows())[0][1], row['Regent'])
+            self.agent.remember(row['state'], row['action'], row['Reward'], new_state, 'Taxes')
+            self.agent.train_short_memory(row['state'], row['action'], row['Reward'], new_state, 'Taxes')
         # after rewards given
         df = df[df['Revenue']>0].copy()
         
@@ -1970,7 +1988,7 @@ class Regency(object):
         lst = [(0,1), (1,2), (1,3), (2,4), (2,5), (2,6)]
         for h in ['Guild', 'Temple']:
             temp = self.Holdings[self.Holdings['Type'] == h].copy()
-            temp = temp[temp['Contested']==0].copy()
+            temp = temp[temp['Contested']==0].copy()  # no gb from contested holdings
             for i in range(6):
                 temp_ = temp[temp['Level']==i].copy()
                 if temp_.shape[0] > 0:
@@ -2030,6 +2048,7 @@ class Regency(object):
         self.Seasons[self.Season]['Season'] = pd.merge(self.Seasons[self.Season]['Season'], temp_Regents[['Regent','Gold Bars', 'Revenue']], on='Regent', how='left').fillna(0)
         self.Regents = temp_Regents[cols]
     
+    # 5. MAINTENANCE COSTS
     def maintenance_costs(self, Update=True):
         '''
         A domain does not support itself. Gold is required to keep the 
@@ -2199,7 +2218,7 @@ class Regency(object):
         else:  # Return for the gold thing
             return df[['Regent', 'Cost']]
         
-    # here we go
+    # 6, 7, and 8 TAKING DOMAIN ACTIONS
     def take_domain_actions(self, override):
         '''
         During each season, the regent takes a total of three domain 
@@ -2219,26 +2238,263 @@ class Regency(object):
         
         '''
         self.Action=1
-        
+        self.Seasons[self.Season]['Actions'] = {}
         while self.Action < 4:
+            # Make A DataFrame
+            cols = ['Regent', 'Actor', 'Action Type', 'Action', 'Decision', 'Target Regent', 'Provence', 'Target Provence', 'Target Holding', 'Success?', 'Base Reward', 'State']
+            self.Seasons[self.Season]['Actions'][self.Action] = pd.DataFrame(columns=cols)
             for I in reversed(list(set(self.Seasons[self.Season]['Season']['Initiative']))):
                 # grab the regents that are acting this round
                 df = self.Seasons[self.Season]['Season'][self.Seasons[self.Season]['Season']['Initiative'] == I].copy()
-                for i, row in df.iterrows():
-                    # we now have the regent we need...
-                    None
+                for i, row in df.iterrows():  # each regent
+                    Regent = row['Regent']
+                    # bonus first
+                    self.Bonus = 1
+                    actors = list(self.Lieutenants[self.Lieutenants['Regent'] == Regent]['Lieutenant'])
+                    actors.append(self.Regents[self.Regents['Regent'] == Regent]['Full Name'].values[0])
+                    state = self.agent.get_action_state(row['Regent'], self)  # allow player actions to inform Agent
+                    for actor in actors:
+                        if row['Player'] == True:
+                            print('Player...')
+                        else:  # NPC!
+                            decision = self.make_decision('', self.agent.action_choices, 'Action', state, row['Regent'])
+                            # translate into action...
+                            index = self.Seasons[self.Season]['Actions'][self.Action].shape[0]
+                            self.Seasons[self.Season]['Actions'][self.Action].loc[index] = self.take_action(decision, Regent, actor, type)
+                    self.Bonus = 0
+                    self.Seasons[self.Season]['Actions'][self.Action].loc[index] = self.take_action(decision, Regent, self.Regents[self.Regents['Regent'] == Regent]['Full Name'].values[0], type)
+                    # update_memory
+                    
             # last bit in function while loop
             self.Action = self.Action+1
-    # Domain Actions    
-    def domain_action_adventure(self, Regent):
+    
+    def take_action(self, decision, Regent, actor, type, state):
         '''
-        Cost: None
-        Success: Auto
+        ['Regent', 'Actor', 'Action Type', 'Action', 'Target Regent', 'Provence', 'Target Provence', 'Target Holding', 'Success?', 'Base Reward', 'State']
+        '''
+        if decision[0] == 1:  # build_road
+            # need provences
+            temp = pd.merge(self.Provences[['Provence']][self.Provences['Regent'] == Regent], self.Geography, on='Provence', how='left')
+            temp = temp[temp['Border'] == 1]
+            temp = temp[temp['Road'] == 0]
+            temp['Roll'] = np.random.randint(1,100,temp.shape[0]) + 10*temp['RiverChasm']
+            temp = temp.sort_values('Roll')
+            success, reward = self.bonus_action_build(Regent, temp.iloc[0]['Provence'], temp.iloc[0]['Neighbor'])
+            return [Regent, actor, type, 'build_road', decision, '', temp.iloc[0]['Neighbor'], '', success, reward, state]
+    
+    # Bonus Actions First
+    def bonus_action_build(self, Regent, Provence, Road=None, player_gbid=None):
+        '''
         
-        INFO NEEDED NONE
+        Base Cost: Varies
+        Base Success: DC 5
+
+        For any the construction of any structure that is not a fortification 
+        or holding, the Build action is the go-to for any regent. Many domain
+        events will request that the regent provide the resources for the 
+        creation of a guildhall, civic center, statue, or anything else the 
+        people might need or desire.
+
+        The Game Master sets the Gold Bar cost of a particular construction
+        project, which typically ranges from 1 GB for a small chapel to 30
+        for a massive palace.
+
+        Build is also useful for the construction of bridges and roads. Roads 
+        enable troops and the populace to get about the province more easily,
+        while bridges are used to cross rivers and chasms. A bridge can cost 
+        anywhere from 2 to 5 GB (1d4+1). A road costs a single gold bar for a
+        plains province; a forest, tundra, or desert costs two; a hilly 
+        province or swamp costs four; and mountains cost eight. Typically,
+        the construction of a “road” really means any number of paths 
+        throughout the province.
+
+        The more remote and rural a province, the more expensive a 
+        construction project; this represents the cost to secure and move the 
+        building materials to the site. If the target province for the 
+        building project is rated as 0 or 1, the cost is doubled. If the 
+        target province is 3 or 4, the cost is increased by 50%.
+
+        A building project is never instantaneous. Each season, the progress 
+        on a structure advances by 3 GB (or 1d6) of its cost. The project is
+        considered complete when the full cost of the Build is accounted for
+        in this way.
+
+        Critical Success: The building project gets an excellent head start 
+        and immediately completes 2d6 of its total building cost.
+
+       
+        Road = Target Provence
+        
+        Terrain (add both together)
+        'Desert', 'Tundra', 'Forest', 'Steppes' 2
+        'Mountain', 8
+        'Glacier', 8
+        'Hills', 'Swamp', 'Marsh' 4
+        'Plains', Farmland' 1
+        
+        if bridge needed: + 1d4+1
+        
+        (multiply by population of higher population provence)
+        Population < 2: 1
+        Population 3,4: 3/4
+        Population > 4: 1/2
+        
+        (add code to allow for timed project completion)
+        
+        INFO NEEDED:
+        CAPITAL HAS ROADS TO ALL BORDERING PROVENCES IN DOMAIN
+        not all provences connected by roads
+        UNROADED PROVENCE BETWEEN SELF AND FRIEND
+        HAVE PROVENCES
+        
+        build_road
+        '''
+        # temp = pd.concat([self.Provences[self.Provences['Provence']==Provence], self.Provences[self.Provences['Provence']==Road])
+    
+        temp = pd.concat([self.Provences[self.Provences['Provence']==Provence], self.Provences[self.Provences['Provence']==Road]])
+        temp = pd.merge(temp, self.Geography[self.Geography['Neighbor']==Road], on='Provence', how='left').fillna(0)
+        temp['Terrain'] = temp['Terrain'].str.replace('Desert', '2').replace('Tundra', '2').replace('Forest','2').replace('Steppes','2')
+        temp['Terrain'] = temp['Terrain'].str.replace('Plains', '1').replace('Farmland','1')
+        temp['Terrain'] = temp['Terrain'].str.replace('Hills','4').replace('Swamp','4').replace('Marsh','4')
+        temp['Terrain'] = temp['Terrain'].str.replace('Mountains', '8').replace('Glacier','8').replace('Mountain','8')
+
+        cost = np.sum(temp['Terrain'].astype(int))
+        temp['bridge'] = temp['RiverChasm']*np.random.randint(2,5,temp.shape[0])
+        cost = cost + np.sum(temp['bridge'])*2
+
+        if np.max(temp['Population']) <= 2:
+            cost = cost*1
+        elif np.max(temp['Population']) >= 3 and np.max(temp['Population']) <= 4:
+            cost = cost*3/4
+        else:
+            cost = cost/2
+        cost = int(cost)
+
+        # not always opposed
+        target = temp[temp['Provence']==Road]['Regent'].values[0]
+        if target != Regent:
+            dc = self.set_difficulty(5, Regent, target)
+        else:
+            dc = 5
+
+        if cost > self.Regents[self.Regents['Regent']==Regent]['Gold Bars'].values[0]:  # can't afford it
+            success = False
+            crit =  False
+        else:
+            self.change_regent(Regent, Gold_Bars = self.Regents[self.Regents['Regent']==Regent]['Gold Bars'].values[0] - cost)
+            success, crit = self.make_roll(Regent, dc, 'Persuasion', 'build_road')
+        print(success)
+        if success:
+            progress = cost
+            if crit:
+                progress = cost - (np.random.randint(1,6,1) + np.random.randint(1,6,1))  # 2d6 rolls dif than 2-12
+            # make sure it doesn't already exist
+            df = self.Projects[self.Projects['Project Type']=='Road'].copy()
+            df[df['Details'] == '({}, {})'.format(Provence, Road)]
+            if df.shape[0] > 0:
+                progress = check.iloc[0]['Gold Bars Left'] - np.random.randint(1,6,1)
+                self.Projects.loc[check.index.tolist()[0]] = [Regent, 'Road', '({}, {})'.format(Provence, Road), progress]
+            else:
+                try:
+                    self.Projects.loc[max(self.Projects.index.tolist())+1] = [Regent, 'Road', '({}, {})'.format(Provence, Road), progress]
+                except:
+                    print('first')
+                    self.Projects.loc[0] = [Regent, 'Road', '({}, {})'.format(Provence, Road), progress]
+        # rewards
+        reward = 5*success - 5*(1-success)
+        if self.Regents[self.Regents['Regent']==Regent]['Attitude'].values[0] == 'Xenophobic':
+            if self.Regents[self.Regents['Regent']==Regent]['Race'].values[0] != self.Regents[self.Regents['Regent']==target]['Race'].values[0]:
+                reward = -5  #why build a road to let THEM in?
+        return success, reward
+        
+    def bonus_action_decree(self, Regent, Type='Asset Seizure'):
+        '''
+        Type: Bonus
+        Base Cost: 1 GB
+        Base Success: DC 10
+
+        A Decree encompasses a number of policies and processes that are not otherwise encompassed by other domain actions. While the list provided below is not the limit of what a Decree can do, any action that can be referred to as a Decree must fulfill the following criteria:
+
+        The decree cannot affect another regent’s holdings or provinces.
+        The decree cannot change the loyalty or level of any province or holding.
+        Decrees cannot affect armies or assets in any way.
+        Some examples of common Decrees are as follows. Game Masters and players are encouraged to use Decree whenever no other action is suitable, but care must be taken not to go overboard with what a Decree can accomplish.
+
+        A tax or asset seizure is enacted, generating 1d6 Gold Bars for your - treasury.
+        A roustabout or rumormonger is arrested.
+        A festival is declared throughout your domain.
+        A bounty is offered for local monsters, which may draw adventurers to your territory.
+        A minor act of legislation is passed regarding changes to the law, acceptable behaviors, or cultural integration.
+        A minor event is dealt with by placating the petitioning party through offerings and compensation.
+        Furthermore, the condition of the regent’s court may cause this check to be made at advantage or disadvantage, or not at all. See the section on Court Expenses for more details.
+        
+        
+        decree_festival
+        decree_asset_seizure
+        '''
+   
+    def bonus_action_disband(self, Regent):
+        '''
+        Type: Bonus
+
+        Base Cost: None
+
+        Base Success: DC 10 (or Automatic)
+
+        This action is used to break up units under the regent’s command. Any
+        number of units can be affected by this action, and if the units are of 
+        regular troops, the success is automatic. The spending of a bonus 
+        action represents the discharge papers, paying final expenses, and 
+        ensuring no soldier makes off with military equipment.
+   
+        If the targeted unit is a mercenary unit, a domain action check must be
+        rolled for each unit. On a success, nothing untoward happens. If the 
+        check fails, the mercenary units become units of brigands within the 
+        provinces where they were disbanded.
+        
+        The regent can also use this action to dismantle any holdings or assets
+        that they no longer wish to maintain. The effect is immediate, and the
+        holding/asset will no longer generate RP or GB for the regent starting 
+        on the next season.
+        
+        INFO NEEDED
+        has_military_units
+        has_levees
+        has_mercenaries
+        
+        
+        disband_army
+        disband_levees
+        disband_mercenaries
+        '''
+    
+    def bonus_action_fianances(self, regent, number=1):
+        '''
+        Type: Bonus
+
+        Base Cost: None
+
+        Base Success: Automatic
+
+        Through this action, it is possible for regents to turn Gold Bars from 
+        their treasury into liquid assets to purchase personal equipment or pay
+        ransoms without using official channels. This action may be performed 
+        only once per season, and the number of Gold Bars that can be converted
+        is equal to the sum total of all Guild holding levels the regent 
+        controls, plus their Bloodline modifier. Each Gold Bar converted 
+        becomes 2000 gold pieces of currency in the regent’s possession.
+        
+
+        Thus, if Erin Velescarpe (Bloodline score 15) controls four guild 
+        holdings of levels 1, 2, 2, and 4, she can convert up to 11 Gold Bars 
+        into coins. Regents must be careful not to bankrupt their kingdoms 
+        using this action.
+        
         (not for agents)
         '''
         
+        
+    # Bonus & Domain
     def domain_action_agitate(self, Regent, Target, Conflict, Bonus=False, Provences=None):
         '''
         Base Cost: 1 RP, 1 GB
@@ -2283,198 +2539,7 @@ class Regency(object):
         agitate_conflict_true
         agitate_conflict_false
         '''
-        
-    def bonus_action_build(self, Regent, Provence, Road=None):
-        '''
-        Cost: varies
-        Base Success: 5
-        
-        Road = Target Provence
-        
-        Terrain (add both together)
-        'Desert', 'Tundra', 'Forest', 'Steppes' 2
-        'Mountain', 8
-        'Glacier', 8
-        'Hills', 'Swamp', 'Marsh' 4
-        'Plains', Farmland' 1
-        
-        if bridge needed: + 1d4+1
-        
-        (multiply by population of higher population provence)
-        Population < 2: 1
-        Population 3,4: 3/4
-        Population > 4: 1/2
-        
-        (add code to allow for timed project completion)
-        
-        INFO NEEDED:
-        CAPITAL HAS ROADS TO ALL BORDERING PROVENCES IN DOMAIN
-        not all provences connected by roads
-        UNROADED PROVENCE BETWEEN SELF AND FRIEND
-        HAVE PROVENCES
-        
-        build_road (randomly pick a border to make a road on)
-        '''
-        
-    def domain_action_contest(self, Regent, Target):
-        '''
-        Cost: 1 RP
-        Sucess: DC 10
-        
-        INFO NEEDED:
-        enemy_has_(type)_holding in my lands
-        enemy_has_same_type_of_holding_as_me_somewhere_i_have_holding
-        i have contested holding
-        i have contested provence
-        enemy_has_contested_holding
-        enemy_has_contested_provence
-        enemy_has_no_law_holdings_and_rebellious_or_poor_loyalty_in_a_province
-        
-        
-        contest_holding
-        contest_provence
-        '''
-        
-    def domain_action_create_holding(self, Regent, Target):
-        '''
-        Base: 1 GB
-        Sucess: 10 (+ population) (Persuasion)
-        
-        INFO NEEDED:
-        space for a holding nearby where I don't have a holding of that type and it's a type I can make
-        
-        create_holding
-        '''
-        
-    def domain_action_declare_war(self, Regent, Target):
-        '''
-        WA- (headline continued on page 3)
-        
-        Type: Action
-        Base Cost: None
-
-        Base Success: Automatic
-
-        A regent must use the Declare War action before moving troops through provinces that do not belong to 
-        them, unless permission is obtained by use of the Diplomacy action. The regent can begin making war
-        moves and conducting battles against enemy troops in provinces where they clash.
-
-        If enemy troops are in your province, you do not need to Declare War; you may move your troops on the 
-        respective phase of the season within your own territory. The target of a declaration of war must use 
-        this action on their turn in order to counterattack into enemy territory; this is not merely the 
-        public declaration, but also preparing the logistics of entering enemy territory.
-
-
-        INFO NEEDED:
-        at_war (someone declared war on me)
-        
-        
-        declare_war
-        '''
-        
-    def bonus_action_decree(self, Regent, Type='Asset Seizure'):
-        '''
-        Type: Bonus
-        Base Cost: 1 GB
-        Base Success: DC 10
-
-        A Decree encompasses a number of policies and processes that are not otherwise encompassed by other domain actions. While the list provided below is not the limit of what a Decree can do, any action that can be referred to as a Decree must fulfill the following criteria:
-
-        The decree cannot affect another regent’s holdings or provinces.
-        The decree cannot change the loyalty or level of any province or holding.
-        Decrees cannot affect armies or assets in any way.
-        Some examples of common Decrees are as follows. Game Masters and players are encouraged to use Decree whenever no other action is suitable, but care must be taken not to go overboard with what a Decree can accomplish.
-
-        A tax or asset seizure is enacted, generating 1d6 Gold Bars for your - treasury.
-        A roustabout or rumormonger is arrested.
-        A festival is declared throughout your domain.
-        A bounty is offered for local monsters, which may draw adventurers to your territory.
-        A minor act of legislation is passed regarding changes to the law, acceptable behaviors, or cultural integration.
-        A minor event is dealt with by placating the petitioning party through offerings and compensation.
-        Furthermore, the condition of the regent’s court may cause this check to be made at advantage or disadvantage, or not at all. See the section on Court Expenses for more details.
-        
-        
-        decree_festival
-        decree_asset_seizure
-        '''
-        
-    def domain_action_diplomacy(self, Regent, Target, Type='form_alliance'):
-        '''
-        ype: Domain
-
-        Base Cost: 1 RP, 1 GB
-
-        Base Success: DC 10+ (or Automatic)
-
-        Neighboring regents can generally be assumed to remain in correspondence with one another throughout the course of a season. The Diplomacy action has a much wider impact, and is typically a court affair with dignitaries, soirees, and document signings. Typically, this action is taken in relation to NPC regents or random events; if a player character regent is the target of the Diplomacy action, they can determine whether it is automatically successful (but the expense of GB and action must be made in order to gain the effects).
-
-        The DC of the domain action check depends on the specific action being taken. Diplomacy checks are typically simple affairs, but care must be taken with the proposals and the mood and standing of a regent. If a deal is outright insulting, the Game Master can rule the action has no chance of success.
-
-        Furthermore, the condition of the regent’s court may cause this check to be made at advantage or disadvantage, or not at all. See the section on Court Expenses for more details.
-
-        Regents on the sidelines who wish to influence the proceedings one way or another may spend GB and RP as usual, affecting the DC and roll bonus accordingly. This represents their dignitaries at the diplomatic function, currying favor and giving advice.
-
-        A Diplomacy action can encompass one of the following effects, each of which has its own DC.
-
-        DC 10: Form an alliance with another domain with whom you are already friendly.
-        DC 10: Create a trade agreement between two domains. This allows the Trade Route action to be taken.
-        DC 15: Allow troops to move through the targeted domain without the need to Declare War.
-        DC 15: Force a targeted regent to provide tribute or concessions.
-        DC 15: Respond to a domain event such as brigandage, unrest, or feuds, causing its effects to subside.
-        As it pertains to forcing tribute, a regent typically offers no more than a quarter of what they collect each turn in Gold bars; unless threatened with overwhelming force, a regent will never capitulate to more than that.
-
-        Critical Success: The RP and GB costs for this action are immediately recouped.
-        
-        
-        INFO NEEDED
-        arranged_trade_route
-        
-        
-        diplomacy_form_alliance
-        diplomacy_trade_agreement
-        diplomacy_allow_troop_movement
-        diplomacy_force_tribute
-        
-        diplomacy_respond_to_brigandage
-        diplomacy_respond_to_unrest
-        diplomacy_respond_to_feud
-        '''
-        
-    def bonus_action_disband(self, Regent):
-        '''
-        Type: Bonus
-
-        Base Cost: None
-
-        Base Success: DC 10 (or Automatic)
-
-        This action is used to break up units under the regent’s command. Any
-        number of units can be affected by this action, and if the units are of 
-        regular troops, the success is automatic. The spending of a bonus 
-        action represents the discharge papers, paying final expenses, and 
-        ensuring no soldier makes off with military equipment.
-   
-        If the targeted unit is a mercenary unit, a domain action check must be
-        rolled for each unit. On a success, nothing untoward happens. If the 
-        check fails, the mercenary units become units of brigands within the 
-        provinces where they were disbanded.
-        
-        The regent can also use this action to dismantle any holdings or assets
-        that they no longer wish to maintain. The effect is immediate, and the
-        holding/asset will no longer generate RP or GB for the regent starting 
-        on the next season.
-        
-        INFO NEEDED
-        has_military_units
-        has_levees
-        has_mercenaries
-        
-        
-        disband_army
-        disband_levees
-        disband_mercenaries
-        '''
-        
+    
     def domain_action_espionage(self, Regent, Target, Type, Bonus=False):
         '''
         Type: Action (or Bonus)
@@ -2533,31 +2598,245 @@ class Regency(object):
         
         '''
         
-    def bonus_action_fianances(self, regent, number=1):
+    def bonus_action_grant(self, Regent):
+        '''
+        Grant
+        Type: Bonus
+        Base Cost: Special
+        Base Success: DC 10 (Automatic, see below)
+
+        This domain action is used by regents who wish to reward helpful 
+        servants with titles or gifts of wealth. Typically, this is used when 
+        resolving a domain event that requires the appointing or appeasement of
+        a government official. It can also be used to give another regent money 
+        from your treasury in the form of Gold Bars.
+
+        Unlike other domain actions, the domain action check is made not to see 
+        if the action succeeds, but whether anyone is potentially angered by 
+        the Grant (especially in the case of giving out wealth). Every Gold Bar 
+        that exchanges hands in this way increases the DC by 1. Should anyone 
+        be offended by the use of a Grant, it will force a corruption, 
+        intrigue, or unrest event on the next season.
+        
+        bonus_action_grant
+        '''
+    
+    def bonus_action_lieutenant(self, Regent):
         '''
         Type: Bonus
+        Base Cost: 1 GB
+        Base Success: Automatic
 
+        The regent raises a retainer or henchman NPC to the status of a
+        lieutenant. A lieutenant can be another player character if that player 
+        character is not themselves a regent. Anyone can be a lieutenant, 
+        whether they possess a bloodline or not. The lieutenant typically 
+        possesses character levels and may undertake missions in the regent’s 
+        stead. NPC lieutenants require upkeep, and are paid on the Maintenance
+        Costs phase of the season.
+        
+        Lieutenants are extremely useful in that they provide the regent with a 
+        single additional bonus action that may be used at any point in the 
+        action phases of the season, provided the lieutenant is within the 
+        boundaries of the regent’s domain at the time. Once this bonus action is
+        used, it cannot be used again on any subsequent turn in the round. The
+        regent cannot benefit from having multiple lieutenants in this regard,
+        but many regents keep additional lieutenants around in case one becomes
+        occupied.
+
+        Some random events may require the use of a lieutenant to adjudicate 
+        outcomes, thus consuming the lieutenant’s attention for the season. This 
+        forfeits any bonus action they would have otherwise granted, unless the
+        regent has another lieutenant handy.
+
+        For example, Erin Velescarpe raises up her brother, Eist, as a 
+        lieutenant. While he is not a regent, he acts in her stead where she
+        cannot. She uses him several times to perform Decrees while she tends to
+        more pressing matters.
+
+        Eventually, an event arises within Erin’s domain requiring the personal 
+        attention of the regent. Instead, Erin dispatches Eist to settle the
+        matter, and does not gain his bonus action this season.
+        
+        bonus_action_lieutenant
+        '''
+      
+    def bonus_action_move_troops(self, Regent, Troops, Target):
+        '''
+        Type: Bonus
+        Base Cost: 1 GB
+        Base Success: Automatic
+
+        Using this domain action, the regent orders any number of loyal troops
+        to another location within their own domain. Financing the movement of 
+        the troops costs 1 GB for every 10 units or provinces; for example, 1 GB
+        can move a unit across 10 provinces, or 10 units across 1 province, or 
+        any combination that can be mathematically derived. The troops are not 
+        available for use while moving, and the movement completes at the end of 
+        the action round, whereupon they become available for battles waging in 
+        that province.
+
+        If the regent’s domain is invaded during use of the Move Troops action,
+        they can abort any movement that is in progress to come to the defense 
+        of an invaded province, but forfeit any GB spent.
+        
+        INFO NEEDED
+        enemy_troops_in_domain
+        enemy_troops_in_friends_domain
+        at_war
+        
+        move_troops_defend_provence
+        move_troops_defend_friend
+        move_troops_into_enemy_territory
+        '''
+    
+    def bonus_action_muster_armies(self, Regent, Type=None, N=1):
+        '''
+        Type: Bonus
+        Base Cost: Special
+        Base Success: Automatic
+
+        The regent calls up his provinces to war, or raises troops in any
+        province where they maintain a holding. This can take the form of 
+        raising peasant levies, drawing up trained soldiers, or hiring 
+        mercenaries. They must pay the GB cost of any unit, as listed in its 
+        entry. A province can raise a number of military units equal to its 
+        level in a single season. If the troops are being raised in a province 
+        you do not control, the owning regent can automatically deny you this 
+        action.
+
+        Units cannot be used in the same action round in which they are 
+        mustered, unless those units are mercenaries (which can be used 
+        immediately, but mercenaries come with their own risks).
+
+        If the type of unit a regent musters is a Levy, it comes with an 
+        additional cost. The province level is temporarily reduced by 1 each 
+        time Levies are mustered from that province (see the section on Armies 
+        for more details). The rating is restored when the unit is disbanded,
+        but if those units are ever destroyed in combat, the province level is
+        permanently reduced. Levies cost nothing to muster, but are dangerous to
+        use for this reason.  [reduce it, add back when disbanded]
+        
+        INFO NEEDED
+        more_troops_than_enemy
+        enemy_troops_in_domain
+        at_war
+        
+        
+        muster_army
+        muster_levies
+        muster_mercenaries
+        '''
+                
+    
+    # Domain Only
+    def domain_action_adventure(self, Regent):
+        '''
+        Cost: None
+        Success: Auto
+        
+        INFO NEEDED NONE
+        (not for agents)
+        '''
+        
+    def domain_action_contest(self, Regent, Target):
+        '''
+        Cost: 1 RP
+        Sucess: DC 10
+        
+        INFO NEEDED:
+        enemy_has_(type)_holding in my lands
+        enemy_has_same_type_of_holding_as_me_somewhere_i_have_holding
+        i have contested holding
+        i have contested provence
+        enemy_has_contested_holding
+        enemy_has_contested_provence
+        enemy_has_no_law_holdings_and_rebellious_or_poor_loyalty_in_a_province
+        
+        
+        contest_holding
+        contest_provence
+        '''
+        
+    def domain_action_create_holding(self, Regent, Target):
+        '''
+        Base: 1 GB
+        Sucess: 10 (+ population) (Persuasion)
+        
+        INFO NEEDED:
+        space for a holding nearby where I don't have a holding of that type and it's a type I can make
+        
+        create_holding
+        '''
+        
+    def domain_action_declare_war(self, Regent, Target):
+        '''
+        WA- (headline continued on page 3)
+        
+        Type: Action
         Base Cost: None
 
         Base Success: Automatic
 
-        Through this action, it is possible for regents to turn Gold Bars from 
-        their treasury into liquid assets to purchase personal equipment or pay
-        ransoms without using official channels. This action may be performed 
-        only once per season, and the number of Gold Bars that can be converted
-        is equal to the sum total of all Guild holding levels the regent 
-        controls, plus their Bloodline modifier. Each Gold Bar converted 
-        becomes 2000 gold pieces of currency in the regent’s possession.
-        
+        A regent must use the Declare War action before moving troops through provinces that do not belong to 
+        them, unless permission is obtained by use of the Diplomacy action. The regent can begin making war
+        moves and conducting battles against enemy troops in provinces where they clash.
 
-        Thus, if Erin Velescarpe (Bloodline score 15) controls four guild 
-        holdings of levels 1, 2, 2, and 4, she can convert up to 11 Gold Bars 
-        into coins. Regents must be careful not to bankrupt their kingdoms 
-        using this action.
+        If enemy troops are in your province, you do not need to Declare War; you may move your troops on the 
+        respective phase of the season within your own territory. The target of a declaration of war must use 
+        this action on their turn in order to counterattack into enemy territory; this is not merely the 
+        public declaration, but also preparing the logistics of entering enemy territory.
+
+
+        INFO NEEDED:
+        at_war (someone declared war on me)
         
-        (not for agents)
+        
+        declare_war
         '''
+      
+    def domain_action_diplomacy(self, Regent, Target, Type='form_alliance'):
+        '''
+        ype: Domain
+
+        Base Cost: 1 RP, 1 GB
+
+        Base Success: DC 10+ (or Automatic)
+
+        Neighboring regents can generally be assumed to remain in correspondence with one another throughout the course of a season. The Diplomacy action has a much wider impact, and is typically a court affair with dignitaries, soirees, and document signings. Typically, this action is taken in relation to NPC regents or random events; if a player character regent is the target of the Diplomacy action, they can determine whether it is automatically successful (but the expense of GB and action must be made in order to gain the effects).
+
+        The DC of the domain action check depends on the specific action being taken. Diplomacy checks are typically simple affairs, but care must be taken with the proposals and the mood and standing of a regent. If a deal is outright insulting, the Game Master can rule the action has no chance of success.
+
+        Furthermore, the condition of the regent’s court may cause this check to be made at advantage or disadvantage, or not at all. See the section on Court Expenses for more details.
+
+        Regents on the sidelines who wish to influence the proceedings one way or another may spend GB and RP as usual, affecting the DC and roll bonus accordingly. This represents their dignitaries at the diplomatic function, currying favor and giving advice.
+
+        A Diplomacy action can encompass one of the following effects, each of which has its own DC.
+
+        DC 10: Form an alliance with another domain with whom you are already friendly.
+        DC 10: Create a trade agreement between two domains. This allows the Trade Route action to be taken.
+        DC 15: Allow troops to move through the targeted domain without the need to Declare War.
+        DC 15: Force a targeted regent to provide tribute or concessions.
+        DC 15: Respond to a domain event such as brigandage, unrest, or feuds, causing its effects to subside.
+        As it pertains to forcing tribute, a regent typically offers no more than a quarter of what they collect each turn in Gold bars; unless threatened with overwhelming force, a regent will never capitulate to more than that.
+
+        Critical Success: The RP and GB costs for this action are immediately recouped.
         
+        
+        INFO NEEDED
+        arranged_trade_route
+        
+        
+        diplomacy_form_alliance
+        diplomacy_trade_agreement
+        diplomacy_allow_troop_movement
+        diplomacy_force_tribute
+        
+        diplomacy_respond_to_brigandage
+        diplomacy_respond_to_unrest
+        diplomacy_respond_to_feud
+        '''
+       
     def domain_action_forge_ley_line(self, Provence, Holding):
         '''
         Forge Ley Line
@@ -2672,30 +2951,7 @@ class Regency(object):
         troops_garrisoned_high
         troops_garrisoned_low
         '''
-        
-    def bonus_action_grant(self, Regent):
-        '''
-        Grant
-        Type: Bonus
-        Base Cost: Special
-        Base Success: DC 10 (Automatic, see below)
-
-        This domain action is used by regents who wish to reward helpful 
-        servants with titles or gifts of wealth. Typically, this is used when 
-        resolving a domain event that requires the appointing or appeasement of
-        a government official. It can also be used to give another regent money 
-        from your treasury in the form of Gold Bars.
-
-        Unlike other domain actions, the domain action check is made not to see 
-        if the action succeeds, but whether anyone is potentially angered by 
-        the Grant (especially in the case of giving out wealth). Every Gold Bar 
-        that exchanges hands in this way increases the DC by 1. Should anyone 
-        be offended by the use of a Grant, it will force a corruption, 
-        intrigue, or unrest event on the next season.
-        
-        bonus_action_grant
-        '''
-        
+       
     def domain_action_investiture(self, Regent, Target, Divest=False, Vassal=False):
         '''
         Type: Action
@@ -2749,114 +3005,7 @@ class Regency(object):
         investiture_divest_regent
         investiture_become_vassal
         '''
-        
-    def bonus_action_lieutenant(self, Regent):
-        '''
-        Type: Bonus
-        Base Cost: 1 GB
-        Base Success: Automatic
-
-        The regent raises a retainer or henchman NPC to the status of a
-        lieutenant. A lieutenant can be another player character if that player 
-        character is not themselves a regent. Anyone can be a lieutenant, 
-        whether they possess a bloodline or not. The lieutenant typically 
-        possesses character levels and may undertake missions in the regent’s 
-        stead. NPC lieutenants require upkeep, and are paid on the Maintenance
-        Costs phase of the season.
-        
-        Lieutenants are extremely useful in that they provide the regent with a 
-        single additional bonus action that may be used at any point in the 
-        action phases of the season, provided the lieutenant is within the 
-        boundaries of the regent’s domain at the time. Once this bonus action is
-        used, it cannot be used again on any subsequent turn in the round. The
-        regent cannot benefit from having multiple lieutenants in this regard,
-        but many regents keep additional lieutenants around in case one becomes
-        occupied.
-
-        Some random events may require the use of a lieutenant to adjudicate 
-        outcomes, thus consuming the lieutenant’s attention for the season. This 
-        forfeits any bonus action they would have otherwise granted, unless the
-        regent has another lieutenant handy.
-
-        For example, Erin Velescarpe raises up her brother, Eist, as a 
-        lieutenant. While he is not a regent, he acts in her stead where she
-        cannot. She uses him several times to perform Decrees while she tends to
-        more pressing matters.
-
-        Eventually, an event arises within Erin’s domain requiring the personal 
-        attention of the regent. Instead, Erin dispatches Eist to settle the
-        matter, and does not gain his bonus action this season.
-        
-        bonus_action_lieutenant
-        '''
-        
-    def bonus_action_move_troops(self, Regent, Troops, Target):
-        '''
-        Type: Bonus
-        Base Cost: 1 GB
-        Base Success: Automatic
-
-        Using this domain action, the regent orders any number of loyal troops
-        to another location within their own domain. Financing the movement of 
-        the troops costs 1 GB for every 10 units or provinces; for example, 1 GB
-        can move a unit across 10 provinces, or 10 units across 1 province, or 
-        any combination that can be mathematically derived. The troops are not 
-        available for use while moving, and the movement completes at the end of 
-        the action round, whereupon they become available for battles waging in 
-        that province.
-
-        If the regent’s domain is invaded during use of the Move Troops action,
-        they can abort any movement that is in progress to come to the defense 
-        of an invaded province, but forfeit any GB spent.
-        
-        INFO NEEDED
-        enemy_troops_in_domain
-        enemy_troops_in_friends_domain
-        at_war
-        
-        move_troops_defend_provence
-        move_troops_defend_friend
-        move_troops_into_enemy_territory
-        '''
-        
-    def bonus_action_muster_armies(self, Regent, Type=None, N=1):
-        '''
-        Type: Bonus
-        Base Cost: Special
-        Base Success: Automatic
-
-        The regent calls up his provinces to war, or raises troops in any
-        province where they maintain a holding. This can take the form of 
-        raising peasant levies, drawing up trained soldiers, or hiring 
-        mercenaries. They must pay the GB cost of any unit, as listed in its 
-        entry. A province can raise a number of military units equal to its 
-        level in a single season. If the troops are being raised in a province 
-        you do not control, the owning regent can automatically deny you this 
-        action.
-
-        Units cannot be used in the same action round in which they are 
-        mustered, unless those units are mercenaries (which can be used 
-        immediately, but mercenaries come with their own risks).
-
-        If the type of unit a regent musters is a Levy, it comes with an 
-        additional cost. The province level is temporarily reduced by 1 each 
-        time Levies are mustered from that province (see the section on Armies 
-        for more details). The rating is restored when the unit is disbanded,
-        but if those units are ever destroyed in combat, the province level is
-        permanently reduced. Levies cost nothing to muster, but are dangerous to
-        use for this reason.  [reduce it, add back when disbanded]
-        
-        INFO NEEDED
-        more_troops_than_enemy
-        enemy_troops_in_domain
-        at_war
-        
-        
-        muster_army
-        muster_levies
-        muster_mercenaries
-        '''
-        
+      
     # Realm Magic skipped... will either add it in as spells or not, though only through override
     
     # Relocate skipped; assume working out of capital and can get where needed
@@ -2971,3 +3120,75 @@ class Regency(object):
             temp = pd.concat([temp, self.Seasons[self.Season-1]['Actions'][a][self.Seasons[self.Season-1]['Actions'][a]['Target Regent']==Regent]])
             temp = temp[temp['Action'].str.lower().srt.contains('espionage')]
         return temp
+        
+    def set_difficulty(self, base, Regent, Target, bonus = 0, hostile=False, assassination=False, player_gbid=None, player_rbid=None):
+        '''
+        This is how much money is thrown at the problem and how
+        much regeny is used to oppose it
+        '''
+        temp = pd.concat([self.Regents[self.Regents['Regent']==a] for a in [Regent, Target]])
+        temp = pd.merge(temp, pd.concat([self.Relationships[self.Relationships['Other']==a] for a in [Regent, Target]]), on='Regent', how='left').fillna(0)
+        mult = -1*hostile + 1-hostile
+        # enemy spends Regency
+        if player_rbid == None:
+            if assassination:
+                rbid = 10
+            else:
+                rbid = mult*temp[temp['Regent'] == Target]['Diplomacy'].values[0]  # diplomacy = williness
+                if temp[temp['Regent'] == Target]['Attitude'].values[0] == 'Aggressive':
+                    rbid = rbid + 2  # agressive will throw around more
+                elif temp[temp['Regent'] == Target]['Attitude'].values[0] == 'Xenophobic':
+                    if temp[temp['Regent'] == Target]['Race'].values[0] != temp[temp['Regent'] == Regent]['Race'].values[0]:
+                        rbid = rbid + 5  # xenophobic will oppose hard if not same race
+            if rbid > temp[temp['Regent'] == Target]['Regency Points'].values[0]:
+                rbid = temp[temp['Regent'] == Target]['Regency Points'].values[0]  # cannot spend more than you have
+            if rbid > 10:
+                rbid = 10
+            elif rbid < 0:
+                rbid = 0
+        else:
+            rbid = player_rbid
+        gbid = 0
+        if player_gbid == None: 
+            # Regent spends gold to counter...
+            if rbid > 0:
+                gbid = mult*temp[temp['Regent'] == Target]['Diplomacy'].values[0]
+            if bonus < 0:
+                gbid = gbid + 1-bonus
+        if gbid > temp[temp['Regent'] == Target]['Gold Bars'].values[0]:
+            # can't spend what you don't have
+            gbid = temp[temp['Regent'] == Target]['Gold Bars'].values[0]
+        if gbid > 10:
+            gbid = 10
+        elif gbid < 0:
+            gbid = 0
+             
+        else:
+            gbid = player_gbid
+
+
+        r_g_b = int(temp[temp['Regent']==Regent]['Gold Bars'].values[0])
+        self.change_regent(Regent, Gold_Bars = r_g_b - gbid)
+        self.change_regent(Target, Regency_Points = temp[temp['Regent']==Target]['Regency Points'].values[0] - rbid)
+
+        difficulty = base - gbid - rbid
+        return difficulty
+        
+    def make_roll(self, Regent, dc, skill, action, adj=False):
+        '''
+        Make the roll
+        '''
+        if action in ['none']:
+            # court bonus
+            None
+        bonus = self.Regents[self.Regents['Regent']==Regent][skill].values[0]
+        n = 1
+        if adj:
+            n == 2
+        roll = np.max(np.random.randint(1,20,n))
+        if roll == 1 or roll+bonus < dc:
+            return False, False
+        elif roll == 20:
+            return True, True
+        if roll+bonus > dc:
+            return True, False
