@@ -525,17 +525,21 @@ class Regency(object):
         '''
         # Provences
         df = self.Provences.copy()
-        
-        temp = df.index[df['Provence'] == 'Provence'].tolist()
-        index = self.get_my_index(df, temp)
-                
-        df.loc[df.shape[0]] = [Provence, Domain, Region, Regent, Terrain, Loyalty, Taxation, Population, Magic, Castle, Capital, np.array([x, y]), Contested, Waterway, False]
-        df['Magic'] = df['Magic'].astype(int)
-        df['Population'] = df['Population'].astype(int)
-        df['Castle'] = df['Castle'].astype(int)
-        df = df.drop_duplicates(subset='Provence', keep="last")
-        
-        self.Provences = df
+        # print(Provence, df[df['Provence'] == Provence].shape[0], x, y)
+        if df[df['Provence'] == Provence].shape[0] > 0:
+            # Already exists!
+            self.change_provence(Provence=Provence, Regent=Regent, Region=Region, Domain=Domain, Terrain=Terrain, Loyalty=Loyalty, Taxation=Taxation, Castle=Castle, Capital=Capital, x=x, y=y, Contested=Contested, Waterway=Waterway, Brigands=False)
+        else:
+            temp = df.index[df['Provence'] == 'Provence'].tolist()
+            index = self.get_my_index(df, temp)
+                    
+            df.loc[df.shape[0]] = [Provence, Domain, Region, Regent, Terrain, Loyalty, Taxation, Population, Magic, Castle, Capital, np.array([x, y]), Contested, Waterway, False]
+            df['Magic'] = df['Magic'].astype(int)
+            df['Population'] = df['Population'].astype(int)
+            df['Castle'] = df['Castle'].astype(int)
+            # df = df.drop_duplicates(subset='Provence', keep="last")
+            
+            self.Provences = df
 
     def change_provence(self, Provence, Regent=None, Region=None, Domain=None, Population_Change=0, Terrain=None, Loyalty=None, Taxation=None, Castle=None, Capital=None, x=None, y=None, Contested=None, Waterway=None, Brigands=False):
         '''
@@ -584,7 +588,7 @@ class Regency(object):
         if x == None or y == None:
             pos = old['Position']
         else:
-            pos = np.array(x, y)
+            pos = np.array([x, y])
         self.Provences.loc[index] = [Provence, Domain, Region, Regent, Terrain, Loyalty, Taxation,
                 Population, Magic, Castle, Capital, old['Position'], Contested, Waterway, Brigands]
 
@@ -845,20 +849,25 @@ class Regency(object):
             
     # Show
     def show_map(self, borders=False, roads=True, caravans=False, shipping=False, bg=True, adj=50, fig_size=(12,12),
-                 cam_map='Birthright', map_alpha = 0.5, axis=False, regions=None, castle=False):
+                 cam_map='Birthright', map_alpha = 0.5, axis=False, regions=None, castle=False, domains=None, regents=None):
         '''
         Map it
         '''
         Geography = self.Geography.copy()
-        if regions == None:
+        if regions == None and domains==None and regents==None:
             Provences = self.Provences.copy().reset_index()
         else:
-            Provences = pd.concat([ self.Provences[ self.Provences['Region']==Region] for Region in regions]).reset_index()
+            Provences = pd.DataFrame()
+            if regions != None:
+                Provences = pd.concat([Provences, pd.concat([ self.Provences[ self.Provences['Region']==Region] for Region in regions])]).reset_index()
+            if domains != None:
+                Provences = pd.concat([Provences, pd.concat([ self.Provences[ self.Provences['Domain']==Domain] for Domain in domains])]).reset_index()
+            if regents != None:
+                Provences = pd.concat([Provences, pd.concat([ self.Provences[ self.Provences['Regent']==regent] for regent in regents])]).reset_index()
+            
         Regents = self.Regents.copy()
         Diplomacy = self.Relationships.copy()
         
-        
-            
         plt.figure(figsize=fig_size)
         if bg:
             if cam_map=='Birthright':
