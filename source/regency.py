@@ -349,15 +349,14 @@ class Regency(object):
         '''
         Have the Agent do a thing to make a decision.
         '''
-        agent = self.agent
         
         # get Int modifier
         mod = self.Regents[self.Regents['Regent']==Regent]['Int'].values[0]
         # predict action based on the old state
         if type == 'Taxes':
-            prediction = agent.tax_model.predict(state.reshape((1,25)))
+            prediction = self.agent.tax_model.predict(state.reshape((1,25)))
         else:  # action
-            prediction = agent.action_model.predict(state.reshape((1,self.agent.action_size)))
+            prediction = self.agent.action_model.predict(state.reshape((1,self.agent.action_size)))
         roll = randint(1, 20)
         if roll < 5-mod or roll == 1:  # Fails a dc 5 int check and does something random
             move =  to_categorical(randint(0, N-1), num_classes=N)
@@ -2252,7 +2251,7 @@ class Regency(object):
                     self.Bonus = 1
                     actors = list(self.Lieutenants[self.Lieutenants['Regent'] == Regent]['Lieutenant'])
                     actors.append(self.Regents[self.Regents['Regent'] == Regent]['Full Name'].values[0])
-                    state = self.agent.get_action_state(row['Regent'], self)  # allow player actions to inform Agent
+                    state, capital, high_pop, low_pop, friend, enemy, rando = self.agent.get_action_state(row['Regent'], self)  # allow player actions to inform Agent
                     for actor in actors:
                         if row['Player'] == True:
                             print('Player...')
@@ -2260,7 +2259,7 @@ class Regency(object):
                             decision = self.make_decision('', self.agent.action_choices, 'Action', state, row['Regent'])
                             # translate into action...
                             index = self.Seasons[self.Season]['Actions'][self.Action].shape[0]
-                            self.Seasons[self.Season]['Actions'][self.Action].loc[index] = self.take_action(decision, Regent, actor, type)
+                            self.Seasons[self.Season]['Actions'][self.Action].loc[index] = self.take_action(decision, Regent, actor, type, state)
                     self.Bonus = 0
                     self.Seasons[self.Season]['Actions'][self.Action].loc[index] = self.take_action(decision, Regent, self.Regents[self.Regents['Regent'] == Regent]['Full Name'].values[0], type)
                     # update_memory
@@ -2268,7 +2267,7 @@ class Regency(object):
             # last bit in function while loop
             self.Action = self.Action+1
     
-    def take_action(self, decision, Regent, actor, type, state):
+    def take_action(self, decision, Regent, actor, Type, state):
         '''
         ['Regent', 'Actor', 'Action Type', 'Action', 'Target Regent', 'Provence', 'Target Provence', 'Target Holding', 'Success?', 'Base Reward', 'State']
         '''
@@ -2279,9 +2278,12 @@ class Regency(object):
             temp = temp[temp['Road'] == 0]
             temp['Roll'] = np.random.randint(1,100,temp.shape[0]) + 10*temp['RiverChasm']
             temp = temp.sort_values('Roll')
-            success, reward = self.bonus_action_build(Regent, temp.iloc[0]['Provence'], temp.iloc[0]['Neighbor'])
-            return [Regent, actor, type, 'build_road', decision, '', temp.iloc[0]['Neighbor'], '', success, reward, state]
-    
+            success, reward = 0, 0
+            if temp.shape[0] > 0:
+                success, reward = self.bonus_action_build(Regent, temp.iloc[0]['Provence'], temp.iloc[0]['Neighbor'])
+                return Regent, actor, Type, 'build_road', decision, '', temp.iloc[0]['Provence'], temp.iloc[0]['Neighbor'], '', success, reward, state
+            else:
+                return Regent, actor, Type, 'build_road', decision, '', '', '', '', success, -100, state
     # Bonus Actions First
     def bonus_action_build(self, Regent, Provence, Road=None, player_gbid=None):
         '''
@@ -2392,8 +2394,8 @@ class Regency(object):
             df = self.Projects[self.Projects['Project Type']=='Road'].copy()
             df[df['Details'] == '({}, {})'.format(Provence, Road)]
             if df.shape[0] > 0:
-                progress = check.iloc[0]['Gold Bars Left'] - np.random.randint(1,6,1)
-                self.Projects.loc[check.index.tolist()[0]] = [Regent, 'Road', '({}, {})'.format(Provence, Road), progress]
+                progress = df.iloc[0]['Gold Bars Left'] - np.random.randint(1,6,1)
+                self.Projects.loc[df.index.tolist()[0]] = [Regent, 'Road', '({}, {})'.format(Provence, Road), progress]
             else:
                 try:
                     self.Projects.loc[max(self.Projects.index.tolist())+1] = [Regent, 'Road', '({}, {})'.format(Provence, Road), progress]
@@ -3126,6 +3128,8 @@ class Regency(object):
         This is how much money is thrown at the problem and how
         much regeny is used to oppose it
         '''
+        rbid = 0
+        gbid = 0
         temp = pd.concat([self.Regents[self.Regents['Regent']==a] for a in [Regent, Target]])
         temp = pd.merge(temp, pd.concat([self.Relationships[self.Relationships['Other']==a] for a in [Regent, Target]]), on='Regent', how='left').fillna(0)
         mult = -1*hostile + 1-hostile
@@ -3162,14 +3166,10 @@ class Regency(object):
             gbid = 10
         elif gbid < 0:
             gbid = 0
-             
-        else:
-            gbid = player_gbid
 
-
-        r_g_b = int(temp[temp['Regent']==Regent]['Gold Bars'].values[0])
-        self.change_regent(Regent, Gold_Bars = r_g_b - gbid)
-        self.change_regent(Target, Regency_Points = temp[temp['Regent']==Target]['Regency Points'].values[0] - rbid)
+        print(type(gbid), type(int(temp[temp['Regent']==Regent]['Gold Bars'].fillna(0).values[0])))
+        self.change_regent(Regent, Gold_Bars = int(temp[temp['Regent']==Regent]['Gold Bars'].fillna(0).values[0]) - gbid)
+        self.change_regent(Target, Regency_Points = temp[temp['Regent']==Target]['Regency Points'].fillna(0).values[0] - rbid)
 
         difficulty = base - gbid - rbid
         return difficulty

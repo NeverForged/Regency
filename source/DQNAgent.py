@@ -26,8 +26,8 @@ class DQNAgent(object):
         self.agent_predict = 0
         self.learning_rate = 0.0005
         
-        self.action_size = 90
-        self.action_choices = 2
+        self.action_size = 91
+        self.action_choices = 1
         
         # different models for different decisions
         self.tax_model = self.network(N=4, K=25)
@@ -371,26 +371,27 @@ class DQNAgent(object):
         temp = Game.Regents.copy()
         temp = pd.concat([temp[temp['Regent']==a] for a in regents_i_care_about])
         temp = pd.concat([temp, Game.Regents[Game.Regents['Regent']==Regent]])
-        if temp[temp['Regent'] == friend]['Regency Points'].values[0] > temp[temp['Regent'] == Regent]['Regency Points'].values[0]:
-            state[51] = 1  # friend_has_more_regency
-        if temp[temp['Regent'] == friend]['Gold Bars'].values[0] > temp[temp['Regent'] == Regent]['Gold Bars'].values[0]:
-            state[52] = 1  # friend_has_more_gold
-        fdip = relationships[relationships['Regent'] == friend]['Diplomacy'].values[0]
-        if fdip > 0:
-            state[53] = 1  # friend_diplomacy_positive
-        if fdip > 5:
-            state[54] = 1  # friend_diplomacy_high
-        if temp[temp['Regent'] == friend]['Alive'].values[0] == True:
-            state[55] = 1  # friend_alive
-        if relationships[relationships['Regent'] == friend]['Trade Permission'].values[0] > 0:
-            state[56] = 1  # friend_trade_permission
-        temp_ = Game.Relationships[Game.Relationships['Regent'] == Regent].copy()
-        temp_ = temp_[temp_['Other'] == friend]
-        if temp_.shape[0] > 0:
-            if temp_['Vassalage'].values[0] > 0:
-                state[57] = 1  # i_am_friends_vassal
-        if relationships[relationships['Regent'] == friend]['Vassalage'].values[0] > 0:
-            state[58] = 1  # friend_is_my_vassal
+        if temp.shape[0] > 0:
+            if temp[temp['Regent'] == friend]['Regency Points'].values[0] > temp[temp['Regent'] == Regent]['Regency Points'].values[0]:
+                state[51] = 1  # friend_has_more_regency
+            if temp[temp['Regent'] == friend]['Gold Bars'].values[0] > temp[temp['Regent'] == Regent]['Gold Bars'].values[0]:
+                state[52] = 1  # friend_has_more_gold
+            fdip = relationships[relationships['Regent'] == friend]['Diplomacy'].values[0]
+            if fdip > 0:
+                state[53] = 1  # friend_diplomacy_positive
+            if fdip > 5:
+                state[54] = 1  # friend_diplomacy_high
+            if temp[temp['Regent'] == friend]['Alive'].values[0] == True:
+                state[55] = 1  # friend_alive
+            if relationships[relationships['Regent'] == friend]['Trade Permission'].values[0] > 0:
+                state[56] = 1  # friend_trade_permission
+            temp_ = Game.Relationships[Game.Relationships['Regent'] == Regent].copy()
+            temp_ = temp_[temp_['Other'] == friend]
+            if temp_.shape[0] > 0:
+                if temp_['Vassalage'].values[0] > 0:
+                    state[57] = 1  # i_am_friends_vassal
+            if relationships[relationships['Regent'] == friend]['Vassalage'].values[0] > 0:
+                state[58] = 1  # friend_is_my_vassal
         '''
                 arranged_trade_route_rando
                 diplomacy_rando_positive
