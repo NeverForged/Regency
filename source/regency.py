@@ -497,11 +497,11 @@ class Regency(object):
         temp = df[df['Provence']==Provence] # just the provence in question
         df = df[df['Provence'] != Provence] # all others are safe
         # add back all other regents in that provence
-        df = pd.concat(df, temp[temp['Regent'] != Regent]) 
+        df = pd.concat(df, temp[temp['Regent'] != Regent], sort=False) 
         # isolate regent
         temp = temp[temp['Regent'] == Regent]
         # add back all other types
-        df = pd.concat(df, temp[temp['Regent'] != Type])
+        df = pd.concat(df, temp[temp['Regent'] != Type], sort=False)
         
         #done
         self.Holdings = df
@@ -547,52 +547,55 @@ class Regency(object):
         '''
         None = not changed
         '''
-        index = self.Provences.index[self.Provences['Provence'] == Provence].tolist()[0]
-        old = self.Provences.loc[index]
-        if Regent == None:
-            Regent = old['Regent']
-        if Domain == None:
-            Domain = old['Domain']
-        if Region == None:
-            Region = old['Region']
-        if Terrain == None:
-            Terrain = old['Terrain']
-        if Contested == None:
-            Contested = old['Contested']
-        if Waterway == None:
-            Waterway = old['Waterway']
         try:
-            loy = old['Loyalty'].replace('Rebellious','0').replace('Poor','1').replace('Average','2').replace('High','3')
-            new = int(loy) + int(Loyalty)
-            if new <= 0:
-                Loyalty = 'Rebellious'
-            if new == 1:
-                Loyalty = 'Poor'
-            if new == 2:
-                Loyalty = 'Average'
-            if new >= 3:
-                Loyalty = 'High'
-        except:
-            if Loyalty == None:
-                Loyalty = old['Loyalty']
-        if Taxation == None:
-            Taxation == old['Taxation']
-           
-        Population = old['Population'] + Population_Change
-        Magic = old['Magic'] - Population_Change
-        
-        if Magic <= 0:
-            Magic = 1
-        if Castle == None:
-            Castle = old['Castle']
-        if Capital == None:
-            Capital = old['Capital']
-        if x == None or y == None:
-            pos = old['Position']
-        else:
-            pos = np.array([x, y])
-        self.Provences.loc[index] = [Provence, Domain, Region, Regent, Terrain, Loyalty, Taxation,
+            index = self.Provences.index[self.Provences['Provence'] == Provence].tolist()[0]
+            old = self.Provences.loc[index]
+            if Regent == None:
+                Regent = old['Regent']
+            if Domain == None:
+                Domain = old['Domain']
+            if Region == None:
+                Region = old['Region']
+            if Terrain == None:
+                Terrain = old['Terrain']
+            if Contested == None:
+                Contested = old['Contested']
+            if Waterway == None:
+                Waterway = old['Waterway']
+            try:
+                loy = old['Loyalty'].replace('Rebellious','0').replace('Poor','1').replace('Average','2').replace('High','3')
+                new = int(loy) + int(Loyalty)
+                if new <= 0:
+                    Loyalty = 'Rebellious'
+                if new == 1:
+                    Loyalty = 'Poor'
+                if new == 2:
+                    Loyalty = 'Average'
+                if new >= 3:
+                    Loyalty = 'High'
+            except:
+                if Loyalty == None:
+                    Loyalty = old['Loyalty']
+            if Taxation == None:
+                Taxation == old['Taxation']
+               
+            Population = old['Population'] + Population_Change
+            Magic = old['Magic'] - Population_Change
+            
+            if Magic <= 0:
+                Magic = 1
+            if Castle == None:
+                Castle = old['Castle']
+            if Capital == None:
+                Capital = old['Capital']
+            if x == None or y == None:
+                pos = old['Position']
+            else:
+                pos = np.array([x, y])
+            self.Provences.loc[index] = [Provence, Domain, Region, Regent, Terrain, Loyalty, Taxation,
                 Population, Magic, Castle, Capital, old['Position'], Contested, Waterway, Brigands]
+        except:
+            print('Error with provence {}'.format(Provence))
 
     def add_lieutenant(self, Regent, Lieutenant):
         '''
@@ -850,8 +853,10 @@ class Regency(object):
         if len(temp) > 0:
             # start disbanding
             if 'Mercenary' in Type.split():
-                # oh no, brigands!
-                self.change_provence(Provence, Brigands=True)
+                # oh no, potential Brigands!
+                success, _ = self.make_roll(Regent, dc, 'Persuasion', adj=False, dis=False, player_gbid=None)
+                if success == False:
+                    self.change_provence(Provence, Brigands=True)
             if 'Levies' in Type.split() and Killed == False:  # disbanded, so go back to their stuff.
                 self.change_provence(slef.Troops.iloc[temp[0]]['Home'], Population_Change=1)
             self.Troops.drop(temp[0], inplace=True)
@@ -868,11 +873,11 @@ class Regency(object):
         else:
             Provences = pd.DataFrame()
             if regions != None:
-                Provences = pd.concat([Provences, pd.concat([ self.Provences[ self.Provences['Region']==Region] for Region in regions])]).reset_index()
+                Provences = pd.concat([Provences, pd.concat([ self.Provences[ self.Provences['Region']==Region] for Region in regions])], sort=False).reset_index()
             if domains != None:
-                Provences = pd.concat([Provences, pd.concat([ self.Provences[ self.Provences['Domain']==Domain] for Domain in domains])]).reset_index()
+                Provences = pd.concat([Provences, pd.concat([ self.Provences[ self.Provences['Domain']==Domain] for Domain in domains])], sort=False).reset_index()
             if regents != None:
-                Provences = pd.concat([Provences, pd.concat([ self.Provences[ self.Provences['Regent']==regent] for regent in regents])]).reset_index()
+                Provences = pd.concat([Provences, pd.concat([ self.Provences[ self.Provences['Regent']==regent] for regent in regents])], sort=False).reset_index()
             
         Regents = self.Regents.copy()
         Diplomacy = self.Relationships.copy()
@@ -934,7 +939,7 @@ class Regency(object):
             npc_regents_n = npc_regents[npc_regents['Alignment'].str.contains('E')==False]
             npc_regents_e['Rank'] = -10
             npc_regents_n['Rank'] = 3
-            npc_regents = pd.concat([npc_regents_e, npc_regents_n])
+            npc_regents = pd.concat([npc_regents_e, npc_regents_n], sort=False)
             
         # player nodes
         nodes = []
@@ -1064,9 +1069,9 @@ class Regency(object):
         
         # filter to Regions
         if Regions != None:
-            filter = pd.concat([self.Provences[self.Provences['Region']==Region].cpopy() for Region in Regions])[['Regent', 'Provence']].copy()
+            filter = pd.concat([self.Provences[self.Provences['Region']==Region].cpopy() for Region in Regions], sort=False)[['Regent', 'Provence']].copy()
             filter_ = pd.merge(filter, self.Holdings.copy(), on='Provence', how='left')[['Regent', 'Provence']].copy()
-            filter = pd.concat([filter, filter_])[['Regent', 'Player']].copy()
+            filter = pd.concat([filter, filter_], sort=False)[['Regent', 'Player']].copy()
             temp = pd.merge(filter, temp, on='Regent', how='left')
             
         # seperate players from npcs
@@ -1078,7 +1083,7 @@ class Regency(object):
         npcs_y = npcs[npcs['Random Event']<Threshold].copy()
         npcs_n = npcs[npcs['Random Event']>=Threshold].copy()
 
-        temp = pd.concat([players, npcs_y[['Regent', 'Player']]])
+        temp = pd.concat([players, npcs_y[['Regent', 'Player']]], sort=False)
         npcs_n['Random Event'] = 'No Event'
 
         # roll 2d10
@@ -1282,7 +1287,7 @@ class Regency(object):
         dfn2 = dfn[dfn['Regency Points']<10].copy()
         dfn1['Bonus'] = 10
         dfn2['Bonus'] = dfn2['Regency Points']
-        dfn = pd.concat([dfn1, dfn2])
+        dfn = pd.concat([dfn1, dfn2], sort=False)
 
         dfn['Check'] =  np.random.randint(1,20,dfn.shape[0]) + dfn['Level'] + dfn['Bonus']
         dfn1 = dfn[dfn['Check']>=15].copy()
@@ -1336,7 +1341,7 @@ class Regency(object):
         for reg in set(dfmp['Regent']):
             ans = 0
             while ans != 1:
-                self.clear_output()
+                self.clear_screen()
                 print('           --- Monsters ---')
                 print('How will {} deal with Monsters in their realm?'.format(self.Regents[self.Regents['Regent']==reg]['Full Name']))
                 print()
@@ -1373,7 +1378,7 @@ class Regency(object):
         df1['Cost'] = df1['Roll']
         df2['Cost'] = df2['Gold Bars']
 
-        df = pd.concat([df1, df2])
+        df = pd.concat([df1, df2], sort=False)
         for i, row in df.iterrows():
             self.change_regent(row['Regent'], Gold_Bars = row['Gold Bars'] - row['Cost'])
         
@@ -1461,7 +1466,7 @@ class Regency(object):
                 else:  # Players get a choice
                     ans = 'hi'
                     while ans.lower()[0] != 'y' and ans.lower()[0] != 'n':
-                        self.clear_output()
+                        self.clear_screen()
                         print('{}: There is a festival in {}; would you like to provide gifts for {} gold bars [you have {} Gold Bars]?'.format(self.Regents[self.Regents['Regent']==row['Regent']]['Full Name'], row['Province'], row['Cost'], row['Gold Bars'] ))
                         ans = imput('[y/n]')
                         if ans == 'y':
@@ -1489,7 +1494,7 @@ class Regency(object):
         df1 = df[df['Cost']<df['Gold Bars']]
         df2 = df[df['Cost']>=df['Gold Bars']]
         df2['Cost'] = df2['Gold Bars']
-        df = pd.concat([df1, df2])
+        df = pd.concat([df1, df2], sort=False)
 
         temp = pd.merge(df['Regent'], self.Provences[['Provence', 'Regent', 'Loyalty']].copy(), on='Regent', how='left').fillna('Rebellious')
         temp = temp[temp['Loyalty']!='Rebellious'].copy()  # pointless
@@ -1512,7 +1517,7 @@ class Regency(object):
                 else:
                     ans = '0'
                     while ans.lower()[0] != '1' and ans.lower()[0] != '2':
-                        self.clear_output()
+                        self.clear_screen()
                         print('{}, there is a Feud in {}, would you like to try and deal with it, or just pay {} for the damages?'.format(self.Regents[self.Regents['Regent']==row['Regent']]['Full Name'], row['Province'], row['Cost']))
                         ans = input('[1] for Adventure to deal with it, [2] to pay for damages.')
                         if ans == '1':
@@ -1621,7 +1626,7 @@ class Regency(object):
         for reg in set(dfmp['Regent']):
             ans = 0
             while ans != 1:
-                self.clear_output()
+                self.clear_screen()
                 print('           --- Magical Event ---')
                 print('How will {} deal with a Magical Event in their realm?'.format(self.Regents[self.Regents['Regent']==reg]['Full Name']))
                 print()
@@ -1661,7 +1666,7 @@ class Regency(object):
         df1 = df[df['Cost']> df['Gold Bars']]
         df2 = df[df['Cost']<=df['Gold Bars']]
         df1['Cost'] = df1['Gold Bars']
-        df = pd.concat([df1, df2])
+        df = pd.concat([df1, df2], sort=False)
        
         lst = []
         for i, row in df.iterrows():
@@ -1736,9 +1741,9 @@ class Regency(object):
         df1 = df1[df1['Provence'] != 0].copy()
         # get trade routes
         df2 = pd.merge(df2, self.Provences[['Regent', 'Provence']].copy(), on='Regent', how='left')
-        df2 = pd.merge(df2, pd.concat([self.Geography[self.Geography['Caravan']==1].copy(),self.Geography[self.Geography['Shipping']==1].copy()]), on='Provence', how='left')               
+        df2 = pd.merge(df2, pd.concat([self.Geography[self.Geography['Caravan']==1].copy(),self.Geography[self.Geography['Shipping']==1].copy()], sort=False), on='Provence', how='left')               
          
-        df = pd.concat([df1, df2]).fillna(0)
+        df = pd.concat([df1, df2], sort=False).fillna(0)
         df['roll'] = np.random.randint(1,100,df.shape[0])
         df = df.sort_values('roll')
         lst = []
@@ -1834,16 +1839,16 @@ class Regency(object):
         temp = self.Holdings.copy()
         temp = temp[temp['Contested'] == 0]  # no rp from contested holding
         temp['Regency Points Add'] = temp['Level']
-        df = pd.concat([df, temp[['Regent','Regency Points Add']]])
+        df = pd.concat([df, temp[['Regent','Regency Points Add']]], sort=False)
        
         # tribute from Vassalage
         temp = self.Relationships[['Other', 'Vassalage']].copy()
         temp['Regent'] = temp['Other']
         temp['Regency Points Add'] = temp['Vassalage']
-        df = pd.concat([df, temp[['Regent','Regency Points Add']]])  # add to the liege
+        df = pd.concat([df, temp[['Regent','Regency Points Add']]], sort=False)  # add to the liege
         temp = self.Relationships[['Regent', 'Vassalage']].copy()
         temp['Regency Points Add'] = -1*temp['Vassalage']
-        df = pd.concat([df, temp[['Regent','Regency Points Add']]])  # take from the others
+        df = pd.concat([df, temp[['Regent','Regency Points Add']]], sort=False)  # take from the others
         
         # calculation
         df = df.groupby('Regent').sum().reset_index()  # this should be it
@@ -1941,7 +1946,7 @@ class Regency(object):
                     if temp_.shape[0] > 0:
                         a,b = self.provence_taxation[self.provence_taxation['Population'] == p][t].values[0]
                         temp_['Revenue'] = np.random.randint(a,b,temp_.shape[0])
-                        df = pd.concat((df, temp_[['Regent', 'Revenue', 'Provence']].copy()))
+                        df = pd.concat((df, temp_[['Regent', 'Revenue', 'Provence']].copy()), sort=False)
         # make reward vector
         temp = self.Provences.copy()
         temp = pd.merge(temp, costs[['Regent', 'Cost']], on='Regent', how='left')
@@ -1992,11 +1997,11 @@ class Regency(object):
                 temp_ = temp[temp['Level']==i].copy()
                 if temp_.shape[0] > 0:
                     temp_['Revenue'] = np.random.randint(lst[i][0],lst[i][1],temp_.shape[0])
-                    df = pd.concat([df, temp_[['Regent', 'Revenue']].copy()], sort='True')
+                    df = pd.concat([df, temp_[['Regent', 'Revenue']].copy()], sort=False)
             temp_ = temp[temp['Level']>=6].copy()
             if temp_.shape[0] > 0:
                 temp_['Revenue'] = np.random.randint(4,10,temp_.shape[0])
-                df = pd.concat([df, temp_[['Regent', 'Revenue']].copy()], sort='True')
+                df = pd.concat([df, temp_[['Regent', 'Revenue']].copy()], sort=False)
         
         # 4.4 Claims from Law Holdings
         temp = pd.merge(self.Holdings[self.Holdings['Contested']==0].copy(),self.Provences.copy(), on='Provence')
@@ -2015,7 +2020,7 @@ class Regency(object):
         
         # 4.5 Trade Routes - Caravans
         temp = self.Provences[['Provence', 'Regent', 'Population']].copy()
-        df_ = pd.concat([self.Geography[self.Geography['Caravan']==1].copy(), self.Geography[self.Geography['Shipping']==1].copy()])
+        df_ = pd.concat([self.Geography[self.Geography['Caravan']==1].copy(), self.Geography[self.Geography['Shipping']==1].copy()], sort=False)
         temp['A'] = temp['Population']
         temp['B'] = temp['Population']
         df_ = pd.merge(df_, temp[['Provence', 'A']], on='Provence', how='left')
@@ -2023,16 +2028,16 @@ class Regency(object):
         df_['Provence'] = df_['Provence_x']
         df_['Revenue'] = ((df_['A']+df_['B']+2*df_['Shipping'])/2).astype(int)
         df_ = pd.merge(df_, self.Provences.copy(), on='Provence', how='left')
-        df = pd.concat([df, df_[['Regent', 'Revenue']]], sort=True)
+        df = pd.concat([df, df_[['Regent', 'Revenue']]], sort=False)
         
         # 4.6 Tribute (the greatest code in the world)
         temp = self.Relationships[self.Relationships['Payment']>0].copy()
         temp['Revenue'] = temp['Payment']*-1
-        df = pd.concat([df, temp[['Regent', 'Revenue']]], sort=True)
+        df = pd.concat([df, temp[['Regent', 'Revenue']]], sort=False)
 
         temp['Regent'] = temp['Other']
         temp['Revenue'] = temp['Payment']
-        df = pd.concat([df, temp[['Regent', 'Revenue']]], sort=True)
+        df = pd.concat([df, temp[['Regent', 'Revenue']]], sort=False)
         
         # 4.7 occupation and Pillaging
         # CODE NEEDED HERE
@@ -2063,10 +2068,10 @@ class Regency(object):
         temp['Domain'] = 1
         df = temp[['Regent','Domain']]
         temp = temp[temp['Castle']>0]
-        df = pd.concat([df,temp[['Regent','Domain']]])
+        df = pd.concat([df,temp[['Regent','Domain']]], sort=False)
         temp = self.Holdings[self.Holdings['Type'] != 'Source'].copy()
         temp['Domain'] = 1
-        df = pd.concat([df,temp[['Regent','Domain']]])
+        df = pd.concat([df,temp[['Regent','Domain']]], sort=False)
         df = df[['Regent','Domain']].groupby('Regent').sum().reset_index().fillna(0)
         df['Cost'] = ((df['Domain']+4)/5).astype(int)
         df = df[['Regent','Cost']]
@@ -2240,10 +2245,11 @@ class Regency(object):
         self.Seasons[self.Season]['Actions'] = {}
         while self.Action < 4:
             # Make A DataFrame
-            cols = ['Regent', 'Actor', 'Action Type', 'Action', 'Decision', 'Target Regent', 'Provence', 'Target Provence', 'Target Holding', 'Success?', 'Base Reward', 'State']
+            cols = ['Regent', 'Actor', 'Action Type', 'Action', 'Decision', 'Target Regent', 'Provence', 'Target Provence', 'Target Holding', 'Success?', 'Base Reward', 'State', 'Invalid', 'Message']
             self.Seasons[self.Season]['Actions'][self.Action] = pd.DataFrame(columns=cols)
             for I in reversed(list(set(self.Seasons[self.Season]['Season']['Initiative']))):
                 # grab the regents that are acting this round
+                print('Action {} - Initiative {}'.format(self.Action, I), end='\r')
                 df = self.Seasons[self.Season]['Season'][self.Seasons[self.Season]['Season']['Initiative'] == I].copy()
                 for i, row in df.iterrows():  # each regent
                     Regent = row['Regent']
@@ -2256,37 +2262,252 @@ class Regency(object):
                         if row['Player'] == True:
                             print('Player...')
                         else:  # NPC!
+                            type = 'Bonus'
+                            invalid = True
+                            if invalid == True:
+                                decision = self.make_decision('', self.agent.action_choices, 'Action', state, row['Regent'])
+                                # translate into action...
+                                index = self.Seasons[self.Season]['Actions'][self.Action].shape[0]
+                                Regent, Actor, Action_Type, action, Decision, Target_Regent, Provence, Target_Provence, Target_Holding, Success, reward, State, invalid, Message = self.take_action(decision, Regent, actor, type, state, capital, high_pop, low_pop, friend, enemy, rando)
+                                # update memory if invalid
+                                if invalid == True:
+                                    next_state = state
+                                    self.agent.remember(state, decision, reward, next_state, 'Action', invalid)
+                                    # and train it... to prevent future mistakes
+                                    self.agent.train_short_memory(state, action, reward, next_state, 'Action', invalid)
+                                else:  # update action vector
+                                    self.Seasons[self.Season]['Actions'][self.Action].loc[index] = [Regent, Actor, Action_Type, action, Decision, Target_Regent, Provence, Target_Provence, Target_Holding, Success, reward, State, invalid, Message]
+                    self.Bonus = 0
+                    # time for the actual action...
+                    if row['Player'] == True:
+                        print('Player...')
+                    else:  # NPC!
+                        invalid = True
+                        while invalid == True:
+                            type = 'Action'
                             decision = self.make_decision('', self.agent.action_choices, 'Action', state, row['Regent'])
                             # translate into action...
                             index = self.Seasons[self.Season]['Actions'][self.Action].shape[0]
-                            self.Seasons[self.Season]['Actions'][self.Action].loc[index] = self.take_action(decision, Regent, actor, type, state)
-                    self.Bonus = 0
-                    self.Seasons[self.Season]['Actions'][self.Action].loc[index] = self.take_action(decision, Regent, self.Regents[self.Regents['Regent'] == Regent]['Full Name'].values[0], type)
-                    # update_memory
+                            Regent, Actor, Action_Type, action, Decision, Target_Regent, Provence, Target_Provence, Target_Holding, Success, reward, State, invalid, Message = self.take_action(decision, Regent, actor, type, state, capital, high_pop, low_pop, friend, enemy, rando)
+                            # update memory if invalid
+                            if invalid == True:
+                                next_state = state
+                                self.agent.remember(state, decision, reward, next_state, 'Action', invalid)
+                                # and train it... to prevent future mistakes
+                                self.agent.train_short_memory(state, action, reward, next_state, 'Action', invalid)
+                            else:  # update action vector
+                                self.Seasons[self.Season]['Actions'][self.Action].loc[index] = [Regent, Actor, Action_Type, action, Decision, Target_Regent, Provence, Target_Provence, Target_Holding, Success, reward, State, invalid, Message]
                     
+            # update memories and train, unless action = 3 (wait for begining of next round to add in gold and regency)        
             # last bit in function while loop
+            self.clear_screen()
+            print(self.Seasons[self.Season]['Actions'][self.Action].loc[index])
+            input()
             self.Action = self.Action+1
-    
-    def take_action(self, decision, Regent, actor, Type, state):
+           
+    def take_action(self, decision, Regent, actor, Type, state, capital, high_pop, low_pop, friend, enemy, rando):
         '''
-        ['Regent', 'Actor', 'Action Type', 'Action', 'Target Regent', 'Provence', 'Target Provence', 'Target Holding', 'Success?', 'Base Reward', 'State']
+        
+        ['Regent', 'Actor', 'Action Type', 'Action', 'Target Regent', 'Provence', 'Target Provence', 'Target Holding', 'Success?', 'Base Reward', 'State', invalid, message]
         '''
+        invalid = False
+        # decision[0] == 1
         if decision[0] == 1:  # build_road
+            
             # need provences
             temp = pd.merge(self.Provences[['Provence']][self.Provences['Regent'] == Regent], self.Geography, on='Provence', how='left')
             temp = temp[temp['Border'] == 1]
             temp = temp[temp['Road'] == 0]
             temp['Roll'] = np.random.randint(1,100,temp.shape[0]) + 10*temp['RiverChasm']
             temp = temp.sort_values('Roll')
-            success, reward = 0, 0
-            if temp.shape[0] > 0:
-                success, reward = self.bonus_action_build(Regent, temp.iloc[0]['Provence'], temp.iloc[0]['Neighbor'])
-                return Regent, actor, Type, 'build_road', decision, '', temp.iloc[0]['Provence'], temp.iloc[0]['Neighbor'], '', success, reward, state
+            success, reward = False, 0
+            # this can only be done if you have a provence
+            if state[23] == 1:
+                
+                success, reward, message = self.bonus_action_build(Regent, temp.iloc[0]['Provence'], temp.iloc[0]['Neighbor'])
+                return [Regent, actor, Type, 'build_road', decision, '', temp.iloc[0]['Provence'], temp.iloc[0]['Neighbor'], '', success, reward, state, invalid, message]
             else:
-                return Regent, actor, Type, 'build_road', decision, '', '', '', '', success, -100, state
+                invalid = True
+                return [Regent, actor, Type, 'build_road', decision, '', '', '', '', success, -100, state, invalid, '']
+        # decision[1] == 1
+        elif decision[1] == 1:  #decree_general
+            if state[4] + state[5] + state[6] == 0:  # Dormant Court, not a valid action
+                invalid = True
+                return [Regent, actor, Type, 'decree_general', decision, '', '', '', '', False, -100, state, invalid, '']
+            else:
+                
+                court = 'Average'
+                if state[4] == 1:
+                    court = 'Bare'
+                elif state[6] == 1:
+                    court = 'Rich'
+                success, reward, message = self.bonus_action_decree(Regent, actor, 'General')
+                message = message.replace('!Regent', actor)
+                return [Regent, actor, Type, 'decree_general', decision, '', '', '', '', success, reward, state, invalid, message]
+        # decision[2] == 1
+        elif decision[2] == 1:  #decree_assest_seizure  
+            if state[4] + state[5] + state[6] == 0:  # Dormant Court, not a valid action
+                invalid = True
+                return [Regent, actor, Type, 'decree_asset_seizure', decision, '', '', '', '', False, -100, state, invalid, '']
+            else:
+                court = 'Average'
+                if state[4] == 1:
+                    court = 'Bare'
+                elif state[6] == 1:
+                    court = 'Rich'
+                success, reward, message = self.bonus_action_decree(Regent, actor, 'Asset Seizure')
+                message = message.replace('!Regent', actor)
+                return [Regent, actor, Type, 'decree_asset_seizure', decision, '', '', '', '', success, reward, state, invalid, message]
+        # decision[3] == 1
+        elif decision[3] == 1:  #disband_army
+            if state[44] == 0:
+                invalid = True
+                return [Regent, actor, Type, 'disband_army', decision, '', '', '', '', False, -100, state, invalid, '']
+            else:
+                
+                temp = self.Troops[self.Troops['Regent'] == Regent].copy()
+                temp['target'] = temp['CR'] - temp['Cost']
+                temp = temp.sort_values('target')
+                row = temp.iloc[0]
+                self.bonus_action_disband(Regent, [row['Type']], [row['Provence']])
+                reward = 0
+                if state[87] == 1:  #Aggressive
+                    reward = -3
+                return [Regent, actor, Type, 'disband_army', decision, '', row['Provence'], '', '', True, reward, state, invalid, '{} disbanded a unit of {} stationed in {}'.format(actor, row['Type'], row['Provence'])]
+        # decision[4] == 1
+        elif decision[4] == 1:  #disband_levees
+            if state[44] == 0 or state[45] == 0:
+                invalid = True
+                return [Regent, actor, Type, 'disband_levees', decision, '', '', '', '', False, -100, state, invalid, '']   
+            else:
+                
+                temp = self.Troops[self.Troops['Regent'] == Regent].copy()
+                temp = temp[temp['Type'].str.lower().str.contains('levees')]
+                units = []
+                provences = []
+                reward = int(len(units)/3)
+                if state[87] == 1:  #Aggressive
+                    reward = reward -3
+                for i, row in temp.iterrows():
+                    units.append(row['Type'])
+                    provences.append(row['Provence'])
+                self.bonus_action_disband(Regent, [row['Type']], [row['Provence']])
+                return [Regent, actor, Type, 'disband_levees', decision, '', row['Provence'], '', '', True, reward, state, invalid, '{} disbanded all levees'.format(actor)]
+        # decision[5] == 1
+        elif decision[5] == 1:  #disband_mercenaries
+            if state[44] == 0 or state[46] == 0:
+                invalid = True
+                return [Regent, actor, Type, 'disband_mercenaries', decision, '', '', '', '', False, -100, state, invalid, '']  
+            else:
+                
+                temp = self.Troops[self.Troops['Regent'] == Regent].copy()
+                temp = temp[temp['Type'].str.lower().str.contains('mercenary')]
+                units = []
+                provences = []
+                reward = int(len(units)/3)
+                if state[87] == 1:  #Aggressive
+                    reward = reward -3
+                for i, row in temp.iterrows():
+                    units.append(row['Type'])
+                    provences.append(row['Provence'])
+                self.bonus_action_disband(Regent, [row['Type']], [row['Provence']])
+                return [Regent, actor, Type, 'disband_mercenaries', decision, '', row['Provence'], '', '', True, reward, state, invalid, '{} disbanded all mercenaries'.format(actor)]
+        # decision[6] == 1
+        elif decision[6] == 1:  #agitate_for_friend
+            if state[35] == 0 and state[4] == 1 or state[34]+state[35]+state[36]+state[37] == 0:
+                invalid = True
+                return [Regent, actor, Type, 'agitate', decision, '', '', '', '', False, -100, state, invalid, '']
+            else:
+                
+                temp = self.Holdings[self.Holdings['Regent'] == Regent].copy()
+                limit = min(self.Regents[self.Regents['Regent']==Regent][['Regency Points', 'Gold Bars']].values[0])
+                if state[4] == 1:  # bonus action, temple only
+                    temp = temp[temp['Type'] == 'Temple'].copy()
+                    limit = 1
+                temp = pd.merge(temp, self.Provences[self.Provences['Regent'] == friend].copy(), on='Provence', how='left')
+                targets = []
+                for i, row in temp.iterrows():
+                    if i < limit:
+                        targets.append(row['Provence'])
+                success, reward, message = self.domain_action_agitate(Regent, friend, False, targets)
+                
+                if state[92] == 0 and state[90] == 1:  # xenophobic penalty
+                    reward = reward - 5
+                return [Regent, actor, Type, 'agitiate_for_friend', decision, friend, '', ', '.join(targets), '', success, reward, state, invalid, message]
+        # decision[7] == 1:
+        elif decision[7] == 1:  #agitate_against_enemy
+            if state[35] == 0 and state[4] == 1 or state[34]+state[35]+state[36]+state[37] == 0:
+                invalid = True
+                return [Regent, actor, Type, 'agitate', decision, '', '', '', '', False, -100, state, invalid, '']
+            else:
+                
+                temp = self.Holdings[self.Holdings['Regent'] == Regent].copy()
+                limit = min(self.Regents[self.Regents['Regent']==Regent][['Regency Points', 'Gold Bars']].values[0])
+                if state[4] == 1:  # bonus action, temple only
+                    temp = temp[temp['Type'] == 'Temple'].copy()
+                    limit = 1
+                temp = pd.merge(temp, self.Provences[self.Provences['Regent'] == friend].copy(), on='Provence', how='left')
+                targets = []
+                for i, row in temp.iterrows():
+                    if i < limit:
+                        targets.append(row['Provence'])
+                success, reward, message = self.domain_action_agitate(Regent, enemy, True, targets)
+                if state[89] == 1 or  (state[92] == 1 and state[90] == 1):  # Agressive bonus/Xenophobic bonus
+                    reward = 2*reward
+                if state[92] == 0 and state[90] == 1:  # xenophobic penalty
+                    reward = reward - 5
+                return [Regent, actor, Type, 'agitiate_for_friend', decision, friend, '', ', '.join(targets), '', success, reward, state, invalid, message]
+        # decision[8] == 1:
+        elif decision[8] == 1:  #agitate_for_rando
+            if state[35] == 0 and state[4] == 1 or state[34]+state[35]+state[36]+state[37] == 0:
+                invalid = True
+                return [Regent, actor, Type, 'agitate', decision, '', '', '', '', False, -100, state, invalid, '']
+            else:
+                
+                temp = self.Holdings[self.Holdings['Regent'] == Regent].copy()
+                limit = min(self.Regents[self.Regents['Regent']==Regent][['Regency Points', 'Gold Bars']].values[0])
+                if state[4] == 1:  # bonus action, temple only
+                    temp = temp[temp['Type'] == 'Temple'].copy()
+                    limit = 1
+                temp = pd.merge(temp, self.Provences[self.Provences['Regent'] == friend].copy(), on='Provence', how='left')
+                targets = []
+                for i, row in temp.iterrows():
+                    if i < limit:
+                        targets.append(row['Provence'])
+                success, reward, message = self.domain_action_agitate(Regent, rando, False, targets)
+                if state[92] == 0 and state[90] == 1:  # xenophobic penalty
+                    reward = reward - 5
+                return [Regent, actor, Type, 'agitiate_for_friend', decision, friend, '', ', '.join(targets), '', success, reward, state, invalid, message] 
+        # decision[9] == 1
+        elif decision[9] == 1:  #agitate_against_rando
+            if state[35] == 0 and state[4] == 1 or state[34]+state[35]+state[36]+state[37] == 0:
+                invalid = True
+                return [Regent, actor, Type, 'agitate', decision, '', '', '', '', False, -100, state, invalid, '']
+            else:
+                
+                temp = self.Holdings[self.Holdings['Regent'] == Regent].copy()
+                limit = min(self.Regents[self.Regents['Regent']==Regent][['Regency Points', 'Gold Bars']].values[0])
+                if state[4] == 1:  # bonus action, temple only
+                    temp = temp[temp['Type'] == 'Temple'].copy()
+                    limit = 1
+                temp = pd.merge(temp, self.Provences[self.Provences['Regent'] == friend].copy(), on='Provence', how='left')
+                targets = []
+                for i, row in temp.iterrows():
+                    if i < limit:
+                        targets.append(row['Provence'])
+                success, reward, message = self.domain_action_agitate(Regent, rando, True, targets)
+                if state[89] == 1 or  (state[92] == 1 and state[90] == 1):  # Agressive bonus/Xenophobic bonus
+                    reward = 2*reward
+                if state[92] == 0 and state[90] == 1:  # xenophobic penalty
+                    reward = reward - 5
+                return [Regent, actor, Type, 'agitiate_for_friend', decision, friend, '', ', '.join(targets), '', success, reward, state, invalid, message]
+        # decision[10] == 1:
+        else:
+            return [Regent, actor, Type, 'None/Error', decision, '', '', '', '', False, 0, state, False, '']
     # Bonus Actions First
     def bonus_action_build(self, Regent, Provence, Road=None, player_gbid=None):
         '''
+        
         
         Base Cost: Varies
         Base Success: DC 5
@@ -2351,9 +2572,8 @@ class Regency(object):
         
         build_road
         '''
-        # temp = pd.concat([self.Provences[self.Provences['Provence']==Provence], self.Provences[self.Provences['Provence']==Road])
-    
-        temp = pd.concat([self.Provences[self.Provences['Provence']==Provence], self.Provences[self.Provences['Provence']==Road]])
+        message = ''
+        temp = pd.concat([self.Provences[self.Provences['Provence']==Provence], self.Provences[self.Provences['Provence']==Road]], sort=False)
         temp = pd.merge(temp, self.Geography[self.Geography['Neighbor']==Road], on='Provence', how='left').fillna(0)
         temp['Terrain'] = temp['Terrain'].str.replace('Desert', '2').replace('Tundra', '2').replace('Forest','2').replace('Steppes','2')
         temp['Terrain'] = temp['Terrain'].str.replace('Plains', '1').replace('Farmland','1')
@@ -2384,8 +2604,7 @@ class Regency(object):
             crit =  False
         else:
             self.change_regent(Regent, Gold_Bars = self.Regents[self.Regents['Regent']==Regent]['Gold Bars'].values[0] - cost)
-            success, crit = self.make_roll(Regent, dc, 'Persuasion', 'build_road')
-        print(success)
+            success, crit = self.make_roll(Regent, dc, 'Persuasion', 'build_road', Player_gbid=player_gbid)
         if success:
             progress = cost
             if crit:
@@ -2400,16 +2619,18 @@ class Regency(object):
                 try:
                     self.Projects.loc[max(self.Projects.index.tolist())+1] = [Regent, 'Road', '({}, {})'.format(Provence, Road), progress]
                 except:
-                    print('first')
                     self.Projects.loc[0] = [Regent, 'Road', '({}, {})'.format(Provence, Road), progress]
+            message = '{} built a road between {} and {}'.format(Regent, Provence, Road)
+        else:
+            message = '{} failed to build a road between {} and {}.'.format(Regent, Provence, Road)
         # rewards
         reward = 5*success - 5*(1-success)
         if self.Regents[self.Regents['Regent']==Regent]['Attitude'].values[0] == 'Xenophobic':
             if self.Regents[self.Regents['Regent']==Regent]['Race'].values[0] != self.Regents[self.Regents['Regent']==target]['Race'].values[0]:
-                reward = -5  #why build a road to let THEM in?
-        return success, reward
+                reward = -10  #why build a road to let THEM in?
+        return success, reward, message
         
-    def bonus_action_decree(self, Regent, Type='Asset Seizure'):
+    def bonus_action_decree(self, Regent, dectype='Asset Seizure', court='Average', player_gbid=None):
         '''
         Type: Bonus
         Base Cost: 1 GB
@@ -2431,11 +2652,45 @@ class Regency(object):
         Furthermore, the condition of the regent’s court may cause this check to be made at advantage or disadvantage, or not at all. See the section on Court Expenses for more details.
         
         
-        decree_festival
+        decree_general
         decree_asset_seizure
         '''
-   
-    def bonus_action_disband(self, Regent):
+        
+        cost = 1
+        dc = 10
+        skill = 'Persuasion'
+        adj = False
+        dis = False
+        if court == 'Bare':
+            dis = True
+        elif court == 'Rich':
+            adj = True
+        if cost > self.Regents[self.Regents['Regent']==Regent]['Gold Bars'].values[0]:  # can't afford it
+            success = False
+            crit =  False
+        else:
+            success, crit = self.make_roll(Regent, dc, skill, adj, dis)
+        if success:
+            if dectype != 'Asset Seizure':
+                # regular decree
+                lst = ['!Regent had A roustabout or rumormonger arrested.'
+                        , "A festival is declared throughout !Regent's domain."
+                        , '!Regent offered a bounty for local monsters, which may draw adventurers to their territory.'
+                        , '!Regent passed a minor act of legislation regarding changes to the law, acceptable behaviors, or cultural integration.'
+                        , '!Regent dealt with a minor even by placating the petitioning party through offerings and compensation.']
+                message = lst[int(np.random.randint(1,5,1))]
+            else:
+                roll = np.random.randint(1,6,1)
+                message = '!Regent applies a tax or asset seizure, and gains {} gold bars.'.format(roll)
+                cost = cost - roll
+            reward = 3
+        else:
+            message = '!Regent tried to make a decree, but failed.'
+            reward = 0
+        self.change_regent(Regent, Gold_Bars = self.Regents[self.Regents['Regent']==Regent]['Gold Bars'].values[0] - cost)
+        return success, reward, message
+            
+    def bonus_action_disband(self, Regent, units, Provence):
         '''
         Type: Bonus
 
@@ -2469,6 +2724,9 @@ class Regency(object):
         disband_levees
         disband_mercenaries
         '''
+        df = self.Troops[self.Troops['Regent'] == 'Regent'].copy()
+        for i, unit in enumerate(units):
+            disband_troops(self, Regent, Provence[i], unit, Killed=False)
     
     def bonus_action_fianances(self, regent, number=1):
         '''
@@ -2497,7 +2755,7 @@ class Regency(object):
         
         
     # Bonus & Domain
-    def domain_action_agitate(self, Regent, Target, Conflict, Bonus=False, Provences=None):
+    def domain_action_agitate(self, Regent, Target, Conflict, Provences=None, bid=None):
         '''
         Base Cost: 1 RP, 1 GB
         Base Success: DC 10
@@ -2541,7 +2799,49 @@ class Regency(object):
         agitate_conflict_true
         agitate_conflict_false
         '''
-    
+        cost = len(Provences)
+        dc = 10
+        # spend the money and regency
+        self.change_regent(Regent, Gold_Bars = self.Regents[self.Regents['Regent']==Regent]['Gold Bars'].values[0] - cost, Regency_Points = self.Regents[self.Regents['Regent']==Regent]['Regency Points'].values[0] - cost)
+        # set the dc
+        adj = (Conflict == False)
+        dc = self.set_difficulty(dc, Regent, Target, hostile=Conflict)
+        # roll 'em
+        success, crit = self.make_roll(Regent, dc, 'Persuasion', adj=False, dis=False, player_gbid=bid)
+        add = -1*Conflict + 1-Conflict
+        dip = add
+        if crit:
+            add = 2*add
+        if success:
+            # make the changes
+            temp = {}
+            temp['Provence'] = Provences
+            temp = pd.DataFrame(temp)
+            temp = pd.merge(temp, self.Provences.copy(), on='Provence', how='left')
+            temp['Loyalty'] = temp['Loyalty'].str.replace('Rebellious','0').replace('Poor','1').replace('Average','2').replace('High','3').astype(int) + add 
+            temp['Loyalty'] = temp['Loyalty'].astype(str).str.replace('-2', 'Rebellious').replace('-1', 'Rebellious').replace('0', 'Rebellious').replace('1', 'Poor').replace('2', 'Average').replace('3', 'High').replace('4', 'High').replace('5', 'High')
+            for i, row in temp.iterrows():
+                self.change_provence(row['Provence'], Loyalty=row['Loyalty'])
+            
+            if dip == -1:
+                message = '{} agitated the people against {} in the following provences: {}'.format(Regent, Target, ', '.join(Provences))
+            else:
+                message = '{} used their influence to rally the people behind {} in the following provences: {}'.format(Regent, Target, ', '.join(Provences))
+            # change diplomacy (Traget cares)
+            self.add_relationship(Target, Regent, Diplomacy=dip)
+            temp = self.Relationships[self.Relationships['Regent']==Regent].copy()
+            if temp[temp['Other']==Target]['Diplomacy'].shape[0] > 0:
+                reward = dip*temp[temp['Other']==Target]['Diplomacy'].values[0]
+            else:
+                reward = 0
+            attitude = self.Regents[self.Regents['Regent']==Regent]['Attitude']
+        else:
+            message = '{} failed to change peoples minds about {} in {}'.format(Regent, Target, ', '.join(Provences))
+            # change diplomacy (Traget cares)
+            self.add_relationship(Target, Regent, Diplomacy=dip)
+            reward = 0
+        return success, reward, message
+        
     def domain_action_espionage(self, Regent, Target, Type, Bonus=False):
         '''
         Type: Action (or Bonus)
@@ -2744,7 +3044,7 @@ class Regency(object):
     def domain_action_contest(self, Regent, Target):
         '''
         Cost: 1 RP
-        Sucess: DC 10
+        success: DC 10
         
         INFO NEEDED:
         enemy_has_(type)_holding in my lands
@@ -2763,7 +3063,7 @@ class Regency(object):
     def domain_action_create_holding(self, Regent, Target):
         '''
         Base: 1 GB
-        Sucess: 10 (+ population) (Persuasion)
+        success: 10 (+ population) (Persuasion)
         
         INFO NEEDED:
         space for a holding nearby where I don't have a holding of that type and it's a type I can make
@@ -3115,23 +3415,23 @@ class Regency(object):
     def detect_espionage(self, Regent):
         temp = pd.DataFrame()
         if self.Season > 0:
-            temp = pd.concat([self.Seasons[self.Season-1]['Actions'][a][self.Seasons[self.Season-1]['Actions'][a]['Target Regent']==Regent] for a in range(1,3)])
+            temp = pd.concat([self.Seasons[self.Season-1]['Actions'][a][self.Seasons[self.Season-1]['Actions'][a]['Target Regent']==Regent] for a in range(1,3)], sort=False)
             temp = temp[temp['Action'].str.lower().srt.contains('espionage')]
         a = 1
         while a < self.Action:
-            temp = pd.concat([temp, self.Seasons[self.Season-1]['Actions'][a][self.Seasons[self.Season-1]['Actions'][a]['Target Regent']==Regent]])
+            temp = pd.concat([temp, self.Seasons[self.Season-1]['Actions'][a][self.Seasons[self.Season-1]['Actions'][a]['Target Regent']==Regent]], sort=False)
             temp = temp[temp['Action'].str.lower().srt.contains('espionage')]
         return temp
         
-    def set_difficulty(self, base, Regent, Target, bonus = 0, hostile=False, assassination=False, player_gbid=None, player_rbid=None):
+    def set_difficulty(self, base, Regent, Target, hostile=False, assassination=False, player_rbid=None):
         '''
         This is how much money is thrown at the problem and how
         much regeny is used to oppose it
         '''
         rbid = 0
         gbid = 0
-        temp = pd.concat([self.Regents[self.Regents['Regent']==a] for a in [Regent, Target]])
-        temp = pd.merge(temp, pd.concat([self.Relationships[self.Relationships['Other']==a] for a in [Regent, Target]]), on='Regent', how='left').fillna(0)
+        temp = pd.concat([self.Regents[self.Regents['Regent']==a] for a in [Regent, Target]], sort=False)
+        temp = pd.merge(temp, pd.concat([self.Relationships[self.Relationships['Other']==a] for a in [Regent, Target]], sort=False), on='Regent', how='left').fillna(0)
         mult = -1*hostile + 1-hostile
         # enemy spends Regency
         if player_rbid == None:
@@ -3152,40 +3452,44 @@ class Regency(object):
                 rbid = 0
         else:
             rbid = player_rbid
-        gbid = 0
-        if player_gbid == None: 
-            # Regent spends gold to counter...
-            if rbid > 0:
-                gbid = mult*temp[temp['Regent'] == Target]['Diplomacy'].values[0]
-            if bonus < 0:
-                gbid = gbid + 1-bonus
-        if gbid > temp[temp['Regent'] == Target]['Gold Bars'].values[0]:
-            # can't spend what you don't have
-            gbid = temp[temp['Regent'] == Target]['Gold Bars'].values[0]
-        if gbid > 10:
-            gbid = 10
-        elif gbid < 0:
-            gbid = 0
-
-        print(type(gbid), type(int(temp[temp['Regent']==Regent]['Gold Bars'].fillna(0).values[0])))
-        self.change_regent(Regent, Gold_Bars = int(temp[temp['Regent']==Regent]['Gold Bars'].fillna(0).values[0]) - gbid)
+        
         self.change_regent(Target, Regency_Points = temp[temp['Regent']==Target]['Regency Points'].fillna(0).values[0] - rbid)
 
         difficulty = base - gbid - rbid
         return difficulty
         
-    def make_roll(self, Regent, dc, skill, action, adj=False):
+    def make_roll(self, Regent, dc, skill, adj=False, dis=False, player_gbid=None):
         '''
         Make the roll
         '''
-        if action in ['none']:
-            # court bonus
-            None
+        temp = self.Regents[self.Regents['Regent']==Regent].copy()
+        
+        gbid = 0
         bonus = self.Regents[self.Regents['Regent']==Regent][skill].values[0]
+        if player_gbid == None: 
+            # Regent spends gold to counter...
+            if dc > 5:
+                gbid = dc - 5
+            if bonus < 0:
+                gbid = gbid + 1-bonus
+        if gbid > temp[temp['Regent'] == Regent]['Gold Bars'].values[0]:
+            # can't spend what you don't have
+            gbid = temp[temp['Regent'] == Regent]['Gold Bars'].values[0]
+        if gbid > 10:
+            gbid = 10
+        elif gbid < 0:
+            gbid = 0
+        dc = dc - gbid  # lowered the difficulty
+        self.change_regent(Regent, Gold_Bars = int(temp[temp['Regent']==Regent]['Gold Bars'].fillna(0).values[0]) - gbid)
+        
         n = 1
         if adj:
             n == 2
-        roll = np.max(np.random.randint(1,20,n))
+        if dis == False:
+            roll = np.max(np.random.randint(1,20,n))
+        else:
+            roll = np.min(np.random.randint(1,20,2))
+        
         if roll == 1 or roll+bonus < dc:
             return False, False
         elif roll == 20:

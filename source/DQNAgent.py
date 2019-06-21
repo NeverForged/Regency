@@ -26,8 +26,8 @@ class DQNAgent(object):
         self.agent_predict = 0
         self.learning_rate = 0.0005
         
-        self.action_size = 91
-        self.action_choices = 1
+        self.action_size = 94
+        self.action_choices = 8
         
         # different models for different decisions
         self.tax_model = self.network(N=4, K=25)
@@ -36,6 +36,7 @@ class DQNAgent(object):
         self.actual = []
         self.memory = {}
         self.memory['Taxes'] = []
+        self.memory['Action'] = []
         
     def get_tax_state(self, Game, df, Regent):
         '''
@@ -218,7 +219,11 @@ class DQNAgent(object):
                 state[25] = 1  # i_have_contested_provence
             # get three cities to look at
             my_provences['roll'] = np.random.randint(1,100,my_provences.shape[0])
-            capital = my_provences[my_provences['Capital']==True].sort_values('Population', ascending=False).iloc[0]['Provence']    
+            try:
+                capital = my_provences[my_provences['Capital']==True].sort_values('Population', ascending=False).iloc[0]['Provence'] 
+            except:
+                print('Forgot to mark a capital')
+                capital = my_provences[my_provences['Capital']==False].sort_values('Population', ascending=False).iloc[0]['Provence']
             high_pop = my_provences[my_provences['Capital']==False].sort_values('Population', ascending=False).iloc[0]['Provence']
             low_pop = my_provences[my_provences['Capital']==False].sort_values('Population').iloc[0]['Provence']
             provences_i_care_about = [capital, high_pop, low_pop]
@@ -445,7 +450,7 @@ class DQNAgent(object):
             state[68] = 1  # enemy_diplomacy_really_low
         if temp[temp['Regent'] == enemy]['Alive'].values[0] == True:
             state[69] = 1  # enemy_alive
-        temp = Game.Holdings[Game.Holdings['Regent'] == enemy]
+        temp = Game.Holdings[Game.Holdings['Regent'] == enemy].copy()
         temp['Enemy'] = temp['Regent']
         temp = pd.merge(temp[['Enemy', 'Provence', 'Type']], my_provences, on='Provence', how='left')
         for i, a in enumerate(['Law', 'Temple', 'Guild', 'Source']):
@@ -502,7 +507,11 @@ class DQNAgent(object):
             
         for i, a in enumerate(['Aggressive', 'Normal', 'Peaceful', 'Xenophobic']):
             if regent['Attitude'].values[0] == a:
-                state[87+i] = 1
+                state[87+i] = 1  # 'Aggressive', 'Normal', 'Peaceful', 'Xenophobic'
+                
+        for i, a in enumerate([enemy, friend, rando]):
+            if regent['Race'].values[0] == Game.Regents[Game.Regents['Regent']==a]['Race'].values[0]:
+                state[91+i] = 1  # enemy_same_race, friend_same_race, rando_same_race
         return np.asarray(state), capital, high_pop, low_pop, friend, enemy, rando
             
     def network(self, weights=None, N=3, K=11):
@@ -525,8 +534,8 @@ class DQNAgent(object):
             model.load_weights(weights)
         return model
     
-    def remember(self, state, action, reward, next_state, type):
-        self.memory[type].append((state, action, reward, next_state))
+    def remember(self, state, action, reward, next_state, type, done=False):
+        self.memory[type].append((state, action, reward, next_state, done))
         
     def replay_new(self, memory, type):
         if len(memory[type]) > 1000:
