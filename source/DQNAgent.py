@@ -27,7 +27,7 @@ class DQNAgent(object):
         self.learning_rate = 0.0005
         
         self.action_size = 94
-        self.action_choices = 8
+        self.action_choices = 20
         
         # different models for different decisions
         self.tax_model = self.network(N=4, K=25)
@@ -513,6 +513,7 @@ class DQNAgent(object):
             if regent['Race'].values[0] == Game.Regents[Game.Regents['Regent']==a]['Race'].values[0]:
                 state[91+i] = 1  # enemy_same_race, friend_same_race, rando_same_race
         return np.asarray(state), capital, high_pop, low_pop, friend, enemy, rando
+		
             
     def network(self, weights=None, N=3, K=11):
         '''

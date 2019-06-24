@@ -411,9 +411,7 @@ class Regency(object):
         self.Espionage = pd.DataFrame(columns=cols)
         # Save it...
         self.save_world(world)
-        
-        
-        
+          
     def save_world(self, world):
         '''
         Saves it as a pickled dictionary of DataFrames
@@ -604,7 +602,7 @@ class Regency(object):
         except:
             print('Error with provence {}'.format(Provence))
 
-    def add_lieutenant(self, Regent, Lieutenant):
+    def add_lieutenant(self, Regent, Lieutenant, busy=False):
         '''
         Adds a lieutenant
         '''
@@ -614,7 +612,7 @@ class Regency(object):
         temp = temp.index[temp['Lieutenant']==Lieutenant].tolist()
         index = self.get_my_index(df, temp)
         
-        df.loc[index] = [Regent, Lieutenant, False]
+        df.loc[index] = [Regent, Lieutenant, busy]
         
         # set the df...
         self.Lieutenants = df
@@ -720,8 +718,7 @@ class Regency(object):
         self.Provences['Regent'] = self.Provences['Regent'].str.replace(Regent, '')
         self.Relationships = self.Relationships[self.Relationships['Regent'] != Regent]
         self.Relationships = self.Relationships[self.Relationships['Other'] != Regent]
-        
-        
+              
     def get_archetype(self, Archetype):
         '''
         return  Class, Level, Str, Dex, Con, Int, Wis, Cha, Insight, Deception, Persuasion
@@ -809,7 +806,6 @@ class Regency(object):
         if repeat == True:
             self.change_geography(Provence=Neighbor, Neighbor=Provence, Border=Border, Road=Road, Caravan=Caravan, Shipping=Shipping, RiverChasm=RiverChasm, repeat=False)
         
-
     def add_relationship(self, Regent, Other, Diplomacy=0, Payment=0, Vassalage=0, At_War=0, Trade_Permission=0):
         '''
         Regent -> Whose Relationship
@@ -1058,7 +1054,7 @@ class Regency(object):
         
     # The Season
     # 1. RANDOM EVENTS 
-    def random_events(self, override={}, style='Birthright', Threshold=50, Regions=None):
+    def random_events(self, style='Birthright', Threshold=50, Regions=None):
         '''
         At the beginning of the season, the Game Master checks for 
         events that take place in each domain. A Game Master 
@@ -1072,7 +1068,7 @@ class Regency(object):
         Threshold: Likliehood that an NPC gets an event
         Regions = a list of regions to restrict to
         '''
-
+        override = self.random_override
         if Threshold < 1:  # flaot to int
             Threshold = int(100*Threshold)
         temp = self.Regents[['Regent', 'Player']].copy()
@@ -1743,7 +1739,7 @@ class Regency(object):
         return the holding or route to functioning order.
         
         disrupt a trade route or contest a holding until Grant or Diplomacy is done.
-        (gonna get ride of the trade route to make life easier)
+        (gonna get rid of the trade route to make life easier)
         '''
         df2 = df.copy()
         # get guilds
@@ -2259,6 +2255,7 @@ class Regency(object):
             self.Seasons[self.Season]['Actions'][self.Action] = pd.DataFrame(columns=cols)
             for I in reversed(list(set(self.Seasons[self.Season]['Season']['Initiative']))):
                 # grab the regents that are acting this round
+                self.clear_screen()
                 print('Action {} - Initiative {}'.format(self.Action, I), end='\r')
                 df = self.Seasons[self.Season]['Season'][self.Seasons[self.Season]['Season']['Initiative'] == I].copy()
                 for i, row in df.iterrows():  # each regent
@@ -2528,12 +2525,166 @@ class Regency(object):
                     return [Regent, actor, Type, 'espionage_assassination', decision, '', '', '', '', False, -100, state, invalid, '']
                 if temp[temp['Capital']==True].shape[0] == 0:
                     temp = temp.sort_values('Population', ascending=False)
-                    Provence = temp.iloc[0]['Provence'].values[0]  # hardest one to hit
+                    Provence = temp.iloc[0]['Provence']  # hardest one to hit
                 else:
                     Provence = temp[temp['Capital']==True]['Provence'].values[0]
-                success, reward, message = self.domain_actio_espionage(Regent, Target, Provence, 'Assassination')
+                success, reward, message = self.domain_action_espionage(Regent, enemy, Provence, 'Assassination')
                 return [Regent, actor, Type, 'espionage_assassination', decision, enemy, '', Provence, '', success, reward, state, invalid, message]
         # decision[11] == 1:
+        elif decision[11] == 1:  # espionage_discover_troop_movements
+            if state[4] == 1 and state[36] == 0:
+                invalid = True
+                return [Regent, actor, Type, 'espionage_discover_troop_movements', decision, '', '', '', '', False, -100, state, invalid, '']
+            else:
+                # get enemy provences
+                temp = self.Provences[self.Provences['Regent'] == enemy].copy()
+                # if bonus action, must have a Guild in that provence
+                if state[4] == 1:
+                    check = self.Holdings[self.Holdings['Regent']==Regent]
+                    temp = pd.merge(check[check['Type']=='Guild'][['Provence']], temp, on='Provence', how='left')
+                if temp.shape[0] == 0:  # no valid targets
+                    invalid = True
+                    return [Regent, actor, Type, 'espionage_discover_troop_movements', decision, '', '', '', '', False, -100, state, invalid, '']
+                if temp[temp['Capital']==True].shape[0] == 0:
+                    temp = temp.sort_values('Population', ascending=False)
+                    Provence = temp.iloc[0]['Provence']  # hardest one to hit
+                else:
+                    Provence = temp[temp['Capital']==True]['Provence'].values[0]
+                success, reward, message = self.domain_action_espionage(Regent, enemy, Provence, 'Troops')
+                return [Regent, actor, Type, 'espionage_discover_troop_movements', decision, enemy, '', Provence, '', success, reward, state, invalid, message]     
+        # decision[12] == 1:
+        elif decision[12] == 1:  # espionage_diplomatic_details
+            if state[4] == 1 and state[36] == 0:
+                invalid = True
+                return [Regent, actor, Type, 'espionage_diplomatic_details', decision, '', '', '', '', False, -100, state, invalid, '']
+            else:
+                # get enemy provences
+                temp = self.Provences[self.Provences['Regent'] == enemy].copy()
+                # if bonus action, must have a Guild in that provence
+                if state[4] == 1:
+                    check = self.Holdings[self.Holdings['Regent']==Regent]
+                    temp = pd.merge(check[check['Type']=='Guild'][['Provence']], temp, on='Provence', how='left')
+                if temp.shape[0] == 0:  # no valid targets
+                    invalid = True
+                    return [Regent, actor, Type, 'espionage_diplomatic_details', decision, '', '', '', '', False, -100, state, invalid, '']
+                if temp[temp['Capital']==True].shape[0] == 0:
+                    temp = temp.sort_values('Population', ascending=False)
+                    Provence = temp.iloc[0]['Provence']  # hardest one to hit
+                else:
+                    Provence = temp[temp['Capital']==True]['Provence'].values[0]
+                success, reward, message = self.domain_action_espionage(Regent, enemy, Provence, 'Trade')
+                return [Regent, actor, Type, 'espionage_diplomatic_details', decision, enemy, '', Provence, '', success, reward, state, invalid, message]
+        # decision[13] == 1: 
+        elif decision[13] == 1:  #espionage_intrigue
+            if state[4] == 1 and state[36] == 0:
+                invalid = True
+                return [Regent, actor, Type, 'espionage_intrigue', decision, '', '', '', '', False, -100, state, invalid, '']
+            else:
+                # get enemy provences
+                temp = self.Provences[self.Provences['Regent'] == enemy].copy()
+                # if bonus action, must have a Guild in that provence
+                if state[4] == 1:
+                    check = self.Holdings[self.Holdings['Regent']==Regent]
+                    temp = pd.merge(check[check['Type']=='Guild'][['Provence']], temp, on='Provence', how='left')
+                if temp.shape[0] == 0:  # no valid targets
+                    invalid = True
+                    return [Regent, actor, Type, 'espionage_intrigue', decision, '', '', '', '', False, -100, state, invalid, '']
+                if temp[temp['Capital']==True].shape[0] == 0:
+                    temp = temp.sort_values('Population', ascending=False)
+                    Provence = temp.iloc[0]['Provence']  # hardest one to hit
+                else:
+                    Provence = temp[temp['Capital']==True]['Provence'].values[0]
+                success, reward, message = self.domain_action_espionage(Regent, enemy, Provence, 'Intrigue')
+                return [Regent, actor, Type, 'espionage_intrigue', decision, enemy, '', Provence, '', success, reward, state, invalid, message]
+        # decision[14] == 1: 
+        elif decision[14] == 1:  #espionage_corruption
+            if state[4] == 1 and state[36] == 0:
+                invalid = True
+                return [Regent, actor, Type, 'espionage_corruption', decision, '', '', '', '', False, -100, state, invalid, '']
+            else:
+                # get enemy provences
+                temp = self.Provences[self.Provences['Regent'] == enemy].copy()
+                # if bonus action, must have a Guild in that provence
+                if state[4] == 1:
+                    check = self.Holdings[self.Holdings['Regent']==Regent]
+                    temp = pd.merge(check[check['Type']=='Guild'][['Provence']], temp, on='Provence', how='left')
+                if temp.shape[0] == 0:  # no valid targets
+                    invalid = True
+                    return [Regent, actor, Type, 'espionage_corruption', decision, '', '', '', '', False, -100, state, invalid, '']
+                if temp[temp['Capital']==True].shape[0] == 0:
+                    temp = temp.sort_values('Population', ascending=False)
+                    Provence = temp.iloc[0]['Provence']  # hardest one to hit
+                else:
+                    Provence = temp[temp['Capital']==True]['Provence'].values[0]
+                success, reward, message = self.domain_action_espionage(Regent, enemy, Provence, 'Corruption')
+                return [Regent, actor, Type, 'espionage_corruption', decision, enemy, '', Provence, '', success, reward, state, invalid, message]
+        # decision[15] == 1: 
+        elif decision[15] == 1:  #espionage_heresy
+            if state[4] == 1 and state[36] == 0:
+                invalid = True
+                return [Regent, actor, Type, 'espionage_heresy', decision, '', '', '', '', False, -100, state, invalid, '']
+            else:
+                # get enemy provences
+                temp = self.Provences[self.Provences['Regent'] == enemy].copy()
+                # if bonus action, must have a Guild in that provence
+                if state[4] == 1:
+                    check = self.Holdings[self.Holdings['Regent']==Regent]
+                    temp = pd.merge(check[check['Type']=='Guild'][['Provence']], temp, on='Provence', how='left')
+                if temp.shape[0] == 0:  # no valid targets
+                    invalid = True
+                    return [Regent, actor, Type, 'espionage_heresy', decision, '', '', '', '', False, -100, state, invalid, '']
+                if temp[temp['Capital']==True].shape[0] == 0:
+                    temp = temp.sort_values('Population', ascending=False)
+                    Provence = temp.iloc[0]['Provence']  # hardest one to hit
+                else:
+                    Provence = temp[temp['Capital']==True]['Provence'].values[0]
+                success, reward, message = self.domain_action_espionage(Regent, enemy, Provence, 'Heresy')
+                return [Regent, actor, Type, 'espionage_heresy', decision, enemy, '', Provence, '', success, reward, state, invalid, message]
+        # decision[16] == 1: 
+        elif decision[16] == 1:  #espionage_trace_espionage
+            if state[4] == 1 and state[36] == 0:
+                invalid = True
+                return [Regent, actor, Type, 'espionage_trace_espionage', decision, '', '', '', '', False, -100, state, invalid, '']
+            else:
+                # get enemy provences
+                temp = self.Provences[self.Provences['Regent'] == enemy].copy()
+                # if bonus action, must have a Guild in that provence
+                if state[4] == 1:
+                    check = self.Holdings[self.Holdings['Regent']==Regent]
+                    temp = pd.merge(check[check['Type']=='Guild'][['Provence']], temp, on='Provence', how='left')
+                if temp.shape[0] == 0 or state[50] == 0:  # no valid targets
+                    invalid = True
+                    return [Regent, actor, Type, 'espionage_trace_espionage', decision, '', '', '', '', False, -100, state, invalid, '']
+                if temp[temp['Capital']==True].shape[0] == 0:
+                    temp = temp.sort_values('Population', ascending=False)
+                    Provence = temp.iloc[0]['Provence']  # hardest one to hit
+                else:
+                    Provence = temp[temp['Capital']==True]['Provence'].values[0]
+                success, reward, message = self.domain_action_espionage(Regent, enemy, Provence, 'Investigate')
+                return [Regent, actor, Type, 'espionage_trace_espionage', decision, enemy, '', Provence, '', success, reward, state, invalid, message]
+        # decision[17] == 1: 
+        elif decision[17] == 1:  #bonus_action_grant_rando
+            if self.Regents[self.Regents['Regent']==Regent]['Gold Bars'].values[0] == 0:
+                return [Regent, actor, Type, 'grant', decision, rando, '', '', '',  False, -100, state, True, '']
+            else:  # we have the money to do this
+                success, reward, message = self.bonus_action_grant(Regent, rando, 1)
+                return [Regent, actor, Type, 'grant', decision, rando, '', '', '', success, reward, state, False, message]
+        # decision[18] == 1:
+        elif decision[18] == 1:  #bonus_action_grant_friend
+            if self.Regents[self.Regents['Regent']==Regent]['Gold Bars'].values[0] == 0:
+                return [Regent, actor, Type, 'grant', decision, friend, '', '', '',  False, -100, state, True, '']
+            else:  # we have the money to do this
+                success, reward, message = self.bonus_action_grant(Regent, friend, 1)
+                return [Regent, actor, Type, 'grant', decision, friend, '', '', '', success, reward, state, False, message]
+        # decision[19] == 1: 
+        elif decision[19] == 1:  #bonus_action_lieutenant
+            if self.Regents[self.Regents['Regent']==Regent]['Gold Bars'].values[0] == 0:
+                return [Regent, actor, Type, 'lieutenant', decision, '', '', '', '',  False, -100, state, True, '']
+            else:  # we have the money to do this
+                success, reward, message = self.bonus_action_lieutenant(Regent)
+                if state[84] == 1 and success == True:
+                    del self.random_override[Regent]
+                return [Regent, actor, Type, 'Lieutenant', decision, '', '', '', '',  success, reward, state, False, message]
         else:
             return [Regent, actor, Type, 'None/Error', decision, '', '', '', '', False, 0, state, False, 'Error: No Action Returned']
             
@@ -2712,6 +2863,13 @@ class Regency(object):
                         , '!Regent passed a minor act of legislation regarding changes to the law, acceptable behaviors, or cultural integration.'
                         , '!Regent dealt with a minor even by placating the petitioning party through offerings and compensation.']
                 message = lst[int(np.random.randint(1,5,1))]
+                reward = 0
+                try:
+                    if self.random_override[Regent] == 'Matter of Justice':
+                        del self.random_override[Regent]
+                        reward = 5
+                except:
+                    reward = 0
             else:
                 roll = np.random.randint(1,6,1)
                 message = '!Regent applies a tax or asset seizure, and gains {} gold bars.'.format(roll)
@@ -2945,10 +3103,11 @@ class Regency(object):
             assassination = True
         cost = 1
         dc = 15
+        lst = [Regent, Target, 0, 0, 0, 0]
         # adjust dc based on provence targeted
         victim = self.Regents[self.Regents['Regent'] == Target]['Full Name'].values[0]
 
-        if Type != 'Trace' and Type != 'Details':
+        if Type != 'Investigate' and Type != 'Trade':
             # For hostile Espionage actions, the target DC is modified by the level of the province in which Espionage is being performed, 
             dc = dc + self.Provences[self.Provences['Provence'] == Provence]['Population'].values[0]
             # as well as the levels of any Law holdings within those provinces.
@@ -2957,13 +3116,16 @@ class Regency(object):
             
         # now, opposition
         dc = self.set_difficulty(dc, Regent, Target, hostile=True, assassination=assassination, player_rbid=prbid)
-        success, crit = self.make_roll(Regent, dc, 'Deception', player_gbid=pgbid)
-        
+        if Type == 'Investigate':
+            success, crit = self.make_roll(Regent, dc, 'Insight', player_gbid=pgbid)
+        else:
+            success, crit = self.make_roll(Regent, dc, 'Deception', player_gbid=pgbid)
         # capital check
         Capital = self.Provences[self.Provences['Provence'] == Provence]['Capital'].values[0]
         
         # Results...
         if Type == 'Assassination':
+            lst[2] = 1
             # this one is serious
             if Capital == False and crit == False:
                 success = False  # bonus action to kill cannot succeed unless a crit if not in capital
@@ -2974,16 +3136,93 @@ class Regency(object):
                 message = "{} was assassinated!".format(victim)
                 temp = self.Relationships.copy()
                 temp = temp[temp['Regent']==Regent].copy()
-                reward = -1*temp[temp['Other']==Target]['Diplomacy'].values[0]
-            if self.Regents[self.Regents['Regent']==Regent]['Attitude'] == 'Aggressive':
+                try:
+                    reward = 5 + -1*temp[temp['Other']==Target]['Diplomacy'].values[0]
+                except:
+                    reward = 5
+            if self.Regents[self.Regents['Regent']==Regent]['Attitude'].str.contains('Aggressive'):
                 reward = 2*reward
             if self.Regents[self.Regents['Regent']==Regent]['Alignment'].str.contains('E'):
                 reward = int(reward*1.5)
             if self.Regents[self.Regents['Regent']==Regent]['Alignment'].str.contains('G'):
                 reward = reward - 5
+            if self.Regents[self.Regents['Regent']==Regent]['Attitude'] == 'Peaceful':
+                reward = reward - 3
+        elif Type == 'Troops':
+            lst[4] = 1
+            reward = 0
+            temp = self.Troops[self.Troops['Regent']==Target].copy()
+            if temp[temp['Provence'] == Provence].shape[0] == 0:
+                success = False  # no troops there.
+            if success:
+                temp = self.Relationships.copy()
+                temp = temp[temp['Regent']==Regent].copy()
+                try:
+                    reward = 5 + -1*temp[temp['Other']==Target]['Diplomacy'].values[0]
+                except:
+                    reward = 5
+                if self.Regents[self.Regents['Regent']==Regent]['Attitude'].values[0] == 'Aggressive':
+                    reward = 2*reward
+            message = "Spied on {}'s troops!".format(victim)
+        elif Type == 'Trade':
+            lst[3] = 1
+            reward = 0
+            temp = self.Geography[self.Geography['Provence']==Provence].copy()
+            if pd.concat([temp[temp['Caravan']==1].copy(), temp[temp['Shipping']==1].copy()], sort=False).shape[0] == 0:
+                success = False
+            if success:
+                temp = self.Relationships.copy()
+                temp = temp[temp['Regent']==Regent].copy()
+                try:
+                    reward = 5 + -1*temp[temp['Other']==Target]['Diplomacy'].values[0]
+                except:
+                    reward = 5
+            message = "Spied on {}'s Trade Routes!".format(victim)
+        elif Type == 'Investigate':
+            reward = 0
+            temp = self.Geography[self.Geography['Provence']==Provence].copy()
+            message = "Failed to find evidence that {} used espionage on them.".format(victim)
+            temp = self.Espionage[self.Espionage['Regent']==Target].copy()
+            temp = temp[temp['Target']==Regent].copy()
+            found = 0
+            if temp.shape[0] == 0:
+                success = False  # no espionage from target
+            else:  # change diplomacy to show what they did and how it impacts relations
+                temp['roll'] = np.random.randint(1,100,temp.shape[0])
+                temp = temp.sort_values('roll')
+                found = temp.iloc[0]['Assassination']*23 + temp.iloc[0]['Diplomacy'] + temp.iloc[0]['Troop Movements'] + temp.iloc[0]['Other']
+                if crit and temp.shape[0] >= 2:
+                    found = found + temp.iloc[1]['Assassination']*2 + temp.iloc[1]['Diplomacy'] + temp.iloc[1]['Troop Movements'] + temp.iloc[1]['Other']
+                self.add_relationship(Target, Regent, Diplomacy=-1*found)
+            if success:
+                temp = self.Relationships.copy()
+                temp = temp[temp['Regent']==Regent].copy()
+                try:
+                    reward = 5 + -1*temp[temp['Other']==Target]['Diplomacy'].values[0]
+                except:
+                    reward = 5
+                message = "Determined if {} used espionage on them.".format(victim)
+            
+        else:
+            lst[5] = 1
+            reward = 0
+            if success:
+                temp = self.Relationships.copy()
+                temp = temp[temp['Regent']==Regent].copy()
+                try:
+                    reward = 5 + -1*temp[temp['Other']==Target]['Diplomacy'].values[0]
+                except:
+                    reward = 5
+                self.random_override[Target] = Type
+                if self.Regents[self.Regents['Regent']==Regent]['Attitude'].values[0] == 'Aggressive':
+                    reward = 2*reward
+            message = "Caused {} in {}'s court!".format(Type, victim)
+        # update espionage thing ['Regent', 'Target', 'Assassination', 'Diplomacy', 'Troop Movements', 'Other']
+        if success:
+            self.Espionage.append(pd.DataFrame([lst], columns=['Regent', 'Target', 'Assassination', 'Diplomacy', 'Troop Movements', 'Other']))
         return success, reward, message
         
-    def bonus_action_grant(self, Regent):
+    def bonus_action_grant(self, Regent, Target, Amount):
         '''
         Grant
         Type: Bonus
@@ -3005,7 +3244,27 @@ class Regency(object):
         
         bonus_action_grant
         '''
-    
+        cost = Amount
+        dc = 9 + Amount
+        reward = 0 - cost
+        success, crit = self.make_roll(Regent, dc, 'Persuasion')
+        if success == False:
+            roll = np.random.randint(1,20,1)
+            if roll <= 8:
+                self.random_override[Regent] = 'Corruption'
+            elif roll <= 16:
+                self.random_override[Regent] = 'Intrigue'
+            else:
+                self.random_override[Regent] = 'Unrest'
+        else:
+            if crit == True:
+                self.add_relationship(Regent, Target, Diplomacy=1)
+                reward = reward + 5
+        self.change_regent(Regent, Gold_Bars = self.Regents[self.Regents['Regent']==Regent]['Gold Bars'].values[0] - cost)
+        self.change_regent(Target, Gold_Bars = self.Regents[self.Regents['Regent']==Target]['Gold Bars'].values[0] - cost)
+        message = '{} granted {} {} Gold Bars'.format(self.Regents[self.Regents['Regent']==Regent]['Full Name'], self.Regents[self.Regents['Regent']==Target]['Full Name'], cost)
+        return success, 0, message
+        
     def bonus_action_lieutenant(self, Regent):
         '''
         Type: Bonus
@@ -3045,7 +3304,12 @@ class Regency(object):
         
         bonus_action_lieutenant
         '''
-      
+        cost = 1
+        self.change_regent(Regent, Gold_Bars = self.Regents[self.Regents['Regent']==Regent]['Gold Bars'].values[0] - cost)
+        name = 'Lieutenent Insert Name Later'
+        self.add_lieutenant(Regent, name, True)
+        return True, 5, '{} hired {} as a Lieutenant'.format(self.Regents[self.Regents['Regent']==Regent]['Full Name'].values[0], name)
+        
     def bonus_action_move_troops(self, Regent, Troops, Target):
         '''
         Type: Bonus
