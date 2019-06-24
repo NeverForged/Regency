@@ -338,8 +338,8 @@ class Regency(object):
         
         try:
             dct = pickle.load( open( 'worlds/' + world + '.pickle', "rb" ) )
-            lst = ['Provences', 'Holdings', 'Regents', 'Geography', 'Relationships', 'Troops', 'Seasons', 'Lieutenants', 'LeyLines', 'Projects']
-            self.Provences, self.Holdings, self.Regents, self.Geography, self.Relationships, self.Troops, self.Seasons, self.Lieutenants, self.LeyLines, self.Projects = [dct[a] for a in lst]
+            lst = ['Provences', 'Holdings', 'Regents', 'Geography', 'Relationships', 'Troops', 'Seasons', 'Lieutenants', 'LeyLines', 'Projects', 'Espionage']
+            self.Provences, self.Holdings, self.Regents, self.Geography, self.Relationships, self.Troops, self.Seasons, self.Lieutenants, self.LeyLines, self.Projects, self.Espionage = [dct[a] for a in lst]
         except (OSError, IOError) as e:
             self.new_world(world)
 
@@ -405,8 +405,14 @@ class Regency(object):
         # Projects
         cols = ['Regent', 'Project Type', 'Details', 'Gold Bars Left']
         self.Projects = pd.DataFrame(columns=cols)
+        
+        # Espionage
+        cols = ['Regent', 'Target', 'Assassination', 'Diplomacy', 'Troop Movements', 'Other']
+        self.Espionage = pd.DataFrame(columns=cols)
         # Save it...
         self.save_world(world)
+        
+        
         
     def save_world(self, world):
         '''
@@ -423,6 +429,7 @@ class Regency(object):
         dct['Lieutenants'] = self.Lieutenants
         dct['LeyLines'] = self.LeyLines
         dct['Projects'] = self.Projects
+        dct['Espionage'] = self.Espionage
         with open('worlds/' + world + '.pickle', 'wb') as handle:
             pickle.dump(dct, handle, protocol=pickle.HIGHEST_PROTOCOL)
         
@@ -709,7 +716,10 @@ class Regency(object):
         Remove the regent from regents, relationships, and holdings
         clear the regent from provences
         '''
-        self.Regents = self.Regents[self.Regents['Regent'] != Regent]
+        self.Holdings = self.Holdings[self.Holdings['Regent'] != Regent]  # just gone
+        self.Provences['Regent'] = self.Provences['Regent'].str.replace(Regent, '')
+        self.Relationships = self.Relationships[self.Relationships['Regent'] != Regent]
+        self.Relationships = self.Relationships[self.Relationships['Other'] != Regent]
         
         
     def get_archetype(self, Archetype):
@@ -2301,7 +2311,7 @@ class Regency(object):
             # update memories and train, unless action = 3 (wait for begining of next round to add in gold and regency)        
             # last bit in function while loop
             self.clear_screen()
-            print(self.Seasons[self.Season]['Actions'][self.Action].loc[index])
+            print(self.Seasons[self.Season]['Actions'][self.Action])
             input()
             self.Action = self.Action+1
            
@@ -2502,8 +2512,32 @@ class Regency(object):
                     reward = reward - 5
                 return [Regent, actor, Type, 'agitiate_for_friend', decision, friend, '', ', '.join(targets), '', success, reward, state, invalid, message]
         # decision[10] == 1:
+        elif decision[10] == 1:  #espionage_assassination
+            if state[4] == 1 and state[36] == 0:
+                invalid = True
+                return [Regent, actor, Type, 'espionage_assassination', decision, '', '', '', '', False, -100, state, invalid, '']
+            else:
+                # get enemy provences
+                temp = self.Provences[self.Provences['Regent'] == enemy].copy()
+                # if bonus action, must have a Guild in that provence
+                if state[4] == 1:
+                    check = self.Holdings[self.Holdings['Regent']==Regent]
+                    temp = pd.merge(check[check['Type']=='Guild'][['Provence']], temp, on='Provence', how='left')
+                if temp.shape[0] == 0:  # no valid targets
+                    invalid = True
+                    return [Regent, actor, Type, 'espionage_assassination', decision, '', '', '', '', False, -100, state, invalid, '']
+                if temp[temp['Capital']==True].shape[0] == 0:
+                    temp = temp.sort_values('Population', ascending=False)
+                    Provence = temp.iloc[0]['Provence'].values[0]  # hardest one to hit
+                else:
+                    Provence = temp[temp['Capital']==True]['Provence'].values[0]
+                success, reward, message = self.domain_actio_espionage(Regent, Target, Provence, 'Assassination')
+                return [Regent, actor, Type, 'espionage_assassination', decision, enemy, '', Provence, '', success, reward, state, invalid, message]
+        # decision[11] == 1:
         else:
-            return [Regent, actor, Type, 'None/Error', decision, '', '', '', '', False, 0, state, False, '']
+            return [Regent, actor, Type, 'None/Error', decision, '', '', '', '', False, 0, state, False, 'Error: No Action Returned']
+            
+            
     # Bonus Actions First
     def bonus_action_build(self, Regent, Provence, Road=None, player_gbid=None):
         '''
@@ -2655,7 +2689,6 @@ class Regency(object):
         decree_general
         decree_asset_seizure
         '''
-        
         cost = 1
         dc = 10
         skill = 'Persuasion'
@@ -2726,7 +2759,7 @@ class Regency(object):
         '''
         df = self.Troops[self.Troops['Regent'] == 'Regent'].copy()
         for i, unit in enumerate(units):
-            disband_troops(self, Regent, Provence[i], unit, Killed=False)
+            self.disband_troops(Regent, Provence[i], unit, Killed=False)
     
     def bonus_action_fianances(self, regent, number=1):
         '''
@@ -2842,7 +2875,7 @@ class Regency(object):
             reward = 0
         return success, reward, message
         
-    def domain_action_espionage(self, Regent, Target, Type, Bonus=False):
+    def domain_action_espionage(self, Regent, Target, Provence, Type, prbid=0, pgbid=0):
         '''
         Type: Action (or Bonus)
 
@@ -2869,7 +2902,14 @@ class Regency(object):
         
         Rescue hostages in a foreign province.
 
-        For hostile Espionage actions, the target DC is modified by the level of the province in which Espionage is being performed, as well as the levels of any Law holdings within those provinces. For example, Erin Velescarpe wishes to send agents to investigate rumors of Baron Gavin Tael forming a secret alliance with the Gorgon to expand his own holdings. Her base DC of 15 is increased by the level of the Baron’s capital province (6) and the Law holding in his capital province (4). This increases her DC to 25 -- Erin will be spending a great deal of gold financing this endeavor.
+        For hostile Espionage actions, the target DC is modified by the level of the 
+        province in which Espionage is being performed, as well as the levels of any 
+        Law holdings within those provinces. For example, Erin Velescarpe wishes to 
+        send agents to investigate rumors of Baron Gavin Tael forming a secret alliance 
+        with the Gorgon to expand his own holdings. Her base DC of 15 is increased by 
+        the level of the Baron’s capital province (6) and the Law holding in his 
+        capital province (4). This increases her DC to 25 -- Erin will be spending a 
+        great deal of gold financing this endeavor.
 
         If the roll fails by 10 or more, then the regent’s spy is caught and 
         imprisoned. They may attempt to rescue the agent with additional 
@@ -2899,6 +2939,49 @@ class Regency(object):
         espionage_trace_espionage
         
         '''
+        # assassination flag for roll
+        assassination = False
+        if Type == 'Assassination':
+            assassination = True
+        cost = 1
+        dc = 15
+        # adjust dc based on provence targeted
+        victim = self.Regents[self.Regents['Regent'] == Target]['Full Name'].values[0]
+
+        if Type != 'Trace' and Type != 'Details':
+            # For hostile Espionage actions, the target DC is modified by the level of the province in which Espionage is being performed, 
+            dc = dc + self.Provences[self.Provences['Provence'] == Provence]['Population'].values[0]
+            # as well as the levels of any Law holdings within those provinces.
+            temp = self.Holdings[self.Holdings['Provence'] == Provence].copy()
+            dc = dc + np.sum(temp[temp['Type']=='Law']['Level'])
+            
+        # now, opposition
+        dc = self.set_difficulty(dc, Regent, Target, hostile=True, assassination=assassination, player_rbid=prbid)
+        success, crit = self.make_roll(Regent, dc, 'Deception', player_gbid=pgbid)
+        
+        # capital check
+        Capital = self.Provences[self.Provences['Provence'] == Provence]['Capital'].values[0]
+        
+        # Results...
+        if Type == 'Assassination':
+            # this one is serious
+            if Capital == False and crit == False:
+                success = False  # bonus action to kill cannot succeed unless a crit if not in capital
+            reward = 0
+            message = "An attempt was made on {}'s life!".format(victim)
+            if success:
+                self.change_regent(Target, Alive=False)
+                message = "{} was assassinated!".format(victim)
+                temp = self.Relationships.copy()
+                temp = temp[temp['Regent']==Regent].copy()
+                reward = -1*temp[temp['Other']==Target]['Diplomacy'].values[0]
+            if self.Regents[self.Regents['Regent']==Regent]['Attitude'] == 'Aggressive':
+                reward = 2*reward
+            if self.Regents[self.Regents['Regent']==Regent]['Alignment'].str.contains('E'):
+                reward = int(reward*1.5)
+            if self.Regents[self.Regents['Regent']==Regent]['Alignment'].str.contains('G'):
+                reward = reward - 5
+        return success, reward, message
         
     def bonus_action_grant(self, Regent):
         '''
@@ -3411,18 +3494,7 @@ class Regency(object):
         create_shipping_line
         '''
     
-    # tools 
-    def detect_espionage(self, Regent):
-        temp = pd.DataFrame()
-        if self.Season > 0:
-            temp = pd.concat([self.Seasons[self.Season-1]['Actions'][a][self.Seasons[self.Season-1]['Actions'][a]['Target Regent']==Regent] for a in range(1,3)], sort=False)
-            temp = temp[temp['Action'].str.lower().srt.contains('espionage')]
-        a = 1
-        while a < self.Action:
-            temp = pd.concat([temp, self.Seasons[self.Season-1]['Actions'][a][self.Seasons[self.Season-1]['Actions'][a]['Target Regent']==Regent]], sort=False)
-            temp = temp[temp['Action'].str.lower().srt.contains('espionage')]
-        return temp
-        
+    # tools    
     def set_difficulty(self, base, Regent, Target, hostile=False, assassination=False, player_rbid=None):
         '''
         This is how much money is thrown at the problem and how
@@ -3494,5 +3566,7 @@ class Regency(object):
             return False, False
         elif roll == 20:
             return True, True
-        if roll+bonus > dc:
+        elif roll+bonus >= dc:
             return True, False
+        else:
+            return False, False

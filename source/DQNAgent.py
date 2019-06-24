@@ -359,7 +359,7 @@ class DQNAgent(object):
         '''
                 was_victim_of_espionage
         '''        
-        if Game.detect_espionage(Regent).shape[0] > 0:
+        if Game.Espionage[Game.Espionage['Target'] == Regent].shape[0] > 0:
             state[50] = 1  # i_was_victim_of_espionage
             
             
