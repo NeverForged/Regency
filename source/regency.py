@@ -2803,7 +2803,8 @@ class Regency(object):
             temp = pd.merge(self.Holdings[self.Holdings['Regent']==Regent].copy()
                             , self.troop_units[self.troop_units['Type'] == race].copy()
                             , left_on=['Type', 'Level'], right_on=['Requirements Holdings', 'Requirements Level']
-                            , how='left')
+                            , how='left').fillna(0)
+            temp = temp[temp['Unit Type'] != 0]
             temp = temp[temp['Unit Type'] != 'Levies']
             # can I afford it
             gold = self.Regents[self.Regents['Regent'] == Regent]['Gold Bars'].values[0]
@@ -3272,13 +3273,13 @@ class Regency(object):
                     reward = 5 + -1*temp[temp['Other']==Target]['Diplomacy'].values[0]
                 except:
                     reward = 5
-            if self.Regents[self.Regents['Regent']==Regent]['Attitude'].str.contains('Aggressive').values[0]:
+            if self.Regents[self.Regents['Regent']==Regent]['Attitude'].values[0] == 'Aggressive':
                 reward = 2*reward
-            if self.Regents[self.Regents['Regent']==Regent]['Alignment'].str.contains('E'):
+            if 'E' in list(self.Regents[self.Regents['Regent']==Regent]['Alignment'].values[0]):
                 reward = int(reward*1.5)
-            if self.Regents[self.Regents['Regent']==Regent]['Alignment'].str.contains('G'):
+            if 'G' in list(self.Regents[self.Regents['Regent']==Regent]['Alignment'].values[0]):
                 reward = reward - 5
-            if self.Regents[self.Regents['Regent']==Regent]['Attitude'] == 'Peaceful':
+            if self.Regents[self.Regents['Regent']==Regent]['Attitude'].values[0] == 'Peaceful':
                 reward = reward - 3
         elif Type == 'Troops':
             lst[4] = 1
