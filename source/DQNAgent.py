@@ -27,7 +27,7 @@ class DQNAgent(object):
         self.learning_rate = 0.0005
         
         self.action_size = 94
-        self.action_choices = 24
+        self.action_choices = 28
         
         # different models for different decisions
         self.tax_model = self.network(N=4, K=25)
@@ -467,8 +467,12 @@ class DQNAgent(object):
         temp = temp[temp['Loyalty'] != 'High']
         temp = temp[temp['Loyalty'] != 'Average']
         if temp.shape[0] > 0:  # we have the requisite loyalty issue
-            temp = pd.merge(temp, Game.Holdings[Game.Holdings['Type']=='Law'], on='Provence', how='left')
-            if temp.shape[0] > 0:
+            temp_ =  Game.Holdings[Game.Holdings['Type']=='Law']
+            temp_ = temp_[temp_['Regent'] == enemy]
+            temp_ = temp_[temp_['Contested'] == 0]
+            temp = pd.merge(temp, temp_, on='Provence', how='left').fillna(0)
+            temp = temp[temp['Level']==0]
+            if temp.shape[0] >= 1:
                 state[77] = 1  # enemy_has_no_law_holdings_and_rebellious_or_poor_loyalty_in_a_province
         
         temp = Game.Provences[Game.Provences['Regent'] == enemy]
@@ -513,7 +517,7 @@ class DQNAgent(object):
             if regent['Race'].values[0] == Game.Regents[Game.Regents['Regent']==a]['Race'].values[0]:
                 state[91+i] = 1  # enemy_same_race, friend_same_race, rando_same_race
         return np.asarray(state), capital, high_pop, low_pop, friend, enemy, rando
-		
+        
             
     def network(self, weights=None, N=3, K=11):
         '''
