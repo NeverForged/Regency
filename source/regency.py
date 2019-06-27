@@ -47,8 +47,8 @@ class Regency(object):
         # Provence Taxation Table
         dct = {}
         dct['Population'] = [a for a in range(11)]
-        dct['Light'] = [(0,0), (-1,1), (0,1), (1,3), (1,4), (2,5), (2,7), (2,9), (2,11), (2,13), (2,16)]
-        dct['Moderate'] = [(0,0), (0,2), (1,3), (1,4), (2,5), (2,7), (2,9), (2,11), (2,13), (2,16), (4,18)]
+        dct['Light'] = [(-1,0), (-1,1), (0,1), (1,3), (1,4), (2,5), (2,7), (2,9), (2,11), (2,13), (2,16)]
+        dct['Moderate'] = [(-1,0), (0,2), (1,3), (1,4), (2,5), (2,7), (2,9), (2,11), (2,13), (2,16), (4,18)]
         dct['Severe'] =  [(-1,1), (1,3), (1,4), (2,5), (2,7), (2,9), (2,11), (2,13), (2,16), (4,18), (4,22)]
         self.provence_taxation = pd.DataFrame(dct)
         
@@ -860,11 +860,11 @@ class Regency(object):
             # start disbanding
             if 'Mercenary' in Type.split():
                 # oh no, potential Brigands!
-                success, _ = self.make_roll(Regent, dc, 'Persuasion', adj=False, dis=False, player_gbid=None)
+                success, _ = self.make_roll(Regent, 10, 'Persuasion', adj=False, dis=False, player_gbid=None)
                 if success == False:
                     self.change_provence(Provence, Brigands=True)
             if 'Levies' in Type.split() and Killed == False:  # disbanded, so go back to their stuff.
-                self.change_provence(slef.Troops.iloc[temp[0]]['Home'], Population_Change=1)
+                self.change_provence(self.Troops.iloc[temp[0]]['Home'], Population_Change=1)
             self.Troops.drop(temp[0], inplace=True)
   
     # Show
@@ -2098,6 +2098,7 @@ class Regency(object):
                 _temp = _temp[_temp['Regent'] == row['Regent']]
                 if row['Player']==False:
                     while cost > gb and self.Troops[self.Troops['Regent']==row['Regent']].shape[0] > 0:
+                        _temp = _temp.sort_values('CR')  # want to dump levies first to get them back to work
                         for j, _row in _temp.iterrows():
                             if cost > gb and _temp.shape[0]>0:
                                 self.disband_troops(_row['Regent'], _row['Provence'], _row['Type'])
@@ -2693,7 +2694,7 @@ class Regency(object):
                 temp = temp[['Provence', 'CR']].groupby('Provence').sum().reset_index()
                 temp['roll'] = np.random.randint(1, 100,temp.shape[0])+temp['CR']
                 temp = temp.sort_values('roll', ascending=False)
-                Target = temp.iloc[0]['Provence'].values[0]
+                Target = temp.iloc[0]['Provence']
                 Target_CR = temp.iloc[0]['CR']
                 temp = self.Troops[self.Troops['Regent']=='Regent'].copy()
                 temp = temp[temp['Provence'] != Target]
@@ -2727,7 +2728,7 @@ class Regency(object):
                 temp = temp[['Provence', 'CR']].groupby('Provence').sum().reset_index()
                 temp['roll'] = np.random.randint(1, 100,temp.shape[0])+temp['CR']
                 temp = temp.sort_values('roll', ascending=False)
-                Target = temp.iloc[0]['Provence'].values[0]
+                Target = temp.iloc[0]['Provence']
                 Target_CR = int(2*temp.iloc[0]['CR']/3)
                 temp = self.Troops[self.Troops['Regent']=='Regent'].copy()
                 temp = temp[temp['Provence'] != Target]
@@ -2823,6 +2824,9 @@ class Regency(object):
                             , how='left').fillna(0)
             temp = temp[temp['Requirements Level']<=temp['Level']]
             temp = temp[temp['Unit Type'] != 0]
+            temp_ = pd.merge(temp[['Provence']], self.Provences[['Provence', 'Population']], on='Provence', how='left')
+            temp_ = temp_[temp_['Population'] > 0]
+            temp = pd.merge(temp_[['Provence']], temp, on='Provence', how='left')
             if temp.shape[0] < 1:
                 return [Regent, actor, Type, 'muster_levies', decision, '', '', '', '',  False, -100, state, True, '']  
             else:
@@ -2883,8 +2887,69 @@ class Regency(object):
                 temp = temp.sort_values('roll')
                 success, reward, message = self.domain_action_contest(Regent, enemy, temp.iloc[0]['Provence'], 'Provence')
                 reward = reward + state[87]*3
+                return [Regent, actor, Type, 'contest_provence', decision, enemy, Provence, '', '',  success, reward, state, False, message]
         # decision[28] == 1:
-        elif decision[28] == 1:  # contest_provence
+        elif decision[28] == 1 or decision[29] == 1 or decision[30] == 1 or decision[31]==1:  #create_law_holding, _guild_, _temple_, _source_
+            if decision[28] == 1:
+                Type = 'Law'
+                N = 34
+            elif decision[29] == 1:
+                Type = 'Guild'
+                N = 36
+            elif decision[30] == 1: 
+                Type = 'Temple'
+                N = 35
+            else:   
+                Type = 'Source'
+                N = 37
+            
+            temp = pd.concat([self.Provences[self.Provences['Regent']==Regent][['Provence']].copy()
+                          ,self.Holdings[self.Holdings['Regent']==Regent][['Provence']].copy()], sort=False).drop_duplicates()
+            # all neighboring provences to regent
+            temp = pd.merge(temp, self.Geography.copy(), on='Provence', how='left').drop_duplicates()
+            temp = temp[temp['Border']==1]
+            temp['Provence'] = temp['Neighbor']
+
+            temp_ = pd.merge(temp[['Provence']], self.Holdings[self.Holdings['Type'] == Type].copy(), on='Provence', how='left')
+            dct = {}
+            dct['Provence'] = []
+            for p in set(temp_['Provence']):
+                temp__ = temp_[temp_['Regent']==Regent]
+                if temp__[temp__['Provence']==p].shape[0]==0:
+                    dct['Provence'].append(p)
+            temp_check = pd.DataFrame(dct)
+            # Validity
+            if state[3] == 1 or temp_check.shape[0] == 0 or self.Regents[self.Regents['Regent']==Regent]['Gold Bars'].values[0] <= 0:
+                return [Regent, actor, Type, 'create_' + Type.lower() + '_holding', decision, '', '', '', '',  False, -100, state, True, '']
+            else:
+                temp_check = pd.merge(temp_check, self.Provences[['Provence', 'Population', 'Regent']].copy(), on='Provence', how='left')
+                temp_check = pd.merge(temp_check, self.Relationships[self.Relationships['Regent'] ==Regent][['Other', 'Diplomacy']], left_on='Regent', right_on='Other', how='left').fillna(0)
+
+                temp_check['Where'] = temp_check['Population'] - temp_check['Diplomacy']*decision[28]
+                temp_check = pd.merge(temp_check[['Provence', 'Where', 'Population']], self.Holdings[self.Holdings['Type']==Type].copy(), on='Provence', how='left')
+                temp_check = pd.merge(temp_check, self.Relationships[self.Relationships['Regent'] ==Regent][['Other', 'Diplomacy']], left_on='Regent', right_on='Other', how='left').fillna(0)
+
+                temp_check['Where'] = temp_check['Where'] - temp_check['Diplomacy']
+                temp_check = temp_check.sort_values('Where', ascending=False)
+                # More likely to set up shop in rival area
+                success, reward, message = self.domain_action_create_holding(Regent, temp_check.iloc[0]['Provence'], Type)
+                reward = reward + temp_check.iloc[0]['Where'] -10 + 15*state[N]
+                return [Regent, actor, Type, 'create_holding', decision, enemy, Provence, '', Type,  success, reward, state, False, message]                
+        # decision[32] == 1:
+        elif decision[32] == 1:  # declare_war\
+            if state[3] == 0:
+                return [Regent, actor, Type, 'declare_war', decision, '', '', '', '',  False, -100, state, True, '']
+            else:
+                success, reward, message = self.domain_action_declare_war(Regent, enemy)
+                temp = self.Relationships[self.Relationships['Regent']==Regent]
+                temp = temp[temp['Other']==enemy]
+                if temp.shape[0] > 0:
+                    reward = reward - temp.iloc[0]['Diplomacy']
+                reward = reward + 5*state[87] - 5*state[89] + 5*state[80]
+                return [Regent, actor, Type, 'declare_war', decision, enemy, '', '', '',  success, reward, state, False, message]
+        # decision[33] == 1:
+        elif decision[33] == 1: 
+            None
         else:
             return [Regent, actor, Type, 'None/Error', decision, '', '', '', '', False, 0, state, False, 'Error: No Action Returned']
     
@@ -2902,7 +2967,7 @@ class Regency(object):
         creation of a guildhall, civic center, statue, or anything else the 
         people might need or desire.
 
-        The Game Master sets the Gold Bar cost of a particular construction
+        The self Master sets the Gold Bar cost of a particular construction
         project, which typically ranges from 1 GB for a small chapel to 30
         for a massive palace.
 
@@ -3025,7 +3090,7 @@ class Regency(object):
         The decree cannot affect another regent’s holdings or provinces.
         The decree cannot change the loyalty or level of any province or holding.
         Decrees cannot affect armies or assets in any way.
-        Some examples of common Decrees are as follows. Game Masters and players are encouraged to use Decree whenever no other action is suitable, but care must be taken not to go overboard with what a Decree can accomplish.
+        Some examples of common Decrees are as follows. self Masters and players are encouraged to use Decree whenever no other action is suitable, but care must be taken not to go overboard with what a Decree can accomplish.
 
         A tax or asset seizure is enacted, generating 1d6 Gold Bars for your - treasury.
         A roustabout or rumormonger is arrested.
@@ -3270,7 +3335,7 @@ class Regency(object):
 
         If the roll fails by 10 or more, then the regent’s spy is caught and 
         imprisoned. They may attempt to rescue the agent with additional 
-        Espionage attempts, and the Game Master should secretly determine if 
+        Espionage attempts, and the self Master should secretly determine if 
         the agent is successfully interrogated.
 
         Espionage is dangerous, difficult, and requires a massive investment of 
@@ -3598,22 +3663,29 @@ class Regency(object):
         '''
         Home = ''
         Garrisoned = 1
+        success = True
         if Type == 'Levies':
             Home = Provence
+            check = self.Provences[self.Provences['Provence']==Provence]['Population'].values[0]
+            if check == 0:
+                success = False
+            if N > check:
+                N = check
             self.change_provence(Home, Population_Change=-1*N)
         elif Type == 'Mercenaries':
             Garrisoned = 0
-        temp = self.troop_units[self.troop_units['Unit Type'] == Type]['Maintenance Cost']  
-        for i in range(N):
-            self.Troops = self.Troops.append(pd.DataFrame([[Regent
-                                                           , Provence
-                                                           , Type
-                                                           , self.troop_units[self.troop_units['Unit Type'] == Type]['Maintenance Cost'].values[0]
-                                                           , self.troop_units[self.troop_units['Unit Type'] == Type]['BCR'].values[0]
-                                                           , Garrisoned
-                                                           , Home]], columns=['Regent', 'Provence', 'Type', 'Cost', 'CR', 'Garrisoned', 'Home'])
-                                                           , ignore_index=True)
-        return True, 0, 'Mustered {}s'.format(Type)
+        temp = self.troop_units[self.troop_units['Unit Type'] == Type]['Maintenance Cost']
+        if success == True:
+            for i in range(N):
+                self.Troops = self.Troops.append(pd.DataFrame([[Regent
+                                                               , Provence
+                                                               , Type
+                                                               , self.troop_units[self.troop_units['Unit Type'] == Type]['Maintenance Cost'].values[0]
+                                                               , self.troop_units[self.troop_units['Unit Type'] == Type]['BCR'].values[0]
+                                                               , Garrisoned
+                                                               , Home]], columns=['Regent', 'Provence', 'Type', 'Cost', 'CR', 'Garrisoned', 'Home'])
+                                                               , ignore_index=True)
+        return success, 0, 'Mustered {}s'.format(Type)
         
     # Domain Only
     def domain_action_adventure(self, Regent):
@@ -3717,7 +3789,7 @@ class Regency(object):
             
         return success, reward, message
           
-    def domain_action_create_holding(self, Regent, Target):
+    def domain_action_create_holding(self, Regent, Provence, Type, gbid=None):
         '''
         Base: 1 GB
         success: 10 (+ population) (Persuasion)
@@ -3740,8 +3812,8 @@ class Regency(object):
         Success on the domain action check creates a holding of the desired type at level 0. You may Rule this
         holding on further domain actions to increase its level as normal.
 
-        Create Province: If a regent wishes and the Game Master approves, they may use this action to instead 
-        create a new province in any unclaimed territory. The Game Master determines the dimensions of this 
+        Create Province: If a regent wishes and the self Master approves, they may use this action to instead 
+        create a new province in any unclaimed territory. The self Master determines the dimensions of this 
         new province and assigns it a Source rating based on the terrain type that is present. If the new 
         province is not adjacent to any existing provinces, the cost to attempt the action is increased to 3 
         GB. This represents financing any exploratory expeditions or prospectors. If successful, a new 
@@ -3751,6 +3823,29 @@ class Regency(object):
 
         create_holding
         '''
+        dc = 10
+        # check if it's easy
+        temp = self.Provences[self.Provences['Provence']==Provence].copy()
+        temp = pd.merge(temp, self.Relationships[self.Relationships['Other']==Regent].copy(), on='Regent', how='left').fillna(0)
+        temp = pd.merge(temp, self.Holdings[self.Holdings['Type']==Type].copy(), on='Provence', how='left')
+        hostile = False
+        if temp.iloc[0]['Diplomacy'] <= 0:
+            dc = dc + temp.iloc[0]['Population']
+            if temp.iloc[0]['Diplomacy'] < -1:
+                hostile = True
+        dc = self.set_difficulty(dc, Regent, temp.iloc[0]['Regent_x'], hostile=hostile)
+        success, crit = self.make_roll(Regent, dc, 'Persuasion')
+        message = 'Failed to start a {} Holding in {}'.format(Type, Provence)
+        if success == True:
+            message = 'Established a {} Holding in {}'.format(Type, Provence)
+            level = 0
+            if crit == True:
+                level = 1
+            # make the holding
+            self.add_holding(Provence, Regent, Type, level)
+        # Pay!
+        self.change_regent(Regent, Gold_Bars = self.Regents[self.Regents=='Regents']['Gold Bars'].values[0] - 1)
+        return success, 0, message
         
     def domain_action_declare_war(self, Regent, Target):
         '''
@@ -3777,7 +3872,9 @@ class Regency(object):
         
         declare_war
         '''
-      
+        self.add_relationship(Regent, Target, At_War = 1)
+        return True, 0, '{} Declared War on {}!'.format(self.Regents[self.Regents['Regent']==Regent]['Full Name'], self.Regents[self.Regents['Regent']==Target]['Full Name'])
+    
     def domain_action_diplomacy(self, Regent, Target, Type='form_alliance'):
         '''
         ype: Domain
@@ -3788,7 +3885,7 @@ class Regency(object):
 
         Neighboring regents can generally be assumed to remain in correspondence with one another throughout the course of a season. The Diplomacy action has a much wider impact, and is typically a court affair with dignitaries, soirees, and document signings. Typically, this action is taken in relation to NPC regents or random events; if a player character regent is the target of the Diplomacy action, they can determine whether it is automatically successful (but the expense of GB and action must be made in order to gain the effects).
 
-        The DC of the domain action check depends on the specific action being taken. Diplomacy checks are typically simple affairs, but care must be taken with the proposals and the mood and standing of a regent. If a deal is outright insulting, the Game Master can rule the action has no chance of success.
+        The DC of the domain action check depends on the specific action being taken. Diplomacy checks are typically simple affairs, but care must be taken with the proposals and the mood and standing of a regent. If a deal is outright insulting, the self Master can rule the action has no chance of success.
 
         Furthermore, the condition of the regent’s court may cause this check to be made at advantage or disadvantage, or not at all. See the section on Court Expenses for more details.
 
@@ -4138,19 +4235,17 @@ class Regency(object):
         bonus = self.Regents[self.Regents['Regent']==Regent][skill].values[0]
         if player_gbid == None: 
             # Regent spends gold to counter...
-            if dc > 5:
-                gbid = dc - 5
-            if bonus < 0:
-                gbid = gbid + 1-bonus
-        if gbid > temp[temp['Regent'] == Regent]['Gold Bars'].values[0]:
+            if dc > 10 + bonus and  temp[temp['Regent']==Regent]['Gold Bars'].values[0] > 10:
+                gbid = dc - (10 + bonus)
+        if gbid >= temp[temp['Regent'] == Regent]['Gold Bars'].values[0]:
             # can't spend what you don't have
-            gbid = temp[temp['Regent'] == Regent]['Gold Bars'].values[0]
+            gbid = temp[temp['Regent'] == Regent]['Gold Bars'].values[0] - 1
         if gbid > 10:
             gbid = 10
         elif gbid < 0:
             gbid = 0
         dc = dc - gbid  # lowered the difficulty
-        self.change_regent(Regent, Gold_Bars = int(temp[temp['Regent']==Regent]['Gold Bars'].fillna(0).values[0]) - gbid)
+        self.change_regent(Regent, Gold_Bars = temp[temp['Regent']==Regent]['Gold Bars'].values[0] - gbid)
         
         n = 1
         if adj:
