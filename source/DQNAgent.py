@@ -516,6 +516,10 @@ class DQNAgent(object):
         for i, a in enumerate([enemy, friend, rando]):
             if regent['Race'].values[0] == Game.Regents[Game.Regents['Regent']==a]['Race'].values[0]:
                 state[91+i] = 1  # enemy_same_race, friend_same_race, rando_same_race
+        temp = pd.concat([Game.Provences[Game.Provences['Regent']==Regent][['Provence']].copy()
+                          ,Game.Holdings[Game.Holdings['Regent']==Regent][['Provence']].copy()], sort=False).drop_duplicates()
+        temp = pd.merge(temp, self.Geography.copy(), on='Provence', how='left')
+        
         return np.asarray(state), capital, high_pop, low_pop, friend, enemy, rando
         
             

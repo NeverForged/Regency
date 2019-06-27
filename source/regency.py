@@ -2883,6 +2883,8 @@ class Regency(object):
                 temp = temp.sort_values('roll')
                 success, reward, message = self.domain_action_contest(Regent, enemy, temp.iloc[0]['Provence'], 'Provence')
                 reward = reward + state[87]*3
+        # decision[28] == 1:
+        elif decision[28] == 1:  # contest_provence
         else:
             return [Regent, actor, Type, 'None/Error', decision, '', '', '', '', False, 0, state, False, 'Error: No Action Returned']
     
@@ -3714,8 +3716,7 @@ class Regency(object):
             None
             
         return success, reward, message
-        
-        
+          
     def domain_action_create_holding(self, Regent, Target):
         '''
         Base: 1 GB
@@ -3724,6 +3725,30 @@ class Regency(object):
         INFO NEEDED:
         space for a holding nearby where I don't have a holding of that type and it's a type I can make
         
+        Type: Action
+
+        Base Cost: 1 GB
+
+        Base Success: DC 10
+
+        When a regent wishes to establish a foothold in a given province, they may create a holding of the 
+        desired type. If this holding is created in another regent’s province and the regent wishes to contest 
+        your efforts, the level of the province increases the DC of your domain action check (thus, attempting 
+        to create a holding in a level 6 province makes the DC 16). They may spend RP to further increase the 
+         difficulty.
+
+        Success on the domain action check creates a holding of the desired type at level 0. You may Rule this
+        holding on further domain actions to increase its level as normal.
+
+        Create Province: If a regent wishes and the Game Master approves, they may use this action to instead 
+        create a new province in any unclaimed territory. The Game Master determines the dimensions of this 
+        new province and assigns it a Source rating based on the terrain type that is present. If the new 
+        province is not adjacent to any existing provinces, the cost to attempt the action is increased to 3 
+        GB. This represents financing any exploratory expeditions or prospectors. If successful, a new 
+        province is created at level 0 and may be Ruled as normal.
+
+        Critical Success: The new holding or province is instead created at level 1.
+
         create_holding
         '''
         
