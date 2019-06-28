@@ -26,8 +26,8 @@ class DQNAgent(object):
         self.agent_predict = 0
         self.learning_rate = 0.0005
         
-        self.action_size = 94
-        self.action_choices = 33
+        self.action_size = 96
+        self.action_choices = 39
         
         # different models for different decisions
         self.tax_model = self.network(N=4, K=25)
@@ -261,7 +261,7 @@ class DQNAgent(object):
         rtemp2 = Game.Relationships[Game.Relationships['Regent']==Regent].copy()
         rtemp2['Regent'] = rtemp2['Other']
         relationships = pd.merge(rtemp['Regent'], rtemp2, on='Regent', how='left').fillna(0)
-
+        relationships = pd.merge(Game.Regents[Game.Regents['Regent'] != Regent][['Regent']], relationships, on='Regent', how='left').fillna(0)
         relationships = relationships[relationships['Regent'] != Regent].copy()
         # randomized roll for choices
         relationships['roll'] = np.random.randint(1,100,relationships.shape[0])
@@ -517,7 +517,10 @@ class DQNAgent(object):
             if regent['Race'].values[0] == Game.Regents[Game.Regents['Regent']==a]['Race'].values[0]:
                 state[91+i] = 1  # enemy_same_race, friend_same_race, rando_same_race
         
-        
+        if Game.Regents[Game.Regents['Regent'] == Regent]['Gold Bars'].values[0] <= 0:
+            state[94] = 1  # Broke
+        if Game.Regents[Game.Regents['Regent'] == Regent]['Regency Points'].values[0] <= 0:
+            state[95] = 1  # Powerless
         return np.asarray(state), capital, high_pop, low_pop, friend, enemy, rando
         
             
