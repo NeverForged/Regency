@@ -42,8 +42,6 @@ class Regency(object):
         self.jupyter = jupyter
         self.random_override = {}
         
-        
-            
         # Provence Taxation Table
         dct = {}
         dct['Population'] = [a for a in range(11)]
@@ -3278,7 +3276,7 @@ class Regency(object):
         for i, unit in enumerate(units):
             self.disband_troops(Regent, Provence[i], unit, Killed=False)
     
-    def bonus_action_fianances(self, regent, number=1):
+    def bonus_action_finances(self, regent, number=1):
         '''
         Type: Bonus
 
@@ -3352,7 +3350,7 @@ class Regency(object):
         cost = len(Provences)
         dc = 10
         # spend the money and regency
-        self.change_regent(Regent, Gold_Bars = self.Regents[self.Regents['Regent']==Regent]['Gold Bars'].values[0] - cost, Regency_Points = self.Regents[self.Regents['Regent']==Regent]['Regency Points'].values[0] - cost)
+        
         # set the dc
         adj = (Conflict == False)
         dc = self.set_difficulty(dc, Regent, Target, hostile=Conflict)
@@ -3360,6 +3358,10 @@ class Regency(object):
         success, crit = self.make_roll(Regent, dc, 'Persuasion', adj=False, dis=False, player_gbid=bid)
         add = -1*Conflict + 1-Conflict
         dip = add
+        if cost > self.Regents[self.Regents['Regent']==Regent]['Gold Bars'].values[0]:
+            success = False
+        else:
+            self.change_regent(Regent, Gold_Bars = self.Regents[self.Regents['Regent']==Regent]['Gold Bars'].values[0] - cost, Regency_Points = self.Regents[self.Regents['Regent']==Regent]['Regency Points'].values[0] - cost)
         if crit:
             add = 2*add
         if success:
@@ -3481,7 +3483,10 @@ class Regency(object):
             success, crit = self.make_roll(Regent, dc, 'Deception', player_gbid=pgbid)
         # capital check
         Capital = self.Provences[self.Provences['Provence'] == Provence]['Capital'].values[0]
-        
+        if cost > self.Regents[self.Regents['Regent']==Regent]['Gold Bars'].values[0]:
+            success = False
+        else:
+            self.change_regent(Regent, Gold_Bars = self.Regents[self.Regents['Regent']==Regent]['Gold Bars'].values[0] - cost, Regency_Points = self.Regents[self.Regents['Regent']==Regent]['Regency Points'].values[0] - cost)
         # Results...
         if Type == 'Assassination':
             lst[2] = 1
@@ -3607,6 +3612,11 @@ class Regency(object):
         dc = 9 + Amount
         reward = 0 - cost
         success, crit = self.make_roll(Regent, dc, 'Persuasion')
+        if cost > self.Regents[self.Regents['Regent']==Regent]['Gold Bars'].values[0]:
+            success = False
+        else:
+            self.change_regent(Regent, Gold_Bars = self.Regents[self.Regents['Regent']==Regent]['Gold Bars'].values[0] - cost)
+            self.change_regent(Target, Gold_Bars = self.Regents[self.Regents['Regent']==Target]['Gold Bars'].values[0] - cost)
         if success == False:
             roll = np.random.randint(1,20,1)
             if roll <= 8:
@@ -3619,8 +3629,7 @@ class Regency(object):
             if crit == True:
                 self.add_relationship(Regent, Target, Diplomacy=1)
                 reward = reward + 5
-        self.change_regent(Regent, Gold_Bars = self.Regents[self.Regents['Regent']==Regent]['Gold Bars'].values[0] - cost)
-        self.change_regent(Target, Gold_Bars = self.Regents[self.Regents['Regent']==Target]['Gold Bars'].values[0] - cost)
+        
         message = '{} granted {} {} Gold Bars'.format(self.Regents[self.Regents['Regent']==Regent]['Full Name'], self.Regents[self.Regents['Regent']==Target]['Full Name'], cost)
         return success, 0, message
         
@@ -3664,10 +3673,14 @@ class Regency(object):
         bonus_action_lieutenant
         '''
         cost = 1
-        self.change_regent(Regent, Gold_Bars = self.Regents[self.Regents['Regent']==Regent]['Gold Bars'].values[0] - cost)
-        name = 'Lieutenent Insert Name Later'
-        self.add_lieutenant(Regent, name, True)
-        return True, 5, '{} hired {} as a Lieutenant'.format(self.Regents[self.Regents['Regent']==Regent]['Full Name'].values[0], name)
+        success = True
+        if cost > self.Regents[self.Regents['Regent']==Regent]['Gold Bars'].values[0]:
+            success = False
+        else:
+            self.change_regent(Regent, Gold_Bars = self.Regents[self.Regents['Regent']==Regent]['Gold Bars'].values[0] - cost)
+            name = 'Lieutenent Insert Name Later'
+            self.add_lieutenant(Regent, name, True)
+        return success, 5, '{} hired {} as a Lieutenant'.format(self.Regents[self.Regents['Regent']==Regent]['Full Name'].values[0], name)
         
     def bonus_action_move_troops(self, Regent, Troops, Provence, Target):
         '''
@@ -3772,14 +3785,16 @@ class Regency(object):
         temp = self.troop_units[self.troop_units['Unit Type'] == Type]['Maintenance Cost']
         if success == True:
             for i in range(N):
-                self.Troops = self.Troops.append(pd.DataFrame([[Regent
-                                                               , Provence
-                                                               , Type
-                                                               , self.troop_units[self.troop_units['Unit Type'] == Type]['Maintenance Cost'].values[0]
-                                                               , self.troop_units[self.troop_units['Unit Type'] == Type]['BCR'].values[0]
-                                                               , Garrisoned
-                                                               , Home]], columns=['Regent', 'Provence', 'Type', 'Cost', 'CR', 'Garrisoned', 'Home'])
-                                                               , ignore_index=True)
+                if cost <= self.Regents[self.Regents['Regent']==Regent]['Gold Bars'].values[0]:
+                    self.Troops = self.Troops.append(pd.DataFrame([[Regent
+                                                                   , Provence
+                                                                   , Type
+                                                                   , self.troop_units[self.troop_units['Unit Type'] == Type]['Maintenance Cost'].values[0]
+                                                                   , self.troop_units[self.troop_units['Unit Type'] == Type]['BCR'].values[0]
+                                                                   , Garrisoned
+                                                                   , Home]], columns=['Regent', 'Provence', 'Type', 'Cost', 'CR', 'Garrisoned', 'Home'])
+                                                                   , ignore_index=True)
+                    self.change_regent(Regent, Gold_Bars = self.Regents[self.Regents['Regent']==Regent]['Gold Bars'].values[0]-temp.values[0])
         return success, 0, 'Mustered {}s'.format(Type)
         
     # Domain Only
@@ -3930,16 +3945,19 @@ class Regency(object):
                 hostile = True
         dc = self.set_difficulty(dc, Regent, temp.iloc[0]['Regent_x'], hostile=hostile)
         success, crit = self.make_roll(Regent, dc, 'Persuasion')
+        
         message = 'Failed to start a {} Holding in {}'.format(Type, Provence)
-        if success == True:
+        if success == True and cost <= self.Regents[self.Regents['Regent']==Regent]['Gold Bars'].values[0]:
             message = 'Established a {} Holding in {}'.format(Type, Provence)
             level = 0
             if crit == True:
                 level = 1
             # make the holding
             self.add_holding(Provence, Regent, Type, level)
-        # Pay!
-        self.change_regent(Regent, Gold_Bars = self.Regents[self.Regents=='Regents']['Gold Bars'].values[0] - 1)
+            # Pay!
+            self.change_regent(Regent, Gold_Bars = self.Regents[self.Regents=='Regents']['Gold Bars'].values[0] - 1)
+        else:
+            success = False
         return success, 0, message
         
     def domain_action_declare_war(self, Regent, Target):
