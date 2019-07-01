@@ -26,8 +26,8 @@ class DQNAgent(object):
         self.agent_predict = 0
         self.learning_rate = 0.0005
         
-        self.action_size = 96
-        self.action_choices = 44
+        self.action_size = 97
+        self.action_choices = 52
         
         # different models for different decisions
         self.tax_model = self.network(N=4, K=25)
@@ -482,7 +482,7 @@ class DQNAgent(object):
         
         temp = Game.Provences[Game.Provences['Regent'] == enemy]
         check = temp.shape[0]
-        temp_ = pd.concat([self.Troops[self.Troops['Regent']==a] for a in regents_i_care_about])
+        temp_ = pd.concat([Game.Troops[Game.Troops['Regent']==a] for a in regents_i_care_about])
         temp_ = temp_[temp_['Regent'] != enemy]
         temp_ = pd.merge(temp[['Provence']], temp_, on='Provence', how='left').fillna(0)
         temp_ = temp_[temp_['Type'].astype(str) != '0'][['Provence', 'Type']].groupby('Provence').count().reset_index()
@@ -532,6 +532,8 @@ class DQNAgent(object):
             state[94] = 1  # Broke
         if Game.Regents[Game.Regents['Regent'] == Regent]['Regency Points'].values[0] <= 0:
             state[95] = 1  # Powerless
+        if pd.merge(Game.Troops[Game.Troops['Regent']=='Regent'], Game.Provences[Game.Provences['Regent']==''], on='Provence',how='inner').shape[0]>0:
+            state[96] = 1  # Empty Provence I occupy
         return np.asarray(state), capital, high_pop, low_pop, friend, enemy, rando
         
             
@@ -541,11 +543,11 @@ class DQNAgent(object):
         Setting this to N outputs.
         '''
         model = Sequential()
-        model.add(Dense(units=120, activation='relu', input_dim=K))
+        model.add(Dense(units=240, activation='relu', input_dim=K))
         model.add(Dropout(0.15))
-        model.add(Dense(units=120, activation='relu'))
+        model.add(Dense(units=240, activation='relu'))
         model.add(Dropout(0.15))
-        model.add(Dense(units=120, activation='relu'))
+        model.add(Dense(units=240, activation='relu'))
         model.add(Dropout(0.15))
         model.add(Dense(units=N, activation='softmax'))
         opt = Adam(self.learning_rate)
