@@ -27,7 +27,7 @@ class DQNAgent(object):
         self.learning_rate = 0.0005
         
         self.action_size = 96
-        self.action_choices = 39
+        self.action_choices = 44
         
         # different models for different decisions
         self.tax_model = self.network(N=4, K=25)
@@ -224,8 +224,12 @@ class DQNAgent(object):
             except:
                 print('Forgot to mark a capital')
                 capital = my_provences[my_provences['Capital']==False].sort_values('Population', ascending=False).iloc[0]['Provence']
-            high_pop = my_provences[my_provences['Capital']==False].sort_values('Population', ascending=False).iloc[0]['Provence']
-            low_pop = my_provences[my_provences['Capital']==False].sort_values('Population').iloc[0]['Provence']
+            try:
+                high_pop = my_provences[my_provences['Capital']==False].sort_values('Population', ascending=False).iloc[0]['Provence']
+                low_pop = my_provences[my_provences['Capital']==False].sort_values('Population').iloc[0]['Provence']
+            except:  # only one provence!
+                high_pop = capital
+                low_pop = capital
             provences_i_care_about = [capital, high_pop, low_pop]
             for i, prov in enumerate(provences_i_care_about):
                 if my_provences[my_provences['Provence'] == prov]['Castle'].values[0] == 0:
@@ -261,6 +265,7 @@ class DQNAgent(object):
         rtemp2 = Game.Relationships[Game.Relationships['Regent']==Regent].copy()
         rtemp2['Regent'] = rtemp2['Other']
         relationships = pd.merge(rtemp['Regent'], rtemp2, on='Regent', how='left').fillna(0)
+        relationships['Regent'] = relationships['Regent'].astype(str)
         relationships = pd.merge(Game.Regents[Game.Regents['Regent'] != Regent][['Regent']], relationships, on='Regent', how='left').fillna(0)
         relationships = relationships[relationships['Regent'] != Regent].copy()
         # randomized roll for choices
@@ -433,7 +438,7 @@ class DQNAgent(object):
                 enemy_has_contested_provence
                 enemy_has_no_law_holdings_and_rebellious_or_poor_loyalty_in_a_province
                 contested_all_enemy_provinces
-                all_enemy_castles_0
+                all_enemy_castles_neutralized
                 enemy_troops_in_domain
                 enemy_troops_in_friends_domain
                 enemy_has_more_troops
@@ -477,10 +482,16 @@ class DQNAgent(object):
         
         temp = Game.Provences[Game.Provences['Regent'] == enemy]
         check = temp.shape[0]
+        temp_ = pd.concat([self.Troops[self.Troops['Regent']==a] for a in regents_i_care_about])
+        temp_ = temp_[temp_['Regent'] != enemy]
+        temp_ = pd.merge(temp[['Provence']], temp_, on='Provence', how='left').fillna(0)
+        temp_ = temp_[temp_['Type'].astype(str) != '0'][['Provence', 'Type']].groupby('Provence').count().reset_index()
+        temp_['Occupying Troops'] = temp_['Type']
+        temp = pd.merge(temp, temp_[['Provence', 'Occupying Troops']], on='Provence', how='left').fillna(0)
         if temp[temp['Contested'] == True].shape[0] == check and check > 0:
             state[78] = 1  # all_enemy_provences_contested
-        if np.sum(temp['Castle']) == 0:
-            state[79] = 1  # enemy_has_no_castles
+        if np.sum(temp['Castle']) == 0 or np.sum(1.0*(temp['Castle']>temp['Occupying Troops'])) == 0:
+            state[79] = 1  # enemy_has_no_castles_or_all_neutralized
         etroops = Game.Troops[Game.Troops['Regent'] == enemy].copy()
         if pd.merge(my_provences, etroops, on='Provence', how='left').shape[0] > 0:
             state[80] = 1  # enemy has troops in my domain

@@ -370,7 +370,8 @@ class Regency(object):
         
         # Provences
         cols = ['Provence', 'Domain', 'Region', 'Regent', 'Terrain', 'Loyalty', 'Taxation',
-                'Population', 'Magic', 'Castle', 'Capital', 'Position', 'Contested', 'Waterway', 'Brigands']
+                'Population', 'Magic', 'Castle', 'Castle Name','Capital', 'Position', 'Contested'
+                , 'Waterway', 'Brigands']
         self.Provences = pd.DataFrame(columns=cols)
         
         # Regents
@@ -434,14 +435,13 @@ class Regency(object):
         Index finder-function (function code)
         '''
         df = df.copy()
-        if len(temp) == 1:
-            index = temp[0]
-        else:
-            try:
-                index = max(df.index.tolist()) + 1
-            except:
-                print('new')
-                index=0
+        if len(temp)>0:
+            return temp[0]
+        try:
+            index = max(df.index.tolist()) + 1
+        except:
+            print('new')
+            index=0
         return index
 
     def add_holding(self, Provence, Regent, Type='Law', Level=1, Contested=0):
@@ -512,7 +512,7 @@ class Regency(object):
     def add_provence(self, Provence, Domain, Region, Regent, x, y
                      , Population=0, Magic=1, Law=None
                      , Capital=False, Terrain='Plains', Loyalty='Average', Taxation='Moderate'
-                     , Castle=0, Contested=False, Waterway=False):
+                     , Castle=0, Castle_Name = '', Contested=False, Waterway=False):
         '''
         Provence: pkey, Name
         Domain: Name 
@@ -533,12 +533,12 @@ class Regency(object):
         # print(Provence, df[df['Provence'] == Provence].shape[0], x, y)
         if df[df['Provence'] == Provence].shape[0] > 0:
             # Already exists!
-            self.change_provence(Provence=Provence, Regent=Regent, Region=Region, Domain=Domain, Terrain=Terrain, Loyalty=Loyalty, Taxation=Taxation, Castle=Castle, Capital=Capital, x=x, y=y, Contested=Contested, Waterway=Waterway, Brigands=False)
+            self.change_provence(Provence=Provence, Regent=Regent, Region=Region, Domain=Domain, Terrain=Terrain, Loyalty=Loyalty, Taxation=Taxation, Castle=Castle, Castle_Name=Castle_Name, Capital=Capital, x=x, y=y, Contested=Contested, Waterway=Waterway, Brigands=False)
         else:
             temp = df.index[df['Provence'] == 'Provence'].tolist()
             index = self.get_my_index(df, temp)
                     
-            df.loc[df.shape[0]] = [Provence, Domain, Region, Regent, Terrain, Loyalty, Taxation, Population, Magic, Castle, Capital, np.array([x, y]), Contested, Waterway, False]
+            df.loc[df.shape[0]] = [Provence, Domain, Region, Regent, Terrain, Loyalty, Taxation, Population, Magic, Castle, Castle_Name, Capital, np.array([x, y]), Contested, Waterway, False]
             df['Magic'] = df['Magic'].astype(int)
             df['Population'] = df['Population'].astype(int)
             df['Castle'] = df['Castle'].astype(int)
@@ -546,7 +546,7 @@ class Regency(object):
             
             self.Provences = df
 
-    def change_provence(self, Provence, Regent=None, Region=None, Domain=None, Population_Change=0, Terrain=None, Loyalty=None, Taxation=None, Castle=None, Capital=None, x=None, y=None, Contested=None, Waterway=None, Brigands=False):
+    def change_provence(self, Provence, Regent=None, Region=None, Domain=None, Population_Change=0, Terrain=None, Loyalty=None, Taxation=None, Castle=None, Castle_Name=None, Capital=None, x=None, y=None, Contested=None, Waterway=None, Brigands=False):
         '''
         None = not changed
         '''
@@ -589,6 +589,8 @@ class Regency(object):
                 Magic = 1
             if Castle == None:
                 Castle = old['Castle']
+            if Castle_Name == None:
+                Castle_Name = old['Castle Name']
             if Capital == None:
                 Capital = old['Capital']
             if x == None or y == None:
@@ -596,7 +598,7 @@ class Regency(object):
             else:
                 pos = np.array([x, y])
             self.Provences.loc[index] = [Provence, Domain, Region, Regent, Terrain, Loyalty, Taxation,
-                Population, Magic, Castle, Capital, old['Position'], Contested, Waterway, Brigands]
+                Population, Magic, Castle, Castle_Name, Capital, old['Position'], Contested, Waterway, Brigands]
         except:
             print('Error with provence {}'.format(Provence))
 
@@ -637,7 +639,7 @@ class Regency(object):
             # set the stats based on archetype
             Class, Level, Str, Dex, Con, Int, Wis, Cha, Insight, Deception, Persuasion = self.get_archetype(Archetype)
 
-        df.loc[df.shape[0]] = [Regent, Name, Player, Class, Level, Alignment, Race, 
+        df.loc[index] = [Regent, Name, Player, Class, Level, Alignment, Race, 
                                Str, Dex, Con, Int, Wis, Cha, Insight, Deception, Persuasion,
                                Regency_Points, Gold_Bars, Regency_Bonus, Attitude, True]
         df = df.drop_duplicates(subset='Regent', keep='last')
@@ -862,7 +864,7 @@ class Regency(object):
                 if success == False:
                     self.change_provence(Provence, Brigands=True)
             if 'Levies' in Type.split() and Killed == False:  # disbanded, so go back to their stuff.
-                self.change_provence(self.Troops.iloc[temp[0]]['Home'], Population_Change=1)
+                self.change_provence(self.Troops.loc[temp[0]]['Home'], Population_Change=1)
             self.Troops.drop(temp[0], inplace=True)
   
     # Show
@@ -1918,8 +1920,8 @@ class Regency(object):
         costs = self.maintenance_costs(Update=False)
         provences_owned = self.Provences[self.Provences['Contested']==False][['Regent', 'Provence']].copy().groupby('Regent').count().reset_index()
         costs = pd.merge(costs, provences_owned, on='Regent', how='left').fillna(1)
-        costs['Cost'] = (costs['Cost']/costs['Provence']).astype(int).fillna(0)
-        temp = pd.merge(temp, costs, on='Regent', how='left')
+        costs['Cost'] = (costs['Cost']/costs['Provence']).replace('','0').astype(int).fillna(0)
+        temp = pd.merge(temp, costs, on='Regent', how='left').fillna(0)
         save_states = pd.DataFrame(columns=['Regent', 'Provence', 'state', 'action'])
         for i, row in temp.iterrows():
             temp_ = self.Provences[self.Provences['Regent']==row['Regent']][['Provence','Population', 'Loyalty', 'Taxation']]
@@ -1958,6 +1960,7 @@ class Regency(object):
         temp = pd.merge(temp, costs[['Regent', 'Cost']], on='Regent', how='left')
         temp = pd.merge(temp, self.Holdings[self.Holdings['Type'] == 'Law'][['Provence', 'Type', 'Regent']], on=['Provence', 'Regent'], how='left').fillna('')
         temp['Relative'] = temp['Loyalty'].str.replace('Rebellious','4').replace('Poor','3').replace('Average','2').replace('High','1').astype(int)
+        temp['Cost'] = temp['Cost'].astype(str).str.replace('','0').fillna('0').astype(int)
         temp['Tax Effect'] = temp['Relative']*(-1)*((temp['Taxation']=='Severe') + (temp['Type'] != 'Law')*(temp['Taxation']=='Moderate')) + temp['Relative']*(temp['Taxation']=='None') + (-10)*(temp['Loyalty']=='Rebellious') - temp['Cost']
         temp = temp[['Tax Effect', 'Provence']]
         rewards = pd.merge(df, temp, on='Provence', how='left')  # skips players
@@ -2158,6 +2161,7 @@ class Regency(object):
         temp = self.Regents[self.Regents['Player'] == False][['Regent', 'Gold Bars']].copy()
         temp = pd.merge(temp, df, on='Regent', how='left').fillna(0)
         temp['Check'] = temp['Gold Bars'] - temp['Cost']
+        temp['Court'] = 'Dormant'
         temp_0 = temp[temp['Check'] <= 5].copy()
         temp_ = temp[temp['Check'] > 5].copy()
         temp_3 = temp_[temp_['Check'] >= 30].copy()
@@ -3027,6 +3031,7 @@ class Regency(object):
                 success, reward, message = self.domain_action_diplomacy(Regent, Regent+'_rebel', Type='handle_unrest')
                 reward = reward + state[24]*10
                 return [Regent, actor, Type, 'diplomacy_respond_to_unrest', decision, '', '', '', '',  success, reward, state, False, message]
+        # decision[39] == 1:
         elif decision[39] == 1: #forge_ley_lines
             if state[3]==1 or state[94]==1 or state[95]==1 or state[37]==0:  
                 return [Regent, actor, Type, 'forge_ley_lines', decision, '', '', '', '',  False, -100, state, True, '']
@@ -3042,6 +3047,41 @@ class Regency(object):
                 temp=temp.sort_values('Roll', ascending=False)
                 success, reward, message = self.forge_ley_line(Regent, temp.iloc[0]['Provence'], temp.iloc[0]['Other'])
                 return [Regent, actor, Type, 'forge_ley_lines', decision, '', temp.iloc[0]['Provence'], temp.iloc[0]['Other'], '',  success, reward, state, False, message]
+        # decision[40] == 1:
+        elif decision[40] == 1: # adventuring
+            if state[3]==1:
+                return [Regent, actor, Type, 'adventuring', decision, '', '', '', '',  False, -100, state, True, '']
+            else:
+                success, reward, message = self.domain_action_adventure(Regent)
+                reward = reward + state[94]*10  # good idea if broke
+                return [Regent, actor, Type, 'adventuring', decision, '', '', '', '',  success, reward, state, False, message]
+        # decision[41] == 1:
+        elif decision[41] == 1:  # fortify_capital
+            if state[3]==1 or state[94] == 1 or state[95] == 1:
+                return [Regent, actor, Type, 'fortify_capital', decision, '', '', '', '',  False, -100, state, True, '']
+            else:
+                level = (1-state[26])*np.random.randint(0,2,1)[0] + 1
+                success, reward, message = domain_action_fortify(self, Regent, capital, level)
+                reward = reward + 7*(1-state[26])
+                return [Regent, actor, Type, 'fortify_capital', decision, '', capital, '', '',  success, reward, state, False, message]
+        # decision[42] == 1:
+        elif decision[42] == 1:  # fortify_high_pop
+            if state[3]==1 or state[94] == 1 or state[95] == 1:
+                return [Regent, actor, Type, 'fortify_high_pop', decision, '', '', '', '',  False, -100, state, True, '']
+            else:
+                level = (1-state[27])*np.random.randint(0,2,1)[0] + 1
+                success, reward, message = domain_action_fortify(self, Regent, high_pop, level)
+                reward = reward + 5*(1-state[27])
+                return [Regent, actor, Type, 'fortify_high_pop', decision, '', high_pop, '', '',  success, reward, state, False, message]
+        # decision[43] == 1:
+        elif decision[43] == 1:  # fortify_low_pop
+            if state[3]==1 or state[94] == 1 or state[95] == 1:
+                return [Regent, actor, Type, 'fortify_low_pop', decision, '', '', '', '',  False, -100, state, True, '']
+            else:
+                level = (1-state[28])*np.random.randint(0,2,1)[0] + 1
+                success, reward, message = domain_action_fortify(self, Regent, capital, level)
+                reward = reward + 2*(1-state[28])
+                return [Regent, actor, Type, 'fortify_low_pop', decision, '', low_pop, '', '',  success, reward, state, False, message]        
         # Nothing Doin'
         else:
             return [Regent, actor, Type, 'None/Error', decision, '', '', '', '', False, 0, state, False, 'Error: No Action Returned']
@@ -3272,7 +3312,7 @@ class Regency(object):
         disband_levees
         disband_mercenaries
         '''
-        df = self.Troops[self.Troops['Regent'] == 'Regent'].copy()
+        df = self.Troops[self.Troops['Regent'] == Regent].copy()
         for i, unit in enumerate(units):
             self.disband_troops(Regent, Provence[i], unit, Killed=False)
     
@@ -3674,13 +3714,15 @@ class Regency(object):
         '''
         cost = 1
         success = True
+        message = "Could not afford to hire a lieutenant"
         if cost > self.Regents[self.Regents['Regent']==Regent]['Gold Bars'].values[0]:
             success = False
         else:
             self.change_regent(Regent, Gold_Bars = self.Regents[self.Regents['Regent']==Regent]['Gold Bars'].values[0] - cost)
             name = 'Lieutenent Insert Name Later'
             self.add_lieutenant(Regent, name, True)
-        return success, 5, '{} hired {} as a Lieutenant'.format(self.Regents[self.Regents['Regent']==Regent]['Full Name'].values[0], name)
+            message =  '{} hired {} as a Lieutenant'.format(self.Regents[self.Regents['Regent']==Regent]['Full Name'].values[0], name)
+        return success, 5, message
         
     def bonus_action_move_troops(self, Regent, Troops, Provence, Target):
         '''
@@ -3782,7 +3824,7 @@ class Regency(object):
             self.change_provence(Home, Population_Change=-1*N)
         elif Type == 'Mercenaries':
             Garrisoned = 0
-        temp = self.troop_units[self.troop_units['Unit Type'] == Type]['Maintenance Cost']
+        cost = self.troop_units[self.troop_units['Unit Type'] == Type]['Muster Cost'].values[0]
         if success == True:
             for i in range(N):
                 if cost <= self.Regents[self.Regents['Regent']==Regent]['Gold Bars'].values[0]:
@@ -3794,7 +3836,7 @@ class Regency(object):
                                                                    , Garrisoned
                                                                    , Home]], columns=['Regent', 'Provence', 'Type', 'Cost', 'CR', 'Garrisoned', 'Home'])
                                                                    , ignore_index=True)
-                    self.change_regent(Regent, Gold_Bars = self.Regents[self.Regents['Regent']==Regent]['Gold Bars'].values[0]-temp.values[0])
+                    self.change_regent(Regent, Gold_Bars = self.Regents[self.Regents['Regent']==Regent]['Gold Bars'].values[0]-cost)
         return success, 0, 'Mustered {}s'.format(Type)
         
     # Domain Only
@@ -3803,9 +3845,25 @@ class Regency(object):
         Cost: None
         Success: Auto
         
+        The call to adventure affects even an established regent from time to time. It’s a major
+        responsibility that one sets aside to wander the countryside in an effort to gain fame and
+        fortune, or to handle certain situations personally. Choosing to adventure uses up a 
+        domain action for the round. Any adventure that takes longer than approximately four weeks
+        risks consuming an additional domain action on the next round.
+        
         INFO NEEDED NONE
-        (not for agents)
+        For NPCs, this is a way to generate some GB for Free, potentially,
         '''
+        
+        temp = self.Regents[self.Regents['Regent']==Regent].copy()
+        message = '{} went adventuring.'.format(temp.iloc[0]['Full Name'])
+        reward = 0
+        if temp.iloc[0]['Player'] == False:
+            check = int(self.temp.iloc[0]['Level']/3)+2
+            temp['Reward'] = np.random.randint(0,check,temp.shape[0])  # 0-4
+            
+        return True, reward, message
+            
         
     def domain_action_contest(self, Regent, Target, Provence, Type, gbid=None):
         '''
@@ -4236,11 +4294,11 @@ class Regency(object):
             message = '{} forged ley lines from {} to {}'.format(temp.iloc[0]['Full Name'], Provence, Target)
             lst = nx.shortest_path(G, pair[0], pair[1], 'Border')
             for a in range(len(lst)-1):  # make all the paths
-                self.LeyLines = self.LeyLines.append(pd.DataFrame([[Regent, lst[a], lst[a+1]], columns=self.LeyLines.keys()))
-                self.LeyLines = self.LeyLines.append(pd.DataFrame([[Regent, lst[a+1], lst[a]], columns=self.LeyLines.keys()))
+                self.LeyLines = self.LeyLines.append(pd.DataFrame([[Regent, lst[a], lst[a+1]]], columns=self.LeyLines.keys()))
+                self.LeyLines = self.LeyLines.append(pd.DataFrame([[Regent, lst[a+1], lst[a]]], columns=self.LeyLines.keys()))
         return success, cost, message
         
-    def domain_action_fortify(self, provence):
+    def domain_action_fortify(self, Regent, Provence, level, name=None):
         '''
         Type: Action
 
@@ -4295,6 +4353,57 @@ class Regency(object):
         troops_garrisoned_high
         troops_garrisoned_low
         '''
+        # gather info
+        temp = self.Regents[self.Regents['Regent']==Regent].copy()
+        # name the castle
+        t1 = pd.read_csv('csv/castle_pre.csv')
+        t2 = pd.read_csv('csv/castle_post.csv')
+        temp['N'] = np.random.randint(0,t1.shape[0]-1,temp.shape[0])
+        temp['X'] = np.random.randint(0,t2.shape[0]-1,temp.shape[0])
+        temp = pd.merge(temp, t1, on='N', how='left')
+        temp = pd.merge(temp, t2, on='X', how='left')
+        temp['New Castle Name'] = temp['Name']+temp['End']
+        temp['New Castle Name'] = temp['New Castle Name'].str.replace('_', ' ')
+        temp['New Castle Name'] = temp['New Castle Name'].str.title()
+        temp['New Castle Name'] = temp['New Castle Name'].str.replace("'S","'s")
+        temp = pd.merge(temp, self.Provences[self.Provences['Provence'] == Provence].copy(), on='Regent', how='left').fillna(-1)
+        message = 'Failed to Build a Castle'
+        self.change_regent(Regent, Regency_Points= temp.iloc[0]['Regency Points']-1)
+        success = False
+        reward = 0
+        if temp.iloc[0]['Population']>=0:  # valid action
+            success, crit = self.make_roll(Regent, 5, 'Persuasion')
+            if success == True:
+                if temp.iloc[0]['Castle Name'] == '':
+                    if name == None:
+                        temp['Castle Name'] = temp['New Castle Name']
+                    else:
+                        temp['Castle Name'] = name
+                # already started?
+                previous = temp.iloc[0]['Castle']  # old value
+                # current construction projects
+                for a in self.Projects[self.Projects['Regent'] == 'GG'].values:
+                    if a[2][0] == Provence:
+                        previous = previous + a[2][1]
+                end_level = level + previous
+                cost = level*6
+                if end_level > temp.iloc[0]['Population']:
+                    additional = (end_level - temp.iloc[0]['Population'])
+                    if additional > level:
+                        additional = level
+                    cost = cost + 3*additional
+                if cost <= temp.iloc[0]['Gold Bars']:
+                    # make the castle
+                    success = True
+                    reward = 5+level
+                    message = '{} started construction on {}, a level {} castle in {}'.format(temp.iloc[0]['Full Name'],temp.iloc[0]['Castle Name'], level, Provence)
+                    # charge 'em
+                    self.change_regent(Regent, Gold_Bars = temp.iloc[0]['Gold Bars'] - cost)
+                    if crit == True:  # 2d6 off of the cost as per the rules
+                        cost = cost - np.random.randint(1,6,1)[0] - np.random.randint(1,6,1)[0]
+                    self.Projects = self.Projects.append(pd.DataFrame([[Regent, 'Castle', (Provence, level), cost]], columns=self.Projects.keys()))
+                    self.change_provence(Provence, Castle_Name = temp.iloc[0]['Castle Name'])
+        return success, reward, message
        
     def domain_action_investiture(self, Regent, Target, Divest=False, Vassal=False):
         '''
