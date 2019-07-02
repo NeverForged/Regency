@@ -387,7 +387,7 @@ class Regency(object):
         self.Relationships = pd.DataFrame(columns=cols)
         
         # Troops
-        cols = ['Regent', 'Provence', 'Type', 'Cost', 'CR', 'Garrisoned', 'Home']
+        cols = ['Regent', 'Provence', 'Type', 'Cost', 'CR', 'Garrisoned', 'Home', 'Injury']
         self.Troops = pd.DataFrame(columns=cols)
         
         # Lieutenants
@@ -838,17 +838,12 @@ class Regency(object):
         This is fired after a decision to buy a troop is made
         OR for setting up troops in the begining
         '''
-        df = self.Troops.copy()
-        
-        index = self.get_my_index(df, [])
-        
+
         temp = self.troop_units[self.troop_units['Unit Type'] == Type]
 
-        df.loc[index] = [Regent, Provence, Type, temp['Maintenance Cost'].values[0], temp['BCR'].values[0], 0, home_provence]
+        self.Troops = self.Troops.append(pd.DataFrame([[Regent, Provence, Type, temp['Maintenance Cost'].values[0], temp['BCR'].values[0], 0, home_provence, 0]]
+                                                      , columns=['Regent', 'Provence', 'Type', 'Cost', 'CR', 'Garrisoned', 'Home', 'Injury']), ignore_index=True)
         
-        # set the df...
-        self.Troops = df
-
     def disband_troops(self, Regent, Provence, Type, Killed=False):
         '''
         '''
@@ -867,6 +862,8 @@ class Regency(object):
                 self.change_provence(self.Troops.loc[temp[0]]['Home'], Population_Change=1)
             self.Troops.drop(temp[0], inplace=True)
   
+    def injure_troop(self, index, penalty):
+        old = self.Troops.loc[index] 
     # Show
     def show_map(self, borders=False, roads=True, caravans=False, shipping=False, bg=True, adj=50, fig_size=(12,12),
                  cam_map='Birthright', map_alpha = 0.5, axis=False, regions=None, castle=False, domains=None, regents=None):
@@ -2861,12 +2858,12 @@ class Regency(object):
         # decision[24] == 1:
         elif decision[24] == 1:  # muster_levies
             temp = pd.merge(self.Holdings[self.Holdings['Regent']==Regent].copy()
-                            , self.troop_units[self.troop_units['Unit Type'] == 'Levies'].copy()
-                            , left_on='Type', right_on='Requirements Holdings'
-                            , how='left').fillna(0)
+                , self.troop_units[self.troop_units['Unit Type'] == 'Levies'].copy()
+                , left_on='Type', right_on='Requirements Holdings'
+                , how='left').fillna(0)
             temp = temp[temp['Requirements Level']<=temp['Level']]
             temp = temp[temp['Unit Type'] != 0]
-            temp_ = pd.merge(temp[['Provence']], self.Provences[['Provence', 'Population']], on='Provence', how='left')
+            temp_ = pd.merge(temp[['Regent', 'Provence']], self.Provences[['Provence', 'Regent', 'Population']], on=['Provence', 'Regent'], how='left')
             temp_ = temp_[temp_['Population'] > 0]
             temp = pd.merge(temp_[['Provence']], temp, on='Provence', how='left')
             if temp.shape[0] < 1:
@@ -3742,7 +3739,7 @@ class Regency(object):
             message = "Caused {} in {}'s court!".format(Type, victim)
         # update espionage thing ['Regent', 'Target', 'Assassination', 'Diplomacy', 'Troop Movements', 'Other']
         if success:
-            self.Espionage.append(pd.DataFrame([lst], columns=['Regent', 'Target', 'Assassination', 'Diplomacy', 'Troop Movements', 'Other']))
+            self.Espionage.append(pd.DataFrame([lst], columns=['Regent', 'Target', 'Assassination', 'Diplomacy', 'Troop Movements', 'Other']), sort=True)
         return success, reward, message
         
     def bonus_action_grant(self, Regent, Target, Amount):
@@ -3936,7 +3933,8 @@ class Regency(object):
         if Type == 'Levies':
             Home = Provence
             check = self.Provences[self.Provences['Provence']==Provence]['Population'].values[0]
-            if check == 0:
+            # prevent non-provence holder from raising levies
+            if check == 0 and self.Provences[self.Provences['Provence']==Provence]['Regent'] != Regent:
                 success = False
             if N > check:
                 N = check
@@ -3947,14 +3945,7 @@ class Regency(object):
         if success == True:
             for i in range(N):
                 if cost <= self.Regents[self.Regents['Regent']==Regent]['Gold Bars'].values[0]:
-                    self.Troops = self.Troops.append(pd.DataFrame([[Regent
-                                                                   , Provence
-                                                                   , Type
-                                                                   , self.troop_units[self.troop_units['Unit Type'] == Type]['Maintenance Cost'].values[0]
-                                                                   , self.troop_units[self.troop_units['Unit Type'] == Type]['BCR'].values[0]
-                                                                   , Garrisoned
-                                                                   , Home]], columns=['Regent', 'Provence', 'Type', 'Cost', 'CR', 'Garrisoned', 'Home'])
-                                                                   , ignore_index=True)
+					self.add_troops(Regent, Provence, Type)
                     self.change_regent(Regent, Gold_Bars = self.Regents[self.Regents['Regent']==Regent]['Gold Bars'].values[0]-cost)
         return success, 0, 'Mustered {}s'.format(Type)
         
@@ -4279,7 +4270,7 @@ class Regency(object):
                 reward = 5
             if Type == 'troop_permission':  # troop_permission.
                 self.add_relationship(Regent, Target, Vassalage=1)
-                self.Projects.append(pd.DataFrame([[Regent, 'Troop Permissions', Target, 0]], columns=self.Projects.keys()))
+                self.Projects.append(pd.DataFrame([[Regent, 'Troop Permissions', Target, 0]], columns=self.Projects.keys()), ignore_index=True)
             if Type == 'force_tribute':  # force_tribute
                 check = self.Relationship[self.Relationship['Regent'] == Regent]
                 check = check[check['Other']==Target]
@@ -4413,8 +4404,8 @@ class Regency(object):
             message = '{} forged ley lines from {} to {}'.format(temp.iloc[0]['Full Name'], Provence, Target)
             lst = nx.shortest_path(G, pair[0], pair[1], 'Border')
             for a in range(len(lst)-1):  # make all the paths
-                self.LeyLines = self.LeyLines.append(pd.DataFrame([[Regent, lst[a], lst[a+1]]], columns=self.LeyLines.keys()))
-                self.LeyLines = self.LeyLines.append(pd.DataFrame([[Regent, lst[a+1], lst[a]]], columns=self.LeyLines.keys()))
+                self.LeyLines = self.LeyLines.append(pd.DataFrame([[Regent, lst[a], lst[a+1]]], columns=self.LeyLines.keys()), ignore_index=True)
+                self.LeyLines = self.LeyLines.append(pd.DataFrame([[Regent, lst[a+1], lst[a]]], columns=self.LeyLines.keys()), ignore_index=True)
         return success, cost, message
         
     def domain_action_fortify(self, Regent, Provence, level, name=None):
@@ -4520,7 +4511,7 @@ class Regency(object):
                     self.change_regent(Regent, Gold_Bars = temp.iloc[0]['Gold Bars'] - cost)
                     if crit == True:  # 2d6 off of the cost as per the rules
                         cost = cost - np.random.randint(1,6,1)[0] - np.random.randint(1,6,1)[0]
-                    self.Projects = self.Projects.append(pd.DataFrame([[Regent, 'Castle', (Provence, level), cost]], columns=self.Projects.keys()))
+                    self.Projects = self.Projects.append(pd.DataFrame([[Regent, 'Castle', (Provence, level), cost]], columns=self.Projects.keys()), ignore_index=True)
                     self.change_provence(Provence, Castle_Name = temp.iloc[0]['Castle Name'])
         return success, reward, message
        
@@ -4603,7 +4594,7 @@ class Regency(object):
             # with no un-neutralized castles
             temp_ = self.Provences[self.Provences['Castle']>0][['Provence', 'Castle']]
             allies, _ = self.allies_enemies(Regent)
-            allies.append(pd.DataFrame([[Regent]], columns=['Regent']))
+            allies.append(pd.DataFrame([[Regent]], columns=['Regent']), ignore_index=True)
             temp = pd.merge(allies, self.Troops, on='Regent', how='left').fillna(0)
             temp = temp[temp['CR']>0]
             temp = temp[['Provence', 'Type']].groupby('Provence').count().reset_index()
@@ -4854,20 +4845,188 @@ class Regency(object):
                     reward = 10
         return success, reward, message
     
+    
     # The War 'Move'
     def war_move():
         '''
-        Resolving Battles
-        Herein is presented a method for quickly resolving engagements with hostile units. The 
-        system is intended to be economical for time, based on automatic resolution contingent 
-        on the number of units present on each side as well as their composition.
-
-        To determine the result, calculate the total Battlefield Challenge Rating (BCR) of all 
-        units present in the engagement on each side, then compare the forces. For each unit on 
-        the field, roll 1d6 to determine its state at the end of the engagement and add 
-        modifiers based on following table.
-
+        Determine which provences have occupying troops (troops that belong to an active enemy 
+        of the home regent).
         '''
+        temp = self.Provences.copy()
+        temp['Home Regent'] = temp['Regent']
+        temp = pd.merge(self.Troops, temp[['Home Regent', 'Provence']], on='Provence', how='left')
+
+        lst = []
+        temp['Defense'] = 0
+        temp['Offense'] = 0
+        M = temp[temp['Regent'] == temp['Home Regent']]
+        M['Defense'] = 1
+        lst.append(M)
+        temp =  temp[temp['Regent'] != temp['Home Regent']]
+        for HR in temp['Home Regent']:
+            allies, enemies = self.allies_enemies(HR)
+            
+            E = pd.merge(enemies, temp[temp['Home Regent']==HR], on='Regent', how='left').fillna(0)
+            E['Offense'] = 1
+            A = pd.merge(allies, temp[temp['Home Regent']==HR], on='Regent', how='left').fillna(0)
+            A['Defense'] = 1
+            lst.append(E)
+            lst.append(A)
+        temp = pd.concat(lst, sort=False)
+        temp =  temp[temp['Provence'] !=0]
+
+        defenders = temp[temp['Defense']==1]
+        attackers = temp[temp['Offense']==1]
+        
+        for Provence in attackers['Provence']:
+            if defenders[defenders['Provence'] == Provence].shape[0] > 0:  # we have a war!
+                '''
+                Resolving Battles
+                Herein is presented a method for quickly resolving engagements with hostile units. The 
+                system is intended to be economical for time, based on automatic resolution contingent 
+                on the number of units present on each side as well as their composition.
+
+                To determine the result, calculate the total Battlefield Challenge Rating (BCR) of all 
+                units present in the engagement on each side, then compare the forces. For each unit on 
+                the field, roll 1d6 to determine its state at the end of the engagement and add 
+                modifiers based on following table.
+                '''
+                offense = attackers[attackers['Provence'] == Provence]
+                defense =  defenders[defenders['Provence'] == Provence]
+                '''
+                --Resolving Battles--
+                Circumstance    Modifier
+
+                On a result of zero or lower, the unit is destroyed. On a result of 1, 
+                the unit has suffered 50% casualties;
+                if the unit has already suffered 50% or greater casualties, it is destroyed. 
+                On a result of 2 to 5, the unit suffers 25% casualties, but survives the engagement. 
+                On a result of 6 or greater, the unit suffers no significant casualties.
+                '''
+                off_score = 0
+				def_score = 0
+				# Go until it's over
+				while off_score == def_score and defense.shape[0]>0 and offense.shape[0]>0:
+					# Injury Modifiers... not sure how to propogate these
+					offense['mod'] = offense['Injury']
+					defense['mod'] = defense['Injury']
+					# Enemy force has Archer-class units and your force has no Cavalry-class units    -1
+					if np.sum(offense['Type'].str.lower().str.contains('archer')) >=1 and\
+					   np.sum(defense['Type'].str.lower().str.contains('cavalry|knight')) == 0:
+						defense['mod'] = defense['mod'] - 1
+					if np.sum(defense['Type'].str.lower().str.contains('archer')) >=1 and\
+					   np.sum(offense['Type'].str.lower().str.contains('cavalry|knight')) == 0:
+						offense['mod'] = offense['mod'] - 1
+					# Enemy force has Cavalry-class units and your force has no Pikemen or Cavalry-class units    -1
+					if np.sum(offense['Type'].str.lower().str.contains('cavalry|knight')) >=1 and\
+					   np.sum(defense['Type'].str.lower().str.contains('cavalry|knight|pikem')) == 0:
+						defense['mod'] = defense['mod'] - 1
+					if np.sum(defense['Type'].str.lower().str.contains('archer')) >=1 and\
+					   np.sum(offense['Type'].str.lower().str.contains('cavalry|knight|pikem')) == 0:
+						offense['mod'] = offense['mod'] - 1
+					# Per 2 total BCR the enemy force exceeds your own (maximum penalty -3)   -1
+					# Per 2 total BCR your force exceeds the enemy force (maximum bonus +3)   +1
+					for a in range(0,int((np.sum(defense['CR'])-np.sum(offense['CR']))/2)):
+						if a <= 2:
+							offense['mod'] = offense['mod']-1
+							defense['mod'] = defense['mod']+1
+					for a in range(0,int((np.sum(offense['CR'])-np.sum(defense['CR']))/2)):
+						if a <= 2:
+							offense['mod'] = offense['mod']+1
+							defense['mod'] = defense['mod']-1
+					# The unit has terrain advantage (elves in forest, dwarves in mountains)  +1 [Skipping for now]
+					# Your force has established fortifications and defenses and enemy force has no Artillery or Engineer-class units.    +1
+					if self.Provences[self.Provences['Provence']==Provence]['Castle'].values[0] > 0 and np.sum(offense['Type'].str.lower().str.contains('artillery|engineer')) == 0:
+							defense['mod'] = defense['mod'] + 1
+					# The unit possesses an attached commander.   +1  [May Add later]
+					offense['roll'] = np.random.randint(1,6,offense.shape[0]) + offense['mod']
+					defense['roll'] = np.random.randint(1,6,defense.shape[0]) + defense['mod']
+					off_score = np.sum(defense['roll']<=1)
+					def_score = np.sum(offense['roll']<=1)
+					# deal with causulties
+					offense_50 = offense[offense['roll']==1]
+					defense_50 = defense[defense['roll']==1]
+					offense_25 = offense[offense['roll']>=2]
+					defense_25 = defense[defense['roll']>=2]
+					offense_25 = offense_25[offense_25['roll']<=5]
+					defense_25 = defense_25[defense_25['roll']<=5]
+					offense_good = offense[offense['roll']>5]
+					defense_good = defense[defense['roll']>5]
+					offense_50['Injury'] = offense_50['Injury'] - 2
+					defense_50['Injury'] = defense_50['Injury'] - 2
+					offense_25['Injury'] = offense_25['Injury'] - 1
+					defense_25['Injury'] = defense_25['Injury'] - 1
+					dead = pd.concat([offense[offense['roll']<=0], defense[defense['roll']<=0]])
+					offense = pd.concat([offense_50,offense_25,offense_good])
+					defense = pd.concat([defense_50,defense_25,defense_good])
+					dead = pd.concat([dead, offense[offense['Injury']<=-4], defense[defense['Injury']<=-4]])
+					for i, row in dead.iterrows():
+						self.disband_troops(row['Regent'], row['Provence'], row['Type'], True)  # kill 'em
+								
+                '''
+                The side that suffers the most results of 1 or lower is considered defeated, and must 
+                retreat to a province with no hostile force present on the same turn of its defeat. 
+                If the force cannot be relocated in this way, it remains where it is. If the defeated 
+                force is entrenched in fortifications of any kind (such as a castle), it can choose not 
+                to retreat (if garrissoned, will not retreat)
+
+                If neither side is defeated, the battle is a stalemate (though all casualty results 
+                stand) and the forces  clash again on the following domain action. This continues until 
+                one force or another is either defeated or destroyed.
+
+                In the event one force’s total BCR is at least twice that of the opposing force, the 
+                other force is automatically destroyed and no dice need be rolled (won't do this,
+                since this makes the Spartan thing impossible)
+                
+                --Changes--
+                * Not sure when the author wanted to run this, I run at end of Season.
+                * Rolls are made until one side wins (whoever got more 1's)
+                * casualties will be a modifier if we have to roll again (-1 for 25%, -3 for 50%)
+                
+                When done, or when there are no enemies in the provence and you end there, your troops 
+                will do one of theactions listed:
+                '''
+            else: 
+                '''
+                Occupation and Conquest
+                In the event that hostile forces remain in a province unopposed and with no castles that 
+                remain unneutralized, the province is considered occupied. The province generates no gold 
+                bars or regency for any regent that possesses holdings within it until the invading army 
+                is dislodged -- that is, no hostile force remains within the province, and a friendly 
+                force remains to re-establish order.
+
+                As pointed out under the section for Seasons, an occupying force can collect Severe Taxation 
+                on occupied provinces during the taxation phase. This act permanently reduces the level of the 
+                province by one. Occupying forces act as a temporary, overriding Law holding of a level equal 
+                to the number of occupying units; this special form of Law can exceed the level of the province.
+
+                During occupation on the phase of the turn when War Moves occur, in lieu of moving the occupying 
+                force, the army can perform one of the following activities:
+
+                Quash Law: 
+                You permanently reduce the level of all Law holdings they choose in the province to zero.
+                [Assuming there is a law Holding from an enemy, if not...]
+                
+                Disband Guilds: 
+                You permanently reduce the level of all Guild holdings they choose in the province to zero.
+                [Assuming they belong to enemies, if no enemies with a guild > 0...]
+                
+                Raze Temples: 
+                You permanently reduce the level of all Temple holdings they choose in the province to zero.
+                [Again, assuming they belong to enemies, if not...]
+                
+                Vandalize Sources: 
+                You permanently reduce the level of all Source holdings they choose in the province by one.
+                [Again, only if enemies]
+                
+                Any holding damaged in this way can be leveled once more through domain actions should the 
+                province be liberated, or if the occupying army’s regent invests the province and becomes 
+                its rightful lord.
+                        
+                '''
+        
+        
+    
     
     # tools    
     def set_difficulty(self, base, Regent, Target, hostile=False, assassination=False, player_rbid=None):
@@ -4985,7 +5144,6 @@ class Regency(object):
         temp['Neighbor'] = temp['Provence']
         travel = pd.merge(travel, temp[['Neighbor', 'B', 'Other']], on='Neighbor', how='left')
 
-
         # set costs
         travel['Cost'] = ((travel['A'] + travel['B'] + 1)/2).astype(int) - travel['Road']
         # not sure how to stop after, so... Rivers cost 10 to cross
@@ -4994,7 +5152,7 @@ class Regency(object):
         # castles...
         temp_ = self.Provences[self.Provences['Castle']>0][['Provence', 'Castle']]
         allies, _ = self.allies_enemies(Regent)
-        allies.append(pd.DataFrame([[Regent]], columns=['Regent']))
+        allies.append(pd.DataFrame([[Regent]], columns=['Regent']), ignore_index=True)
         temp = pd.merge(allies, self.Troops, on='Regent', how='left').fillna(0)
         temp = temp[temp['CR']>0]
         temp = temp[['Provence', 'Type']].groupby('Provence').count().reset_index()
@@ -5011,8 +5169,7 @@ class Regency(object):
         # make network
         G = nx.from_pandas_edgelist(travel, source='Provence', target='Neighbor', edge_attr=['Cost', 'Cost_Cal'])
         return nx.shortest_path_length(G, Provence, Target, 'Cost_Cal')
-        
-        
+          
     def allies_enemies(self, Regent):
         '''
         Figures out who you are at war with, allies with, and who your allies are allies with, at war with.
@@ -5037,4 +5194,7 @@ class Regency(object):
             # remove allies from enemies list
             enemies = pd.merge(enemies, check, on='Regent', how='left').fillna(0)
             enemies = pd.DataFrame(enemies[enemies['temp']==0]['Regent'], columns=['Regent'])
+            enemies = enemies[enemies['Regent'] != Regent]
+                
         return allies, enemies
+	
