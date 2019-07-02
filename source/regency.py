@@ -3144,63 +3144,63 @@ class Regency(object):
             else:
                 success, reward, message = self.domain_action_rule(Regent, Holdings=false, Provence=low_pop)
                 return [Regent, actor, Type, 'rule_low_pop', decision, '', low_pop, '', '',  success, reward, state, False, message]
-		# establish_trade_route_friend
-		 elif decision[52] == 1: 
+        # establish_trade_route_friend
+        elif decision[52] == 1: 
             if state[3]==1 or state[95]==1 or state[94]==1 or state[56]==0:
-				return [Regent, actor, Type, 'establish_trade_route_friend', decision, friend, '', '', '',  False, -100, state, True, '']
-			else:
-				# where from?
-				temp = pd.merge(self.Provences[self.Provences['Regent']==Regent][['Provences']], self.Geography, on='Provence', how='left')
-				temp['routes'] = temp['Shipping'] + temp['Caravan']
-				temp = temp[['Provence', 'routes']].groupby('Provence').sum().reset_index()
-				temp = pd.merge(temp, self.Provences[['Provence', 'Population']], on='Provence', how='left')
-				temp['allowed'] = ((temp['Population'] + 2)/3).astype(int)
-				temp['allowed'] = temp['allowed'].astype(str).str.replace('0','1').replace('4','3').replace('5','3')
-				temp['allowed']  = temp['allowed'].astype(int)
-				temp = temp[temp['routes' < temp['allowed']]
-				temp = temp.sort_values('Population', ascending=False)
-				Base = temp.iloc[0]['Provence']
-				temp = pd.merge(self.Provences[self.Provences['Regent']==friend][['Provences']], self.Geography, on='Provence', how='left')
-				temp['routes'] = temp['Shipping'] + temp['Caravan']
-				temp = temp[['Provence', 'routes']].groupby('Provence').sum().reset_index()
-				temp = pd.merge(temp, self.Provences[['Provence', 'Population']], on='Provence', how='left')
-				temp['allowed'] = ((temp['Population'] + 2)/3).astype(int)
-				temp['allowed'] = temp['allowed'].astype(str).str.replace('0','1').replace('4','3').replace('5','3')
-				temp['allowed']  = temp['allowed'].astype(int)
-				temp = temp[temp['routes' < temp['allowed']]
-				temp = temp.sort_values('Population', ascending=False)
-				Target = temp.iloc[0]['Provence']
-				success, reward, message = self.domain_action_trade_routes(Regent,Base,Target)
-				return [Regent, actor, Type, ' establish_trade_route_friend', decision, friend, Base, Target, '',  success, reward, state, False, message]
-				reward = reward
-		# establish_trade_route_rando
-		 elif decision[53] == 1: 
+                return [Regent, actor, Type, 'establish_trade_route_friend', decision, friend, '', '', '',  False, -100, state, True, '']
+            else:
+                # where from?
+                temp = pd.merge(self.Provences[self.Provences['Regent']==Regent][['Provences']], self.Geography, on='Provence', how='left')
+                temp['routes'] = temp['Shipping'] + temp['Caravan']
+                temp = temp[['Provence', 'routes']].groupby('Provence').sum().reset_index()
+                temp = pd.merge(temp, self.Provences[['Provence', 'Population']], on='Provence', how='left')
+                temp['allowed'] = ((temp['Population'] + 2)/3).astype(int)
+                temp['allowed'] = temp['allowed'].astype(str).str.replace('0','1').replace('4','3').replace('5','3')
+                temp['allowed']  = temp['allowed'].astype(int)
+                temp = temp[temp['routes'] < temp['allowed']]
+                temp = temp.sort_values('Population', ascending=False)
+                Base = temp.iloc[0]['Provence']
+                temp = pd.merge(self.Provences[self.Provences['Regent']==friend][['Provences']], self.Geography, on='Provence', how='left')
+                temp['routes'] = temp['Shipping'] + temp['Caravan']
+                temp = temp[['Provence', 'routes']].groupby('Provence').sum().reset_index()
+                temp = pd.merge(temp, self.Provences[['Provence', 'Population']], on='Provence', how='left')
+                temp['allowed'] = ((temp['Population'] + 2)/3).astype(int)
+                temp['allowed'] = temp['allowed'].astype(str).str.replace('0','1').replace('4','3').replace('5','3')
+                temp['allowed']  = temp['allowed'].astype(int)
+                temp = temp[temp['routes'] < temp['allowed']]
+                temp = temp.sort_values('Population', ascending=False)
+                Target = temp.iloc[0]['Provence']
+                success, reward, message = self.domain_action_trade_routes(Regent,Base,Target)
+                return [Regent, actor, Type, ' establish_trade_route_friend', decision, friend, Base, Target, '',  success, reward, state, False, message]
+                reward = reward
+        # establish_trade_route_rando
+        elif decision[53] == 1: 
             if state[3]==1 or state[95]==1 or state[94]==1 or state[64]==0:
-				return [Regent, actor, Type, 'establish_trade_route_friend', decision, rando, '', '', '',  False, -100, state, True, '']
-			else:
-				# where from?
-				temp = pd.merge(self.Provences[self.Provences['Regent']==Regent][['Provences']], self.Geography, on='Provence', how='left')
-				temp['routes'] = temp['Shipping'] + temp['Caravan']
-				temp = temp[['Provence', 'routes']].groupby('Provence').sum().reset_index()
-				temp = pd.merge(temp, self.Provences[['Provence', 'Population']], on='Provence', how='left')
-				temp['allowed'] = ((temp['Population'] + 2)/3).astype(int)
-				temp['allowed'] = temp['allowed'].astype(str).str.replace('0','1').replace('4','3').replace('5','3')
-				temp['allowed']  = temp['allowed'].astype(int)
-				temp = temp[temp['routes' < temp['allowed']]
-				temp = temp.sort_values('Population', ascending=False)
-				Base = temp.iloc[0]['Provence']
-				temp = pd.merge(self.Provences[self.Provences['Regent']==rando][['Provences']], self.Geography, on='Provence', how='left')
-				temp['routes'] = temp['Shipping'] + temp['Caravan']
-				temp = temp[['Provence', 'routes']].groupby('Provence').sum().reset_index()
-				temp = pd.merge(temp, self.Provences[['Provence', 'Population']], on='Provence', how='left')
-				temp['allowed'] = ((temp['Population'] + 2)/3).astype(int)
-				temp['allowed'] = temp['allowed'].astype(str).str.replace('0','1').replace('4','3').replace('5','3')
-				temp['allowed']  = temp['allowed'].astype(int)
-				temp = temp[temp['routes' < temp['allowed']]
-				temp = temp.sort_values('Population', ascending=False)
-				Target = temp.iloc[0]['Provence']
-				success, reward, message = self.domain_action_trade_routes(Regent,Base,Target)
-				return [Regent, actor, Type, ' establish_trade_route_friend', decision, friend, Base, Target, '',  success, reward, state, False, message]
+                return [Regent, actor, Type, 'establish_trade_route_friend', decision, rando, '', '', '',  False, -100, state, True, '']
+            else:
+                # where from?
+                temp = pd.merge(self.Provences[self.Provences['Regent']==Regent][['Provences']], self.Geography, on='Provence', how='left')
+                temp['routes'] = temp['Shipping'] + temp['Caravan']
+                temp = temp[['Provence', 'routes']].groupby('Provence').sum().reset_index()
+                temp = pd.merge(temp, self.Provences[['Provence', 'Population']], on='Provence', how='left')
+                temp['allowed'] = ((temp['Population'] + 2)/3).astype(int)
+                temp['allowed'] = temp['allowed'].astype(str).str.replace('0','1').replace('4','3').replace('5','3')
+                temp['allowed']  = temp['allowed'].astype(int)
+                temp = temp[temp['routes'] < temp['allowed']]
+                temp = temp.sort_values('Population', ascending=False)
+                Base = temp.iloc[0]['Provence']
+                temp = pd.merge(self.Provences[self.Provences['Regent']==rando][['Provences']], self.Geography, on='Provence', how='left')
+                temp['routes'] = temp['Shipping'] + temp['Caravan']
+                temp = temp[['Provence', 'routes']].groupby('Provence').sum().reset_index()
+                temp = pd.merge(temp, self.Provences[['Provence', 'Population']], on='Provence', how='left')
+                temp['allowed'] = ((temp['Population'] + 2)/3).astype(int)
+                temp['allowed'] = temp['allowed'].astype(str).str.replace('0','1').replace('4','3').replace('5','3')
+                temp['allowed']  = temp['allowed'].astype(int)
+                temp = temp[temp['routes'] < temp['allowed']]
+                temp = temp.sort_values('Population', ascending=False)
+                Target = temp.iloc[0]['Provence']
+                success, reward, message = self.domain_action_trade_routes(Regent,Base,Target)
+                return [Regent, actor, Type, ' establish_trade_route_friend', decision, friend, Base, Target, '',  success, reward, state, False, message]
         # Nothing Doin'
         else:
             return [Regent, actor, Type, 'None/Error', decision, '', '', '', '', False, 0, state, False, 'Error: No Action Returned']
@@ -4826,34 +4826,49 @@ class Regency(object):
         create_trade_route
         '''
         # do we have permission?
-		Other = self.Provences[self.Provences['Provence']==Target]['Regent'].values[0]
-		A = self.Relationships[self.Relationships['Regent']=Regent].copy()
-		A = A[A['Other']==Other]
-		B = self.Relationships[self.Relationships['Regent']=Other].copy()
-		B = B[B['Other']==Regent]
-		rrow = self.Regents[self.Regents['Regent']==Regent].iloc[0]
-		temp = pd.concat([A, B])
-		success = False
-		reward = 0
-		message = 'Failed to establish trade between {} and {}.'.format(Base, Target)
-		if np.sum(temp['Trade Permission']) > 0 and rrow['Gold Bars'] >= 1 and rrow['Regency Points'] >= 1:
-			# waterways?
-			Waterway = False
-			if self.Provences[self.Provences['Provence']==Base]['Waterway'] == True and elf.Provences[self.Provences['Provence']==Target]['Waterway'] == True:
-				Waterway = True
-			self.change_regent(Regent, Gold_Bars = rrow['Gold Bars'] - 1, Regency_Points =  rrow['Regency Points'] - 1)
-			success, crit = self.make_roll(Regent, dc=10, 'Persuasion')
-			if success == True:
-				if Waterway == True:
-					self.add_geo(Base, Target, Shipping=1)
-					message = 'Shipping established between {} and {}.'.format(Base, Target)
-					reward = 15
-				else:
-					self.add_geo(Base, Target, Caravan=1)
-					message = 'Caravan established between {} and {}.'.format(Base, Target)
-					reward = 10
-		return success, reward, message
-		
+        Other = self.Provences[self.Provences['Provence']==Target]['Regent'].values[0]
+        A = self.Relationships[self.Relationships['Regent']==Regent].copy()
+        A = A[A['Other']==Other]
+        B = self.Relationships[self.Relationships['Regent']==Other].copy()
+        B = B[B['Other']==Regent]
+        rrow = self.Regents[self.Regents['Regent']==Regent].iloc[0]
+        temp = pd.concat([A, B])
+        success = False
+        reward = 0
+        message = 'Failed to establish trade between {} and {}.'.format(Base, Target)
+        if np.sum(temp['Trade Permission']) > 0 and rrow['Gold Bars'] >= 1 and rrow['Regency Points'] >= 1:
+            # waterways?
+            Waterway = False
+            if self.Provences[self.Provences['Provence']==Base]['Waterway'] == True and elf.Provences[self.Provences['Provence']==Target]['Waterway'] == True:
+                Waterway = True
+            self.change_regent(Regent, Gold_Bars = rrow['Gold Bars'] - 1, Regency_Points =  rrow['Regency Points'] - 1)
+            success, crit = self.make_roll(Regent, 10, 'Persuasion')
+            if success == True:
+                if Waterway == True:
+                    self.add_geo(Base, Target, Shipping=1)
+                    message = 'Shipping established between {} and {}.'.format(Base, Target)
+                    reward = 15
+                else:
+                    self.add_geo(Base, Target, Caravan=1)
+                    message = 'Caravan established between {} and {}.'.format(Base, Target)
+                    reward = 10
+        return success, reward, message
+    
+    # The War 'Move'
+    def war_move():
+        '''
+        Resolving Battles
+        Herein is presented a method for quickly resolving engagements with hostile units. The 
+        system is intended to be economical for time, based on automatic resolution contingent 
+        on the number of units present on each side as well as their composition.
+
+        To determine the result, calculate the total Battlefield Challenge Rating (BCR) of all 
+        units present in the engagement on each side, then compare the forces. For each unit on 
+        the field, roll 1d6 to determine its state at the end of the engagement and add 
+        modifiers based on following table.
+
+        '''
+    
     # tools    
     def set_difficulty(self, base, Regent, Target, hostile=False, assassination=False, player_rbid=None):
         '''
