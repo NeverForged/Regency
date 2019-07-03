@@ -4879,6 +4879,11 @@ class Regency(object):
         attackers = temp[temp['Offense']==1]
         
         for Provence in attackers['Provence']:
+            Castle = self.Provecnes[self.Provences['Provence']==Provence]['Castle']
+            if attackers.shape[0] >= Castle and Castle > 0 and np.sum(attackers['Type'].str.lower().str.contains('artillery|engineer')) > 0:
+                # Damage the Castle...
+                    self.change_provence(Provence, Castle=self.Provecnes[self.Provences['Provence']==Provence]['Castle']-1)
+                    Castle = Castle - 1
             if defenders[defenders['Provence'] == Provence].shape[0] > 0:  # we have a war!
                 '''
                 Resolving Battles
@@ -4896,7 +4901,7 @@ class Regency(object):
                 '''
                 --Resolving Battles--
                 Circumstance    Modifier
-
+                
                 On a result of zero or lower, the unit is destroyed. On a result of 1, 
                 the unit has suffered 50% casualties;
                 if the unit has already suffered 50% or greater casualties, it is destroyed. 
@@ -4907,6 +4912,38 @@ class Regency(object):
                 def_score = 0
                 # Go until it's over
                 while off_score-def_score < def_score and def_score-off_score < off_score and defense.shape[0]>0 and offense.shape[0]>0:
+                    # --- Modifiers ---
+                    offense['mod'] = offense['Injury']
+                    defense['mod'] = defense['Injury']
+                    # Enemy force has Archer-class units and your force has no Cavalry-class units    -1
+                    if np.sum(offense['Type'].str.lower().str.contains('archer')) >=1 and\
+                       np.sum(defense['Type'].str.lower().str.contains('cavalry|knight')) == 0:
+                        defense['mod'] = defense['mod'] - 1
+                    if np.sum(defense['Type'].str.lower().str.contains('archer')) >=1 and\
+                       np.sum(offense['Type'].str.lower().str.contains('cavalry|knight')) == 0:
+                        offense['mod'] = offense['mod'] - 1
+                    # Enemy force has Cavalry-class units and your force has no Pikemen or Cavalry-class units    -1
+                    if np.sum(offense['Type'].str.lower().str.contains('cavalry|knight')) >=1 and\
+                       np.sum(defense['Type'].str.lower().str.contains('cavalry|knight|pikem')) == 0:
+                        defense['mod'] = defense['mod'] - 1
+                    if np.sum(defense['Type'].str.lower().str.contains('archer')) >=1 and\
+                       np.sum(offense['Type'].str.lower().str.contains('cavalry|knight|pikem')) == 0:
+                        offense['mod'] = offense['mod'] - 1
+                    # Per 2 total BCR the enemy force exceeds your own (maximum penalty -3)   -1
+                    # Per 2 total BCR your force exceeds the enemy force (maximum bonus +3)   +1
+                    for a in range(0,int((np.sum(defense['CR'])-np.sum(offense['CR']))/2)):
+                        if a <= 2:
+                            offense['mod'] = offense['mod']-1
+                            defense['mod'] = defense['mod']+1
+                    for a in range(0,int((np.sum(offense['CR'])-np.sum(defense['CR']))/2)):
+                        if a <= 2:
+                            offense['mod'] = offense['mod']+1
+                            defense['mod'] = defense['mod']-1
+                    # The unit has terrain advantage (elves in forest, dwarves in mountains)  +1 [Skipping for now]
+                    # Your force has established fortifications and defenses and enemy force has no Artillery or Engineer-class units.    +1
+                    if self.Provences[self.Provences['Provence']==Provence]['Castle'].values[0] > 0 and np.sum(offense['Type'].str.lower().str.contains('artillery|engineer')) == 0:
+                            defense['mod'] = defense['mod'] + defense['Garrisoned']  # only those in the castle
+                    # The unit possesses an attached commander.   +1  [May Add later]
                     offense['roll'] = np.random.randint(1,6,offense.shape[0]) + offense['mod']
                     defense['roll'] = np.random.randint(1,6,defense.shape[0]) + defense['mod']
                     # deal with causulties
@@ -4953,6 +4990,10 @@ class Regency(object):
                             _, newp = self.get_travel_cost(defense['Regent'].values[0], Provence, temp.iloc[0]['Provence'], Path=True)
                             if len(newp) > 1:
                                 defense_['Provence'] = newp[1]
+                                # no friendly forces remain, so...
+                                self.change_provence(Provence, Contested=True)
+                    
+                    
                 elif off_score < def_score:
                     if offense.shape[0] > 0:
                         if self.Provences[self.Provences['Regent'] == offense['Regent'].values[0]].shape[0] > 0:
@@ -4973,7 +5014,7 @@ class Regency(object):
                 for i, row in offense_.iterrows():
                     for a in range(int(row['CR'])):
                         self.add_troops(row['Regent'], row['Provence'], row['Type'])
-                                
+                                 
                 '''
                 The side that suffers the most results of 1 or lower is considered defeated, and must 
                 retreat to a province with no hostile force present on the same turn of its defeat. 
@@ -4997,7 +5038,9 @@ class Regency(object):
                 When done, or when there are no enemies in the provence and you end there, your troops 
                 will do one of theactions listed:
                 '''
-            else: 
+                
+                
+            elif Castle == 0:   # Castle must be neutralized...
                 '''
                 Occupation and Conquest
                 In the event that hostile forces remain in a province unopposed and with no castles that 
@@ -5035,7 +5078,7 @@ class Regency(object):
                 its rightful lord.
                         
                 '''
-        
+                self.change_provence(Provence, Contested=True)
         
     
     
