@@ -844,7 +844,7 @@ class Regency(object):
         self.Troops = self.Troops.append(pd.DataFrame([[Regent, Provence, Type, temp['Maintenance Cost'].values[0], temp['BCR'].values[0], 0, home_provence, 0]]
                                                       , columns=['Regent', 'Provence', 'Type', 'Cost', 'CR', 'Garrisoned', 'Home', 'Injury']), ignore_index=True)
         
-    def disband_troops(self, Regent, Provence, Type, Killed=False):
+    def disband_troops(self, Regent, Provence, Type, Killed=False, Real=True):
         '''
         '''
         # disband the troop
@@ -853,12 +853,12 @@ class Regency(object):
         temp = temp.index[temp['Type'] == Type].tolist()
         if len(temp) > 0:
             # start disbanding
-            if 'Mercenary' in Type.split():
+            if 'Mercenary' in Type.split() and Real == True:
                 # oh no, potential Brigands!
                 success, _ = self.make_roll(Regent, 10, 'Persuasion', adj=False, dis=False, player_gbid=None)
                 if success == False:
                     self.change_provence(Provence, Brigands=True)
-            if 'Levies' in Type.split() and Killed == False:  # disbanded, so go back to their stuff.
+            if 'Levies' in Type.split() and Killed == False and Real == True:  # disbanded, so go back to their stuff.
                 self.change_provence(self.Troops.loc[temp[0]]['Home'], Population_Change=1)
             self.Troops.drop(temp[0], inplace=True)
   
@@ -3945,7 +3945,7 @@ class Regency(object):
         if success == True:
             for i in range(N):
                 if cost <= self.Regents[self.Regents['Regent']==Regent]['Gold Bars'].values[0]:
-					self.add_troops(Regent, Provence, Type)
+                    self.add_troops(Regent, Provence, Type)
                     self.change_regent(Regent, Gold_Bars = self.Regents[self.Regents['Regent']==Regent]['Gold Bars'].values[0]-cost)
         return success, 0, 'Mustered {}s'.format(Type)
         
@@ -4904,65 +4904,76 @@ class Regency(object):
                 On a result of 6 or greater, the unit suffers no significant casualties.
                 '''
                 off_score = 0
-				def_score = 0
-				# Go until it's over
-				while off_score == def_score and defense.shape[0]>0 and offense.shape[0]>0:
-					# Injury Modifiers... not sure how to propogate these
-					offense['mod'] = offense['Injury']
-					defense['mod'] = defense['Injury']
-					# Enemy force has Archer-class units and your force has no Cavalry-class units    -1
-					if np.sum(offense['Type'].str.lower().str.contains('archer')) >=1 and\
-					   np.sum(defense['Type'].str.lower().str.contains('cavalry|knight')) == 0:
-						defense['mod'] = defense['mod'] - 1
-					if np.sum(defense['Type'].str.lower().str.contains('archer')) >=1 and\
-					   np.sum(offense['Type'].str.lower().str.contains('cavalry|knight')) == 0:
-						offense['mod'] = offense['mod'] - 1
-					# Enemy force has Cavalry-class units and your force has no Pikemen or Cavalry-class units    -1
-					if np.sum(offense['Type'].str.lower().str.contains('cavalry|knight')) >=1 and\
-					   np.sum(defense['Type'].str.lower().str.contains('cavalry|knight|pikem')) == 0:
-						defense['mod'] = defense['mod'] - 1
-					if np.sum(defense['Type'].str.lower().str.contains('archer')) >=1 and\
-					   np.sum(offense['Type'].str.lower().str.contains('cavalry|knight|pikem')) == 0:
-						offense['mod'] = offense['mod'] - 1
-					# Per 2 total BCR the enemy force exceeds your own (maximum penalty -3)   -1
-					# Per 2 total BCR your force exceeds the enemy force (maximum bonus +3)   +1
-					for a in range(0,int((np.sum(defense['CR'])-np.sum(offense['CR']))/2)):
-						if a <= 2:
-							offense['mod'] = offense['mod']-1
-							defense['mod'] = defense['mod']+1
-					for a in range(0,int((np.sum(offense['CR'])-np.sum(defense['CR']))/2)):
-						if a <= 2:
-							offense['mod'] = offense['mod']+1
-							defense['mod'] = defense['mod']-1
-					# The unit has terrain advantage (elves in forest, dwarves in mountains)  +1 [Skipping for now]
-					# Your force has established fortifications and defenses and enemy force has no Artillery or Engineer-class units.    +1
-					if self.Provences[self.Provences['Provence']==Provence]['Castle'].values[0] > 0 and np.sum(offense['Type'].str.lower().str.contains('artillery|engineer')) == 0:
-							defense['mod'] = defense['mod'] + 1
-					# The unit possesses an attached commander.   +1  [May Add later]
-					offense['roll'] = np.random.randint(1,6,offense.shape[0]) + offense['mod']
-					defense['roll'] = np.random.randint(1,6,defense.shape[0]) + defense['mod']
-					off_score = np.sum(defense['roll']<=1)
-					def_score = np.sum(offense['roll']<=1)
-					# deal with causulties
-					offense_50 = offense[offense['roll']==1]
-					defense_50 = defense[defense['roll']==1]
-					offense_25 = offense[offense['roll']>=2]
-					defense_25 = defense[defense['roll']>=2]
-					offense_25 = offense_25[offense_25['roll']<=5]
-					defense_25 = defense_25[defense_25['roll']<=5]
-					offense_good = offense[offense['roll']>5]
-					defense_good = defense[defense['roll']>5]
-					offense_50['Injury'] = offense_50['Injury'] - 2
-					defense_50['Injury'] = defense_50['Injury'] - 2
-					offense_25['Injury'] = offense_25['Injury'] - 1
-					defense_25['Injury'] = defense_25['Injury'] - 1
-					dead = pd.concat([offense[offense['roll']<=0], defense[defense['roll']<=0]])
-					offense = pd.concat([offense_50,offense_25,offense_good])
-					defense = pd.concat([defense_50,defense_25,defense_good])
-					dead = pd.concat([dead, offense[offense['Injury']<=-4], defense[defense['Injury']<=-4]])
-					for i, row in dead.iterrows():
-						self.disband_troops(row['Regent'], row['Provence'], row['Type'], True)  # kill 'em
-								
+                def_score = 0
+                # Go until it's over
+                while off_score-def_score < def_score and def_score-off_score < off_score and defense.shape[0]>0 and offense.shape[0]>0:
+                    offense['roll'] = np.random.randint(1,6,offense.shape[0]) + offense['mod']
+                    defense['roll'] = np.random.randint(1,6,defense.shape[0]) + defense['mod']
+                    # deal with causulties
+                    offense_50 = offense[offense['roll']==1]
+                    defense_50 = defense[defense['roll']==1]
+                    offense_25 = offense[offense['roll']>=2]
+                    defense_25 = defense[defense['roll']>=2]
+                    offense_25 = offense_25[offense_25['roll']<=5]
+                    defense_25 = defense_25[defense_25['roll']<=5]
+                    offense_good = offense[offense['roll']>5]
+                    defense_good = defense[defense['roll']>5]
+                    offense_50['Injury'] = offense_50['Injury'] - 2
+                    defense_50['Injury'] = defense_50['Injury'] - 2
+                    offense_25['Injury'] = offense_25['Injury'] - 1
+                    defense_25['Injury'] = defense_25['Injury'] - 1
+                    dead = pd.concat([offense[offense['roll']<=0], defense[defense['roll']<=0]])
+                    offense = pd.concat([offense_50,offense_25,offense_good])
+                    defense = pd.concat([defense_50,defense_25,defense_good])
+                    dead = pd.concat([dead, offense[offense['Injury']<=-4], defense[defense['Injury']<=-4]])
+                    for i, row in dead.iterrows():
+                        self.disband_troops(row['Regent'], row['Provence'], row['Type'], True)  # kill 'em
+                    off_score = np.sum(offense['CR'])
+                    def_score = np.sum(defense['CR'])
+                # deal with injuries
+                defense_ = defense[defense['Injury'] >= -3]
+                offense_ = offense[offense['Injury'] >= -3]
+                defense_ = defense_[['Regent', 'Provence', 'Type', 'Injury', 'CR', 'Home']].groupby(['Regent', 'Provence', 'Type', 'Injury', 'Home']).count().reset_index()
+                defense_['Injury'] = defense_['Injury'].astype(str).str.replace('-2','0.5').replace('-1','0.75').replace('-3','0.25').replace('0','1').astype(float)
+                defense_['CR'] = defense_['CR']*defense_['Injury']
+                defense_ = defense_[['Regent', 'Provence', 'Type', 'CR']].groupby(['Regent', 'Provence', 'Type']).sum().reset_index()
+                defense_['CR'] = (defense_['CR']+0.5).astype(int)
+                offense_ = offense[['Regent', 'Provence', 'Type', 'Injury', 'CR', 'Home']].groupby(['Regent', 'Provence', 'Type', 'Injury', 'Home']).count().reset_index()
+                offense_['Injury'] = offense_['Injury'].astype(str).str.replace('-2','0.5').replace('-1','0.75').replace('-3','0.25').replace('0','1').astype(float)
+                offense_['CR'] = offense_['CR']*offense_['Injury']
+                offense_ = offense_[['Regent', 'Provence', 'Type', 'CR']].groupby(['Regent', 'Provence', 'Type']).sum().reset_index()
+                offense_['CR'] = (offense_['CR']+0.5).astype(int)
+                # run away if alive     
+                if def_score < off_score and self.Provences[self.Provences['Provence']==Provence]['Castle'].values[0]==0:
+                    if defense.shape[0]>0:
+                        if self.Provences[self.Provences['Regent'] == defense['Regent'].values[0]].shape[0] > 0:
+                            temp = self.Provences[self.Provences['Regent'] == defense['Regent'].values[0]]
+                            temp['Population'] = temp['Population'] + 3*temp['Capital']
+                            temp = temp.sort_values('Population')
+                            _, newp = self.get_travel_cost(defense['Regent'].values[0], Provence, temp.iloc[0]['Provence'], Path=True)
+                            if len(newp) > 1:
+                                defense_['Provence'] = newp[1]
+                elif off_score < def_score:
+                    if offense.shape[0] > 0:
+                        if self.Provences[self.Provences['Regent'] == offense['Regent'].values[0]].shape[0] > 0:
+                            temp = self.Provences[self.Provences['Regent'] == offence['Regent'].values[0]]
+                            temp['Population'] = temp['Population'] + 3*temp['Capital']
+                            temp = temp.sort_values('Population')
+                            _, newp = self.get_travel_cost(offense['Regent'].values[0], Provence, temp.iloc[0]['Provence'], Path=True)
+                            if len(newp) > 1:
+                                offense_['Provence'] = newp[1]
+                # consolidate troops down... and officially move them
+                for i, row in defense.iterrows():
+                    self.disband_troops(row['Regent'], row['Provence'], row['Type'], Real=False)
+                for i, row in offense.iterrows():
+                    self.disband_troops(row['Regent'], row['Provence'], row['Type'], Real=False)
+                for i, row in defense_.iterrows():
+                    for a in range(int(row['CR'])):
+                        self.add_troops(row['Regent'], row['Provence'], row['Type'])
+                for i, row in offense_.iterrows():
+                    for a in range(int(row['CR'])):
+                        self.add_troops(row['Regent'], row['Provence'], row['Type'])
+                                
                 '''
                 The side that suffers the most results of 1 or lower is considered defeated, and must 
                 retreat to a province with no hostile force present on the same turn of its defeat. 
@@ -5103,7 +5114,7 @@ class Regency(object):
         else:
             return False, False
             
-    def get_travel_cost(self, Regent, Provence, Target, unit='levies'):
+    def get_travel_cost(self, Regent, Provence, Target, unit='levies', Path=False):
         '''
         Given a Regent and two Provences, return the travel cost
         '''
@@ -5168,7 +5179,10 @@ class Regency(object):
 
         # make network
         G = nx.from_pandas_edgelist(travel, source='Provence', target='Neighbor', edge_attr=['Cost', 'Cost_Cal'])
-        return nx.shortest_path_length(G, Provence, Target, 'Cost_Cal')
+        if Path == False:
+            return nx.shortest_path_length(G, Provence, Target, 'Cost_Cal')
+        else:
+            return nx.shortest_path_length(G, Provence, Target, 'Cost_Cal'), nx.shortest_path(G, Provence, Target, 'Cost_Cal')
           
     def allies_enemies(self, Regent):
         '''
@@ -5197,4 +5211,4 @@ class Regency(object):
             enemies = enemies[enemies['Regent'] != Regent]
                 
         return allies, enemies
-	
+    
