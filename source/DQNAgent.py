@@ -27,7 +27,7 @@ class DQNAgent(object):
         self.learning_rate = 0.0005
         
         self.action_size = 97
-        self.action_choices = 54
+        self.action_choices = 64
         
         # different models for different decisions
         self.tax_model = self.network(N=4, K=25)
@@ -121,7 +121,7 @@ class DQNAgent(object):
                state.append(0)
         return np.asarray(state) 
       
-    def get_action_state(self, Regent, Game):
+    def get_action_state(self, Regent, Game, over=None):
         '''
         State variable for actions
         '''
@@ -143,6 +143,7 @@ class DQNAgent(object):
         
         prov_regent_list = temp.copy()
 
+        
         # start the work
         state = [0 for a in range(self.action_size)]
         '''
@@ -231,6 +232,16 @@ class DQNAgent(object):
                 high_pop = capital
                 low_pop = capital
             provences_i_care_about = [capital, high_pop, low_pop]
+            
+            if over != None:  # Override!
+                if over[1] == 'capital':
+                    capital = over[2]
+                if over[1] == 'high_pop':
+                    high_pop = over[2]
+                if over[1] == 'low_pop':
+                    low_pop = over[2]
+                provences_i_care_about = [capital, high_pop, low_pop]
+                
             for i, prov in enumerate(provences_i_care_about):
                 if my_provences[my_provences['Provence'] == prov]['Castle'].values[0] == 0:
                     state[26+i] = 1  # capital_no_castle, hih_pop_no_castle, low_pop_no_castle
@@ -286,6 +297,17 @@ class DQNAgent(object):
         regents['roll'] = np.random.randint(1,100,regents.shape[0]) - 50*regents['Trade Permission']  # more likely to try and finish the deal
         rando = regents.sort_values('roll').reset_index().iloc[0]['Regent']
         regents_i_care_about = [enemy, friend, rando]
+        
+        # Override!
+        if over != None:
+            if over[1] == 'enemy':
+                enemy = over[2]
+            if over[1] == 'friend':
+                friend = over[2]
+            if over[1] == 'rando':
+                rando = over[2]
+            regents_i_care_about = [enemy, friend, rando]
+            
         
         # Next set if for Holdings
         my_holdings = Game.Holdings[Game.Holdings['Regent']==Regent]
@@ -528,13 +550,22 @@ class DQNAgent(object):
             if regent['Race'].values[0] == Game.Regents[Game.Regents['Regent']==a]['Race'].values[0]:
                 state[91+i] = 1  # enemy_same_race, friend_same_race, rando_same_race
         
-        if Game.Regents[Game.Regents['Regent'] == Regent]['Gold Bars'].values[0] <= 0:
+        if Game.Regents[Game.Regents['Regent'] == Regent]['Gold Bars'].fillna(0).values[0] <= 0:
             state[94] = 1  # Broke
-        if Game.Regents[Game.Regents['Regent'] == Regent]['Regency Points'].values[0] <= 0:
+        if Game.Regents[Game.Regents['Regent'] == Regent]['Regency Points'].fillna(0).values[0] <= 0:
             state[95] = 1  # Powerless
         if pd.merge(Game.Troops[Game.Troops['Regent']=='Regent'], Game.Provences[Game.Provences['Regent']==''], on='Provence',how='inner').shape[0]>0:
             state[96] = 1  # Empty Provence I occupy
-        return np.asarray(state), capital, high_pop, low_pop, friend, enemy, rando
+        enemy_capital = None
+        temp = Game.Provences[Game.Provences['Regent']==enemy]
+        temp = temp[temp['Capital']==True]
+        if temp.shape[0] > 0:
+             enemy_capital = temp.iloc[0]['Provence']
+        if over != None:
+            if over[1] == 'enemy_capital':
+                enemy_capital = over[2]
+        return np.asarray(state), capital, high_pop, low_pop, friend, enemy, rando, enemy_capital
+        
         
             
     def network(self, weights=None, N=3, K=11):
