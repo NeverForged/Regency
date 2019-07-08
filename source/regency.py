@@ -33,7 +33,7 @@ class Regency(object):
     '''
     
     # Initialization
-    def __init__(self, world='Birthright', dwarves=True, elves=True, goblins=True, gnolls=True, halflings=True, jupyter=True, IntDC=5):
+    def __init__(self, train=False, train_short=False, world='Birthright', dwarves=True, elves=True, goblins=True, gnolls=True, halflings=True, jupyter=True, IntDC=5):
         '''
         
         initialization of Regency class.
@@ -45,6 +45,8 @@ class Regency(object):
         self.random_override = {}
         self.IntDC = IntDC
         self.errors = []
+        self.Train = train
+        self.Train_Short = train_short
 
         # Provence Taxation Table
         dct = {}
@@ -467,9 +469,6 @@ class Regency(object):
          Type: 'Law', 'Guild', 'Temple', 'Source' 
          Level: 1 to Population (or Magic for source)
          
-         temp = Holdings[Holdings['Regent']==Regent]
-         temp = temp[temp['Type']==Type]
-         temp.index[temp['Provence'] == 'Bogsend' ].tolist()
         '''
         # get the correct df
         df = self.Holdings.copy()
@@ -552,7 +551,7 @@ class Regency(object):
             # Already exists!
             self.change_provence(Provence=Provence, Regent=Regent, Region=Region, Domain=Domain, Terrain=Terrain, Loyalty=Loyalty, Taxation=Taxation, Castle=Castle, Castle_Name=Castle_Name, Capital=Capital, x=x, y=y, Contested=Contested, Waterway=Waterway, Brigands=False)
         else:
-            temp = df.index[df['Provence'] == 'Provence'].tolist()
+            temp = df.index[df['Provence'] == Provence].tolist()
             index = self.get_my_index(df, temp)
                     
             df.loc[df.shape[0]] = [Provence, Domain, Region, Regent, Terrain, Loyalty, Taxation, Population, Magic, Castle, Castle_Name, Capital, np.array([x, y]), Contested, Waterway, False]
@@ -664,7 +663,7 @@ class Regency(object):
         # Regents
         df = self.Regents.copy()
         
-        temp = df.index[df['Regent'] == 'Regent'].tolist()
+        temp = df.index[df['Regent'] == Regent].tolist()
         index = self.get_my_index(df, temp)
         if Archetype != None:
             # set the stats based on archetype
@@ -899,191 +898,7 @@ class Regency(object):
   
     def injure_troop(self, index, penalty):
         old = self.Troops.loc[index] 
-    # Show
-    def show_map(self, borders=False, roads=True, caravans=False, shipping=False, bg=True, adj=50, fig_size=(12,12),
-                 cam_map='Birthright', map_alpha = 0.5, axis=False, regions=None, castle=False, domains=None, regents=None):
-        '''
-        Map it
-        '''
-        Geography = self.Geography.copy()
-        if regions == None and domains==None and regents==None:
-            Provences = self.Provences.copy().reset_index()
-        else:
-            Provences = pd.DataFrame()
-            if regions != None:
-                Provences = pd.concat([Provences, pd.concat([ self.Provences[ self.Provences['Region']==Region] for Region in regions])], sort=False).reset_index()
-            if domains != None:
-                Provences = pd.concat([Provences, pd.concat([ self.Provences[ self.Provences['Domain']==Domain] for Domain in domains])], sort=False).reset_index()
-            if regents != None:
-                Provences = pd.concat([Provences, pd.concat([ self.Provences[ self.Provences['Regent']==regent] for regent in regents])], sort=False).reset_index()
-            
-        Regents = self.Regents.copy()
-        Diplomacy = self.Relationships.copy()
-        
-        plt.figure(figsize=fig_size)
-        if bg:
-            if cam_map=='Birthright':
-                image = Image.open('maps/615dbe4e4e5393bb6ff629b50f02a6ee.jpg')
-            else:
-                image = Image.open('maps'+cam_map)
-            plt.imshow(image, alpha=map_alpha)
-            
-        
-        try:
-            G = nx.from_pandas_edgelist(Geography, 'Provence', 'Neighbor', ['Border', 'Road', 'Caravan', 'Shipping'])
-        except:
-
-            G = nx.from_pandas_dataframe(Geography, 'Provence', 'Neighbor', ['Border', 'Road', 'Caravan', 'Shipping'])
-
-
-
-        pos = {}
-        xmin, xmax = Provences['Position'].values[0][0], Provences['Position'].values[0][0]
-        ymin, ymax = Provences['Position'].values[0][1], Provences['Position'].values[0][1]
-        for pro in list(Provences['Provence']):
-            x =  Provences[Provences['Provence']==pro]['Position'].values[0][0]
-            y =  Provences[Provences['Provence']==pro]['Position'].values[0][1]
-            if x < xmin:
-                xmin = x
-            elif x > xmax:
-                xmax = x
-            if y < ymin:
-                ymin = y
-            elif y > ymax:
-                ymax = y
-            
-            if bg:
-                pos[pro] = Provences[Provences['Provence']==pro]['Position'].values[0]
-            else:
-                pos[pro] = Provences[Provences['Provence']==pro]['Position'].values[0]*np.array([1,-1])
-
-        # node types
-        player_regents = Regents[Regents['Player']==True]
-        
-        if player_regents.shape[0] > 0:
-            npc_regents = Regents[Regents['Player']==False]
-            
-            dip = pd.merge(Diplomacy,player_regents,on='Regent',how='left')
-            dip['Rank'] = dip['Diplomacy'] + dip['Vassalage']
-            dip = dip[['Other','Rank']].groupby('Other').sum().reset_index()
-            dip['Regent'] = dip['Other']
-            
-            npc_regents = pd.merge(npc_regents, dip[['Regent', 'Rank']], on='Regent', how='outer').fillna(0)
-        else:
-            # no players, go by attitude:
-            player_regents = Regents[Regents['Alignment'].str.contains('G')==True]
-            npc_regents = Regents[Regents['Alignment'].str.contains('G')==False]
-            npc_regents_e = npc_regents[npc_regents['Alignment'].str.contains('E')==True]
-            npc_regents_n = npc_regents[npc_regents['Alignment'].str.contains('E')==False]
-            npc_regents_e['Rank'] = -10
-            npc_regents_n['Rank'] = 3
-            npc_regents = pd.concat([npc_regents_e, npc_regents_n], sort=False)
-            
-        # player nodes
-        nodes = []
-        capitals = []
-        for reg in list(player_regents['Regent']):
-            temp = Provences[Provences['Regent']==reg]
-            nodes = nodes + list(temp[temp['Capital']==False]['Provence'])
-            capitals = capitals + list(temp[temp['Capital']==True]['Provence'])
-        nodes = list(set(nodes))
-        capitals = list(set(capitals))
-
-        nx.draw_networkx_nodes(G,pos,
-                               nodelist=nodes,
-                               node_color='b',
-                               node_size=50,
-                               alpha=0.25)
-        nx.draw_networkx_nodes(G,pos,node_shape='*',
-                               nodelist=capitals,
-                               node_color='b',
-                               node_size=500,
-                               alpha=0.25)
-
-
-        # friendly and neutral provences
-        nodes = []
-        capitals = []
-        
-        for reg in list(npc_regents[npc_regents['Rank']>=0]['Regent']):
-            temp = Provences[Provences['Regent']==reg]
-            nodes = nodes + list(temp[temp['Capital']==False]['Provence'])
-            capitals = capitals + list(temp[temp['Capital']==True]['Provence'])
-        nodes = list(set(nodes))
-        capitals = list(set(capitals))
-
-        nx.draw_networkx_nodes(G,pos,
-                               nodelist=nodes,
-                               node_color='g',
-                               node_size=50,
-                               alpha=0.25)
-        nx.draw_networkx_nodes(G,pos,node_shape='*',
-                               nodelist=capitals,
-                               node_color='g',
-                               node_size=500,
-                               alpha=0.25)
-        # enemy provences
-        nodes = []
-        capitals = []
-        for reg in list(npc_regents[npc_regents['Rank']<0]['Regent']):
-            temp = Provences[Provences['Regent']==reg]
-            nodes = nodes + list(temp[temp['Capital']==False]['Provence'])
-            capitals = capitals + list(temp[temp['Capital']==True]['Provence'])
-        nodes = list(set(nodes))
-        capitals = list(set(capitals))
-
-        nx.draw_networkx_nodes(G,pos,
-                               nodelist=nodes,
-                               node_color='r',
-                               node_size=50,
-                               alpha=0.25)
-        nx.draw_networkx_nodes(G,pos,node_shape='*',
-                               nodelist=capitals,
-                               node_color='r',
-                               node_size=500,
-                               alpha=0.25)
-
-
-        # edges
-        Plist = list(Provences['Provence'])
-        if caravans:
-            edgelist = [(row['Provence'], row['Neighbor']) for i, row in Geography[Geography['Caravan']==1].iterrows() 
-                        if row['Provence'] in Plist and  row['Neighbor'] in Plist]
-            nx.draw_networkx_edges(G,pos,edgelist,width=2.0,alpha=0.3,edge_color='xkcd:red',style='dotted')
-        if shipping:
-            edgelist = [(row['Provence'], row['Neighbor']) for i, row in Geography[Geography['Shipping']==1].iterrows() 
-                        if row['Provence'] in Plist and  row['Neighbor'] in Plist]
-            nx.draw_networkx_edges(G,pos,edgelist,width=2.0,alpha=0.3,edge_color='xkcd:azure',style='dotted')
-        if borders:
-            edgelist = [(row['Provence'], row['Neighbor']) for i, row in Geography[Geography['Border']==1].iterrows() 
-                        if row['Provence'] in Plist and  row['Neighbor'] in Plist]
-            nx.draw_networkx_edges(G,pos,edgelist,width=0.5,alpha=0.25,edge_color='xkcd:grey')
-        if roads:
-            edgelist = [(row['Provence'], row['Neighbor']) for i, row in Geography[Geography['Road']==1].iterrows() 
-                        if row['Provence'] in Plist and  row['Neighbor'] in Plist]
-            nx.draw_networkx_edges(G,pos,edgelist,width=1.0,alpha=0.5,edge_color='xkcd:brown',style='dashed')
-        
-
-        # labels
-        temp = Provences.copy()
-        temp['Label'] = temp['Provence'] + '\n ' + temp['Population'].astype(int).astype(str) + '/' + temp['Magic'].astype(int).astype(str)
-        labels={}
-        for i, row in temp.iterrows():
-            if row['Capital']:
-                labels[row['Provence']] =  '*' + row['Label']
-            else:
-                labels[row['Provence']] =  row['Label']
-        nx.draw_networkx_labels(G,pos,labels,font_size=10)
-        
-        if bg:
-            plt.xlim(xmin-adj,xmax+adj)
-            plt.ylim(ymax+adj, ymin-adj)
-            
-        if axis==False:
-            plt.axis('off')
-        plt.show()
-        
-        
+    
     # The Season
     # 1. RANDOM EVENTS 
     def random_events(self, style='Birthright', Threshold=50, Regions=None):
@@ -2098,6 +1913,9 @@ class Regency(object):
         temp_Regents['Revenue'] = temp_Regents['Revenue'].fillna(0).astype(int)
         self.Seasons[self.Season]['Season'] = pd.merge(self.Seasons[self.Season]['Season'], temp_Regents[['Regent','Gold Bars', 'Revenue']], on='Regent', how='left').fillna(0)
         self.Regents = temp_Regents[cols]
+        
+        if self.Train == True:
+            self.agent.replay_new('Taxes')
     
     # 5. MAINTENANCE COSTS
     def maintenance_costs(self, Update=False):
@@ -2344,7 +2162,7 @@ class Regency(object):
                         invalid = True
                         tries = 0
                         while invalid == True:
-                            type = 'Action'
+                            Type = 'Action'
                             if tries == 0:
                                 decision = self.make_decision('', self.agent.action_choices, 'Action', state, row['Regent'], over)
                             else:
@@ -2352,20 +2170,22 @@ class Regency(object):
                            
                             # translate into action...
                             index = self.Seasons[self.Season]['Actions'][self.Action].shape[0]
-                            Regent, Actor, Action_Type, action, Decision, Target_Regent, Provence, Target_Provence, Target_Holding, Success, reward, State, invalid, Message = self.take_action(decision, Regent, actor, type, state, capital, high_pop, low_pop, friend, enemy, rando, enemy_capital)
+                            Regent, Actor, Action_Type, action, Decision, Target_Regent, Provence, Target_Provence, Target_Holding, Success, reward, State, invalid, Message = self.take_action(decision, Regent, actor, Type, state, capital, high_pop, low_pop, friend, enemy, rando, enemy_capital)
                             # update memory if invalid
                             tries += 1
                             if invalid == True:
                                 next_state = state
-                                self.agent.remember(state, decision, reward, next_state, 'Action', invalid)
-                                # and train it... to prevent future mistakes
-                                self.agent.train_short_memory(state, action, reward, next_state, 'Action', invalid)
                             else:  # update action vector
                                 self.Seasons[self.Season]['Actions'][self.Action].loc[index] = [Regent, Actor, Action_Type, action, Decision, Target_Regent, Provence, Target_Provence, Target_Holding, Success, reward, State, invalid, Message]
                                 if over != None and tries == 0:
                                     del self.Seasons[self.Season][self.Action]['Override'][Regent]
-                    
-            # update memories and train, unless action = 3 (wait for begining of next round to add in gold and regency)        
+                            # and train it...
+                            if self.Train == True or self.Train_Short == True:
+                                self.agent.remember(state, decision, reward, next_state, 'Action', invalid)
+                                self.agent.train_short_memory(state, action, reward, next_state, 'Action', invalid)
+            # update memories and train, unless action = 3 (wait for begining of next round to add in gold and regency
+            if self.Train==True:
+                self.agent.replay_new('Action')
             # last bit in function while loop
             self.Action = self.Action+1
            
@@ -2933,7 +2753,7 @@ class Regency(object):
                 success, reward, message = self.domain_action_contest(Regent, enemy, temp.iloc[0]['Provence'], temp.iloc[0]['Type_y'])
                 reward = reward + state[87]*3
                 if success:
-                    reward = reward + 2*(temp['Type_x']==temp['Type_y']) + temp['Level_y']
+                    reward = reward + 2*(temp.iloc[0]['Type_x']==temp.iloc[0]['Type_y']) + temp.iloc[0]['Level_y']
                 return [Regent, actor, Type, 'contest_holding', decision, enemy, temp.iloc[0]['Provence'], '', temp.iloc[0]['Type_y'],  success, reward, state, False, message]
         # decision[27] == 1:
         elif decision[27] == 1:  # contest_provence
@@ -3126,7 +2946,7 @@ class Regency(object):
                 return [Regent, actor, Type, 'investure_invest_friend', decision, friend, '', '', '',  False, -10, state, True, '']
             else:
                 success, reward, message = self.domain_action_investiture(Regent, Target=friend, Invest=True)
-                reward = reward -100 + 150*state[18]  # bad idea, unless giving away a legacy
+                reward = reward - 20 + 15*state[18] + 10*state[58] + 5*state[57]  # bad idea, unless giving away a legacy
                 return [Regent, actor, Type, 'investure_invest_friend', decision, friend, '', '', '',  success, reward, state, False, message]
         # investure_divest_enemy
         elif decision[45] == 1: 
@@ -3138,12 +2958,12 @@ class Regency(object):
                 return [Regent, actor, Type, 'investure_divest_enemy', decision, friend, '', '', '',  success, reward, state, False, message]
         # investiture_become_vassal_friend
         elif decision[46] == 1: 
-            if state[3]==1 or state[95]==1:
-                return [Regent, actor, Type, 'nvestiture_become_vassal_friend', decision, friend, '', '', '',  False, -10, state, True, '']
+            if state[3]==1 or state[95]==1 or state[57]==1 or state[58]==1 or state[97]==0:
+                return [Regent, actor, Type, 'investiture_become_vassal_friend', decision, friend, '', '', '',  False, -10, state, True, '']
             else:
                 success, reward, message = self.domain_action_investiture(Regent, Target=friend, Vassal=True)
                 reward = reward + state[51]*5 + state[52]*5
-                return [Regent, actor, Type, 'nvestiture_become_vassal_friend', decision, friend, '', '', '',  success, reward, state, False, message]
+                return [Regent, actor, Type, 'investiture_become_vassal_friend', decision, friend, '', '', '',  success, reward, state, False, message]
         # investiture_claim_provence
         elif decision[47] == 1: 
             if state[3]==1 or state[95]==1 or state[96]==0:
@@ -3191,9 +3011,9 @@ class Regency(object):
                     temp['routes'] = temp['Shipping'] + temp['Caravan']
                     temp = temp[['Provence', 'routes']].groupby('Provence').sum().reset_index()
                     temp = pd.merge(temp, self.Provences[['Provence', 'Population']], on='Provence', how='left')
-                    temp['allowed'] = ((temp['Population'] + 2)/3).astype(int)
-                    temp['allowed'] = temp['allowed'].astype(str).str.replace('0','1').replace('4','3').replace('5','3')
-                    temp['allowed']  = temp['allowed'].astype(int)
+                    temp['allowed'] = ((temp['Population'] + 2)/3).asType(int)
+                    temp['allowed'] = temp['allowed'].asType(str).str.replace('0','1').replace('4','3').replace('5','3')
+                    temp['allowed']  = temp['allowed'].asType(int)
                     temp = temp[temp['routes'] < temp['allowed']]
                     temp = temp.sort_values('Population', ascending=False)
                     Base = temp.iloc[0]['Provence']
@@ -3201,9 +3021,9 @@ class Regency(object):
                     temp['routes'] = temp['Shipping'] + temp['Caravan']
                     temp = temp[['Provence', 'routes']].groupby('Provence').sum().reset_index()
                     temp = pd.merge(temp, self.Provences[['Provence', 'Population']], on='Provence', how='left')
-                    temp['allowed'] = ((temp['Population'] + 2)/3).astype(int)
-                    temp['allowed'] = temp['allowed'].astype(str).str.replace('0','1').replace('4','3').replace('5','3')
-                    temp['allowed']  = temp['allowed'].astype(int)
+                    temp['allowed'] = ((temp['Population'] + 2)/3).asType(int)
+                    temp['allowed'] = temp['allowed'].asType(str).str.replace('0','1').replace('4','3').replace('5','3')
+                    temp['allowed']  = temp['allowed'].asType(int)
                     temp = temp[temp['routes'] < temp['allowed']]
                     temp = temp.sort_values('Population', ascending=False)
                     Target = temp.iloc[0]['Provence']
@@ -3228,9 +3048,9 @@ class Regency(object):
                 temp['routes'] = temp['Shipping'] + temp['Caravan']
                 temp = temp[['Provence', 'routes']].groupby('Provence').sum().reset_index()
                 temp = pd.merge(temp, self.Provences[['Provence', 'Population']], on='Provence', how='left')
-                temp['allowed'] = ((temp['Population'] + 2)/3).astype(int)
-                temp['allowed'] = temp['allowed'].astype(str).str.replace('0','1').replace('4','3').replace('5','3')
-                temp['allowed']  = temp['allowed'].astype(int)
+                temp['allowed'] = ((temp['Population'] + 2)/3).asType(int)
+                temp['allowed'] = temp['allowed'].asType(str).str.replace('0','1').replace('4','3').replace('5','3')
+                temp['allowed']  = temp['allowed'].asType(int)
                 temp = temp[temp['routes'] < temp['allowed']]
                 temp = temp.sort_values('Population', ascending=False)
                 if temp.shape[0] > 0:
@@ -3239,9 +3059,9 @@ class Regency(object):
                     temp['routes'] = temp['Shipping'] + temp['Caravan']
                     temp = temp[['Provence', 'routes']].groupby('Provence').sum().reset_index()
                     temp = pd.merge(temp, self.Provences[['Provence', 'Population']], on='Provence', how='left')
-                    temp['allowed'] = ((temp['Population'] + 2)/3).astype(int)
-                    temp['allowed'] = temp['allowed'].astype(str).str.replace('0','1').replace('4','3').replace('5','3')
-                    temp['allowed']  = temp['allowed'].astype(int)
+                    temp['allowed'] = ((temp['Population'] + 2)/3).asType(int)
+                    temp['allowed'] = temp['allowed'].asType(str).str.replace('0','1').replace('4','3').replace('5','3')
+                    temp['allowed']  = temp['allowed'].asType(int)
                     temp = temp[temp['routes'] < temp['allowed']]
                     temp = temp.sort_values('Population', ascending=False)
                     Target = temp.iloc[0]['Provence']
@@ -3276,7 +3096,7 @@ class Regency(object):
                 return [Regent, actor, Type, 'realm_magic_alchemy', decision, '', '', '', '',  success, reward, state, False, message]
         # realm_magic_bless_land
         elif decision[56] == 1: 
-            if state[3]==1 or state[35]==0 or state[94]==1 or state[95]==1:
+            if state[3]==1 or state[35]==0 or state[94]==1 or state[95]==1 or state[98]==0:
                 return [Regent, actor, Type, 'realm_magic_bless_land', decision, friend, '', '', '',  False, -10, state, True, '']
             else:
                 # get Targets
@@ -3291,7 +3111,7 @@ class Regency(object):
                 return [Regent, actor, Type, 'realm_magic_bless_land', decision, '', '', ', '.join(Target), '',  success, reward, state, False, message]
         # realm_magic_blight
         elif decision[57] == 1: 
-            if state[3]==1 or state[35]==0 or state[94]==1 or state[95]==1:
+            if state[3]==1 or state[35]==0 or state[94]==1 or state[95]==1 or state[98]==0:
                 return [Regent, actor, Type, 'realm_magic_blight', decision, enemy, '', '', '',  False, -10, state, True, '']
             else:
                 # get Targets
@@ -3364,8 +3184,56 @@ class Regency(object):
                 return [Regent, actor, Type, 'realm_magic_mass_destruction', decision, '', '', '', '',  False, -10, state, True, '']
             else:
                 success, reward, message = self.realm_magic_mass_destruction(Regent, enemy_capital)
-                return [Regent, actor, Type, 'realm_magic_mass_destruction', decision, '', enemy_capital, '', '',  False, reward, state, False, message]
-        
+                return [Regent, actor, Type, 'realm_magic_mass_destruction', decision, '', enemy_capital, '', '',  success, reward, state, False, message]
+        # realm_magic_raze
+        elif decision[64] == 1: 
+            if state[3]==1 or state[35]==0 or state[94]==1 or state[95]==1 or state[79]==1 or state[12]==0:
+                return [Regent, actor, Type, 'realm_magic_raze', decision, '', '', '', '',  False, -10, state, True, '']
+            else:
+                success, reward, message = self.realm_magic_raze(Regent, enemy)
+                return [Regent, actor, Type, 'realm_magic_raze', decision, enemy, '', '', '',  success, reward, state, False, message]
+        # realm_magic_stronghold_capital
+        elif decision[65] == 1: 
+            if state[3]==1 or state[35]==0 or state[94]==1 or state[95]==1 or state[79]==1 or state[12]==0 or state[6]==0 or state[23]==0:
+                return [Regent, actor, Type, 'realm_magic_stronghold', decision, '', '', '', '',  False, -10, state, True, '']
+            else:
+                success, reward, message = self.realm_magic_stronghold(Regent, capital)
+                return [Regent, actor, Type, 'realm_magic_stronghold', decision, '', capital, '', '',  success, reward, state, False, message]
+        # realm_magic_stronghold_high_pop
+        elif decision[66] == 1: 
+            if state[3]==1 or state[35]==0 or state[94]==1 or state[95]==1 or state[79]==1 or state[12]==0 or state[6]==0 or state[23]==0:
+                return [Regent, actor, Type, 'realm_magic_stronghold', decision, '', '', '', '',  False, -10, state, True, '']
+            else:
+                success, reward, message = self.realm_magic_stronghold(Regent, high_pop)
+                return [Regent, actor, Type, 'realm_magic_stronghold', decision, '', high_pop, '', '',  success, reward, state, False, message] 
+        # realm_magic_stronghold_low_pop
+        elif decision[67] == 1: 
+            if state[3]==1 or state[35]==0 or state[94]==1 or state[95]==1 or state[79]==1 or state[12]==0 or state[6]==0 or state[23]==0:
+                return [Regent, actor, Type, 'realm_magic_stronghold', decision, '', '', '', '',  False, -10, state, True, '']
+            else:
+                success, reward, message = self.realm_magic_stronghold(Regent, low_pop)
+                return [Regent, actor, Type, 'realm_magic_stronghold', decision, '', low_pop, '', '',  success, reward, state, False, message]
+        # realm_magic_stronghold_capital_perm
+        elif decision[68] == 1: 
+            if state[3]==1 or state[35]==0 or state[94]==1 or state[95]==1 or state[79]==1 or state[13]==0 or state[6]==0 or state[23]==0:
+                return [Regent, actor, Type, 'realm_magic_stronghold', decision, '', '', '', '',  False, -10, state, True, '']
+            else:
+                success, reward, message = self.realm_magic_stronghold(Regent, capital, True)
+                return [Regent, actor, Type, 'realm_magic_stronghold', decision, '', capital, '', '',  success, reward, state, False, message]
+        # realm_magic_stronghold_high_pop_perm
+        elif decision[69] == 1: 
+            if state[3]==1 or state[35]==0 or state[94]==1 or state[95]==1 or state[79]==1 or state[13]==0 or state[6]==0 or state[23]==0:
+                return [Regent, actor, Type, 'realm_magic_stronghold', decision, '', '', '', '',  False, -10, state, True, '']
+            else:
+                success, reward, message = self.realm_magic_stronghold(Regent, high_pop, True)
+                return [Regent, actor, Type, 'realm_magic_stronghold', decision, '', high_pop, '', '',  success, reward, state, False, message] 
+        # realm_magic_stronghold_low_pop_perm
+        elif decision[70] == 1: 
+            if state[3]==1 or state[35]==0 or state[94]==1 or state[95]==1 or state[79]==1 or state[13]==0 or state[6]==0 or state[23]==0:
+                return [Regent, actor, Type, 'realm_magic_stronghold', decision, '', '', '', '',  False, -10, state, True, '']
+            else:
+                success, reward, message = self.realm_magic_stronghold(Regent, low_pop, True)
+                return [Regent, actor, Type, 'realm_magic_stronghold', decision, '', low_pop, '', '',  success, reward, state, False, message]  
         # Nothing Doin'
         else:
             return [Regent, actor, Type, 'None/Error', decision, '', '', '', '', False, 0, state, False, 'Error: No Action Returned']
@@ -3446,7 +3314,7 @@ class Regency(object):
         temp['Terrain'] = temp['Terrain'].str.replace('Hills','4').replace('Swamp','4').replace('Marsh','4')
         temp['Terrain'] = temp['Terrain'].str.replace('Mountains', '8').replace('Glacier','8').replace('Mountain','8')
 
-        cost = np.sum(temp['Terrain'].astype(int))
+        cost = np.sum(temp['Terrain'].asType(int))
         temp['bridge'] = temp['RiverChasm']*np.random.randint(2,5,temp.shape[0])
         cost = cost + np.sum(temp['bridge'])*2
 
@@ -3496,7 +3364,7 @@ class Regency(object):
                 reward = -10  #why build a road to let THEM in?
         return success, reward, message
         
-    def bonus_action_decree(self, Regent, dectype='Asset Seizure', court='Average', player_gbid=None):
+    def bonus_action_decree(self, Regent, decType='Asset Seizure', court='Average', player_gbid=None):
         '''
         Type: Bonus
         Base Cost: 1 GB
@@ -3536,7 +3404,7 @@ class Regency(object):
         else:
             success, crit = self.make_roll(Regent, dc, skill, adj, dis)
         if success:
-            if dectype != 'Asset Seizure':
+            if decType != 'Asset Seizure':
                 # regular decree
                 lst = ['!Regent had A roustabout or rumormonger arrested.'
                         , "A festival is declared throughout !Regent's domain."
@@ -4077,7 +3945,7 @@ class Regency(object):
         mustered, unless those units are mercenaries (which can be used 
         immediately, but mercenaries come with their own risks).
 
-        If the type of unit a regent musters is a Levy, it comes with an 
+        If the Type of unit a regent musters is a Levy, it comes with an 
         additional cost. The province level is temporarily reduced by 1 each 
         time Levies are mustered from that province (see the section on Armies 
         for more details). The rating is restored when the unit is disbanded,
@@ -4197,8 +4065,8 @@ class Regency(object):
         Critical Success: You recuperate the RP spent on this action.
         
         INFO NEEDED:
-        enemy_has_(type)_holding in my lands
-        enemy_has_same_type_of_holding_as_me_somewhere_i_have_holding
+        enemy_has_(Type)_holding in my lands
+        enemy_has_same_Type_of_holding_as_me_somewhere_i_have_holding
         i have contested holding
         i have contested provence
         enemy_has_contested_holding
@@ -4261,7 +4129,7 @@ class Regency(object):
         success: 10 (+ population) (Persuasion)
         
         INFO NEEDED:
-        space for a holding nearby where I don't have a holding of that type and it's a type I can make
+        space for a holding nearby where I don't have a holding of that Type and it's a Type I can make
         
         Type: Action
 
@@ -4270,17 +4138,17 @@ class Regency(object):
         Base Success: DC 10
 
         When a regent wishes to establish a foothold in a given province, they may create a holding of the 
-        desired type. If this holding is created in another regent’s province and the regent wishes to contest 
+        desired Type. If this holding is created in another regent’s province and the regent wishes to contest 
         your efforts, the level of the province increases the DC of your domain action check (thus, attempting 
         to create a holding in a level 6 province makes the DC 16). They may spend RP to further increase the 
          difficulty.
 
-        Success on the domain action check creates a holding of the desired type at level 0. You may Rule this
+        Success on the domain action check creates a holding of the desired Type at level 0. You may Rule this
         holding on further domain actions to increase its level as normal.
 
         Create Province: If a regent wishes and the self Master approves, they may use this action to instead 
         create a new province in any unclaimed territory. The self Master determines the dimensions of this 
-        new province and assigns it a Source rating based on the terrain type that is present. If the new 
+        new province and assigns it a Source rating based on the terrain Type that is present. If the new 
         province is not adjacent to any existing provinces, the cost to attempt the action is increased to 3 
         GB. This represents financing any exploratory expeditions or prospectors. If successful, a new 
         province is created at level 0 and may be Ruled as normal.
@@ -4684,7 +4552,7 @@ class Regency(object):
                     # already started?
                     previous = temp.iloc[0]['Castle']  # old value
                     # current construction projects
-                    for a in self.Projects[self.Projects['Regent'] == 'GG'].values:
+                    for a in self.Projects[self.Projects['Regent'] == Regent].values:
                         if a[2][0] == Provence:
                             previous = previous + a[2][1]
                     end_level = level + previous
@@ -4717,7 +4585,7 @@ class Regency(object):
         the same name must be present for the ceremony. This ceremony is 
         critical for passing rightful ownership of holdings and provinces to 
         new rulers, and without it, a regent cannot draw Regency Points or Gold 
-        Bars from either asset type.
+        Bars from either asset Type.
 
         To invest provinces and holdings, the asset in question must either be 
         willingly given to the investing regent; otherwise, it must be 
@@ -4869,7 +4737,7 @@ class Regency(object):
         new level of all holdings affected, as well as 1 GB for each affected 
         holding. Only one domain action check needs to be made to increase the 
         level of all holdings. Remember that the total level of all holdings of 
-        a given type cannot exceed the level of the province in which they are 
+        a given Type cannot exceed the level of the province in which they are 
         located.
 
         For example, Ashira al-Sumari wishes to grow her holdings. She has a Law 
@@ -5204,7 +5072,7 @@ class Regency(object):
         suitable ley line connection.
         '''
         temp = self.Holdings[self.Holdings['Regent'] == Regent].copy()
-        temp = temp[temp['Type']=='Source'][['Type', 'Level']].groupby('Type').max().reset_index()
+        temp = temp[temp['Type']=='Source'][['Type', 'Level', 'Provence']].groupby(['Type', 'Provence']).max().reset_index()
         success = False
         reward = 0
         message = 'Lacks the resources to cast Death Plague'
@@ -5236,7 +5104,7 @@ class Regency(object):
                         self.change_provence(pro, Population_Change=-1)
                         lst.append(pro)
             self.change_regent(Regent, Gold_Bars = self.Regents[self.Regents['Regent']==Regent]['Gold Bars'].values[0] - 2, Regency_Points = RP)
-            return True, 0, message + ', '.join(lst)
+        return True, 0, message + ', '.join(lst)
 
     def realm_magic_demagogue(self, Regent, Target, Increase=True):
         '''
@@ -5273,14 +5141,15 @@ class Regency(object):
             lst = []
             if temp.shape[0] >= 0:
                 for i, row in temp.iterrows():
-                    if RP >= 5 and Limits[i] <= Level and i <= 3:
-                        RP = RP - 5
-                        if Increase == True:
-                            self.change_loyalty(row['Provence'], 1)
-                        else:
-                            self.change_loyalty(row['Provence'], -1)
-                        lst.append(row['Provence'])
-                        reward += 3
+                    if i <= 3:
+                        if RP >= 5 and Limits[i] <= Level and i <= 3:
+                            RP = RP - 5
+                            if Increase == True:
+                                self.change_loyalty(row['Provence'], 1)
+                            else:
+                                self.change_loyalty(row['Provence'], -1)
+                            lst.append(row['Provence'])
+                            reward += 3
             self.change_regent(Regent, Gold_Bars = self.Regents[self.Regents['Regent']==Regent]['Gold Bars'].values[0]-1, Regency_Points = RP)
             message = message + ', '.join(lst)
             if Increase == True:
@@ -5316,9 +5185,12 @@ class Regency(object):
         temp = temp[temp['Level']>=3]
         temp = pd.concat([temp[['Provence']], self.LeyLines[self.LeyLines['Regent']==Regent][['Provence']]])
         temp = temp[temp['Provence']==Provence]
+        temp = pd.merge(temp[['Provence']], self.Holdings[self.Holdings['Type']=='Source'])
+        temp = temp[temp['Regent']==Regent]
         success = False
         reward = 0
         message = 'Lacks the resources to cast Legion of the Dead'
+        
         temp = temp[temp['Level']>=3]
         RP = self.Regents[self.Regents['Regent']==Regent]['Regency Points'].values[0]
         GB = self.Regents[self.Regents['Regent']==Regent]['Gold Bars'].values[0]
@@ -5331,7 +5203,7 @@ class Regency(object):
                     RP = RP - 4
                     GB = GB - 1
                     N += 1
-                    self.Troops.append(pd.DataFrame([[Regent, Provence, 'Undead Troops', 0, 2, 0, '', 0]]), cols=self.Troops.keys())
+                    self.Troops.append(pd.DataFrame([[Regent, Provence, 'Undead Troops', 0, 2, 0, '', 0]]), columns=self.Troops.keys())
                     self.Projects.append(pd.DataFrame([[Regent, 'Undead Troops', '', 0]], columns = self.Projects.keys()))
             self.change_regent(Regent, Gold_Bars=GB, Regency_Points=RP)
             message = "{} Cast 'Legion of the Dead', summong {} Undead Troops in {}".format(self.Regents[self.Regents['Regent']==Regent]['Full Name'].values[0], N, Provence)
@@ -5360,8 +5232,8 @@ class Regency(object):
         instead.
 
         A dragon unit cannot be affected by this spell. Attached commanders on a unit 
-        that is destroyed suffer 5d10 points of damage, typed according to the caster’s 
-        wishes. The caster can select the type of damage at the time the spell is invoked 
+        that is destroyed suffer 5d10 points of damage, Typed according to the caster’s 
+        wishes. The caster can select the Type of damage at the time the spell is invoked 
         from among acid, fire, cold, force, lightning, poison, or thunder.
 
         The aftermath of the destruction lays waste to the surrounding countryside. The 
@@ -5399,6 +5271,120 @@ class Regency(object):
             self.change_loyalty(Provence, -1)
             success, reward, message = True, N*3, "{} cast 'Mass Destruction' on {}".format(self.Regents[self.Regents['Regent']==Regent]['Full Name'].values[0], Provence)
         return success, reward, message 
+    
+    def realm_magic_raze(self, Regent, Target):
+        '''
+        RP Cost: 10 per structure level
+        GB Cost: 2 per damage level inflicted
+        Required Source: 5
+        Duration: Instant
+
+        Powerful spellcasters can use this realm spell to devastate castles and similar 
+        fortifications. The more expansive the castle, the more expensive this spell is 
+        to cast, even if the damage you intend to cause is not equal to the level of the 
+        castle. For example, a level 4 castle costs 40 RP to target with this realm spell, 
+        though you may only have enough gold bars to damage it up to three levels. 
+        Sometimes it is simply enough to send a message rather than obliterate a castle 
+        outright.
+
+        The damage caused happens instantaneously, but the caster must be within sight range 
+        of the castle being affected throughout the period of time the spell is being cast. 
+        As such, this realm spell is typically invoked while a regent’s armies are laying 
+        siege to a province. The regent that owns the castle may attempt a Bloodline saving 
+        throw to halve the damage to the castle in question.
+        '''
+        temp = self.Holdings[self.Holdings['Regent'] == Regent].copy()
+        temp = temp[temp['Type']=='Source'][['Type', 'Level', 'Provence']]
+        temp = temp[temp['Level']>=5]
+        temp = pd.concat([temp[['Provence']], self.LeyLines[self.LeyLines['Regent']==Regent][['Provence']]])
+        temp = temp[temp['Provence']==Provence]
+        success = False
+        reward = 0
+        message = 'Lacks the resources to cast Legion of the Dead'
+        
+        RP = self.Regents[self.Regents['Regent']==Regent]['Regency Points'].values[0]
+        RB = self.Regents[self.Regents['Regent']==Regent]['Regency Bonus'].values[0]
+        GB = self.Regents[self.Regents['Regent']==Regent]['Gold Bars'].values[0]
+        Level = self.Regents[self.Regents['Regent']==Regent]['Level'].values[0]
+        
+        if temp.shape[0] > 0 and RP >= 10 and GB >= 2:
+            temp = pd.merge(self.Troops[self.Troops['Regent']=='Regent'][['Provence']], self.Provences[self.Provences['Regent']==Target], on='Provence', how='left')
+            temp = temp[temp['Castle']>0]
+            if temp.shape[0]>0:  # I have troops where an enemy has a castle
+                Level = temp.iloc[0]['Castle']
+                dmg = 0
+                for i in range(Level):
+                    if RP >= 10 and GB >= 2:
+                        dmg += 1
+                        RP = RP - 10
+                        GB = GB - 2
+                save, _ = self.make_roll(Target, 10+RB, 'Regency Bonus')
+                if save == True:
+                    dmg = int(dmg/2)
+                    if dmg == 0:
+                        dmg = 1
+                self.change_provence(temp.iloc[0]['Provence'], Castle = Level - dmg)
+                self.change_regent(Regent, Gold_Bars = GB, Regency_Points = RP)
+                success = True
+                reward = dmg*5
+                message = "{} cast 'Raze' on {}".format(self.Regents[self.Regents['Regent']==Regent].copy(), temp.iloc[0]['Castle Name'])
+        return success, reward, message 
+            
+    def realm_magic_stronghold(self, Regent, Provence, Perm=False):
+        '''
+        RP Cost: 6 RP per castle level
+        GB Cost: 10
+        Required Source: 7
+        Duration: One season per caster level
+
+        The invoker of this realm spell bends the land to their will to conjure a fortress
+        in the target province. The RP cost is equivalent to constructing a fortress with 
+        gold (6 RP per castle level), but the result is happens over the course of minutes 
+        rather than months. The fortress remains for one season per level of the caster, 
+        and crumbles to useless debris at the end of that period or if the caster dies.
+
+        If the spellcaster is willing to pay double the RP cost, the castle can be made 
+        permanent, though this act is extremely taxing on the spellcaster and ages them 
+        10 years. It will not destroy itself if the caster is later killed or dies of 
+        natural causes.
+        '''
+        temp = self.Holdings[self.Holdings['Regent'] == Regent].copy()
+        temp = temp[temp['Type']=='Source'][['Type', 'Level', 'Provence']]
+        temp = temp[temp['Level']>=7]
+        temp = pd.concat([temp[['Provence']], self.LeyLines[self.LeyLines['Regent']==Regent][['Provence']]])
+        temp = temp[temp['Provence']==Provence]
+        success = False
+        reward = 0
+        message = 'Lacks the resources to cast Stronghold'
+        
+        RP = self.Regents[self.Regents['Regent']==Regent]['Regency Points'].values[0]
+        RB = self.Regents[self.Regents['Regent']==Regent]['Regency Bonus'].values[0]
+        GB = self.Regents[self.Regents['Regent']==Regent]['Gold Bars'].values[0]
+        Level = self.Regents[self.Regents['Regent']==Regent]['Level'].values[0]
+        
+        if temp.shape[0] > 0 and RP >= 6 and GB >= 10:
+            temp = self.Provences[self.Provences['Provence']==Provence].copy()
+            if temp.shape[0]>0:
+                Pop = temp.iloc[0]['Population']
+                castle = temp.iloc[0]['Castle']
+                for i in range(Pop):
+                    if Perm == False:
+                        if RP >= 6:
+                            RP = RP - 6
+                            castle += 1
+                    else:
+                        if RP >= 12:
+                            RP = RP - 12
+                            castle += 1
+                if castle > 0 :
+                    self.change_provence(Provence, Castle=castle)
+                    success = True
+                    reward = castle*5
+                    message = "{} cast 'Stronghold' in {}.".format(self.Regents[self.Regents['Regent']==Regent]['Full Name'].values[0], Provence)
+                    if Perm == False:
+                        self.Projects = self.Projects.append(pd.DataFrame([[Regent, 'Realm Magic Stronghold', (Provence, castle), Level*3]], columns=self.Projects.keys()))
+            self.change_regent(Regent, Gold_Bars = GB - 10, Regency_Points=RP)
+        return success, reward, message
         
     # The War 'Move'
     def war_move(self):
@@ -5775,6 +5761,25 @@ class Regency(object):
         A major battle was won against a hated enemy (improves loyalty in all provinces)
         '''
         
+        # all of those were done where they happen
+        # Now, for the Building projects and other Projects..
+        self.Projects['Gold Bars Left'] = self.Projects['Gold Bars Left'] - np.random.randint(1,6,self.Projects.shape[0])
+        temp = self.Projects[self.Projects['Gold Bars Left']<=0].copy()
+        self.Projects = self.Projects[self.Projects['Gold Bars Left']>=1]
+        for i, row in temp.iterrows():
+            if row['Project Type']=='Castle':  # set the castle number
+                castle = self.Provences[self.Provences['Provence']==row['Details'][0]].iloc[0]['Castle']
+                self.change_provence(row['Details'][0], Castle = castle + row['Details'][1])
+            elif row['Project Type']=='Road':  # add the road
+                self.add_geo(row['Details'][0], row['Details'][1], Road=1)
+            elif row['Project Type'] == 'Undead Troops':  # disband the troops
+                tfinder = self.Troops[self.Troops['Regent']==row['Regent']].copy()
+                prov = tfinder[tfinder['Type']=='Undead Troops'].iloc[0]['Provence']
+                self.disband_troops(row['Regent'], prov, 'Undead Troops', Killed=False)
+            elif row['Project Type'] == 'Realm Magic Stronghold':  # destroy the castle
+                castle = self.Provences[self.Provences['Provence']==row['Details'][0]].iloc[0]['Castle']
+                self.change_provence(row['Details'][0], Castle=castle - row['Details'][1] )
+                
     # tools    
     def set_difficulty(self, base, Regent, Target, hostile=False, assassination=False, player_rbid=None):
         '''

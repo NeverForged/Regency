@@ -26,8 +26,8 @@ class DQNAgent(object):
         self.agent_predict = 0
         self.learning_rate = 0.0005
         
-        self.action_size = 97
-        self.action_choices = 64
+        self.action_size = 99
+        self.action_choices = 71
         
         # different models for different decisions
         self.tax_model = self.network(N=4, K=25)
@@ -408,22 +408,29 @@ class DQNAgent(object):
                 state[51] = 1  # friend_has_more_regency
             if temp[temp['Regent'] == friend]['Gold Bars'].values[0] > temp[temp['Regent'] == Regent]['Gold Bars'].values[0]:
                 state[52] = 1  # friend_has_more_gold
-            fdip = relationships[relationships['Regent'] == friend]['Diplomacy'].values[0]
+            relationships = Game.Relationships[Game.Relationships['Other']==Regent].copy()
+            try:
+                fdip = relationships[relationships['Regent'] == friend]['Diplomacy'].values[0]
+            except:
+                fdip = 0
             if fdip > 0:
                 state[53] = 1  # friend_diplomacy_positive
             if fdip > 5:
                 state[54] = 1  # friend_diplomacy_high
             if temp[temp['Regent'] == friend]['Alive'].values[0] == True:
                 state[55] = 1  # friend_alive
-            if relationships[relationships['Regent'] == friend]['Trade Permission'].values[0] > 0:
-                state[56] = 1  # friend_trade_permission
+            if relationships[relationships['Regent'] == friend].shape[0] > 0:
+                if relationships[relationships['Regent'] == friend]['Trade Permission'].values[0] > 0:
+                    state[56] = 1  # friend_trade_permission
             temp_ = Game.Relationships[Game.Relationships['Regent'] == Regent].copy()
             temp_ = temp_[temp_['Other'] == friend]
             if temp_.shape[0] > 0:
                 if temp_['Vassalage'].values[0] > 0:
                     state[57] = 1  # i_am_friends_vassal
-            if relationships[relationships['Regent'] == friend]['Vassalage'].values[0] > 0:
-                state[58] = 1  # friend_is_my_vassal
+            if relationships[relationships['Regent'] == friend].shape[0] > 0:
+                if relationships[relationships['Regent'] == friend]['Vassalage'].values[0] > 0:
+                    state[58] = 1  # friend_is_my_vassal
+            
         '''
                 arranged_trade_route_rando
                 diplomacy_rando_positive
@@ -470,7 +477,10 @@ class DQNAgent(object):
             state[65] = 1  # enemy_has_more_regency
         if temp[temp['Regent'] == enemy]['Gold Bars'].values[0] > temp[temp['Regent'] == Regent]['Gold Bars'].values[0]:
             state[66] = 1  # enemy_has_more_gold
-        fdip = relationships[relationships['Regent'] == enemy]['Diplomacy'].values[0]
+        try:
+            fdip = relationships[relationships['Regent'] == enemy]['Diplomacy'].values[0]
+        except:
+            fdip = 0
         if fdip < 0:
             state[67] = 1  # enemy_diplomacy_negative
         if fdip < -5:
@@ -564,6 +574,10 @@ class DQNAgent(object):
         if over != None:
             if over[1] == 'enemy_capital':
                 enemy_capital = over[2]
+        if Game.Provences[Game.Provences['Regent']==friend].shape[0]>0:
+            state[97] = 1  # friend_has_provences
+        if Game.Provences[Game.Provences['Regent']==enemy].shape[0]>0:
+            state[98] = 1  # enemy_has_provences
         return np.asarray(state), capital, high_pop, low_pop, friend, enemy, rando, enemy_capital
         
         
@@ -591,18 +605,25 @@ class DQNAgent(object):
     def remember(self, state, action, reward, next_state, type, done=False):
         self.memory[type].append((state, action, reward, next_state, done))
         
-    def replay_new(self, memory, type):
-        if len(memory[type]) > 1000:
-            minibatch = random.sample(memory[type], 1000)
+    def replay_new(self, type):
+        
+        if type == 'Action':
+            model = self.action_model
+            memory = self.memory['Action']
         else:
-            minibatch = memory[type]
+            model = self.tax_model
+            memory = self.memory['Taxes']
+        if len(memory) > 1000:
+            minibatch = random.sample(memory, 1000)
+        else:
+            minibatch = memory
         for state, action, reward, next_state, done in minibatch:
             target = reward
             if done == False:    
-                target = reward + self.gamma * np.amax(self.model.predict(np.array([next_state]))[0])
-            target_f = self.model.predict(np.array([state]))
+                target = reward + self.gamma * np.amax(model.predict(np.array([next_state]))[0])
+            target_f = model.predict(np.array([state]))
             target_f[0][np.argmax(action)] = target
-            self.model.fit(np.array([state]), target_f, epochs=1, verbose=0)
+            model.fit(np.array([state]), target_f, epochs=1, verbose=0)
             
     def train_short_memory(self, state, action, reward, next_state, type, done=False):
         if type == 'Taxes':
