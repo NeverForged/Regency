@@ -2179,6 +2179,7 @@ class Regency(object):
                                 self.Seasons[self.Season]['Actions'][self.Action].loc[index] = [Regent, Actor, Action_Type, action, Decision, Target_Regent, Provence, Target_Provence, Target_Holding, Success, reward, State, invalid, Message]
                                 if over != None and tries == 0:
                                     del self.Seasons[self.Season][self.Action]['Override'][Regent]
+                                next_state = self.agent.get_action_state(row['Regent'], self, None)[0]
                             # and train it...
                             if self.Train == True or self.Train_Short == True:
                                 self.agent.remember(state, decision, reward, next_state, 'Action', invalid)
@@ -5762,7 +5763,8 @@ class Regency(object):
         '''
         
         # all of those were done where they happen
-        # Now, for the Building projects and other Projects..
+        
+		# Now, for the Building projects and other Projects..
         self.Projects['Gold Bars Left'] = self.Projects['Gold Bars Left'] - np.random.randint(1,6,self.Projects.shape[0])
         temp = self.Projects[self.Projects['Gold Bars Left']<=0].copy()
         self.Projects = self.Projects[self.Projects['Gold Bars Left']>=1]
@@ -5779,7 +5781,15 @@ class Regency(object):
             elif row['Project Type'] == 'Realm Magic Stronghold':  # destroy the castle
                 castle = self.Provences[self.Provences['Provence']==row['Details'][0]].iloc[0]['Castle']
                 self.change_provence(row['Details'][0], Castle=castle - row['Details'][1] )
-                
+		
+		# garrisoned/recently recruited Troops
+		temp = self.Troops[self.Troops['Garrisoned']==1]
+		temp = pd.merge(temp, self.Provences[['Provence', 'Castle']], on='Provence', how='left')
+		temp_ = temp[['Provence','Castle']].copy()
+		temp_['count'] = 1
+		temp_ = temp_.groupby(['Provence','Castle']).sum().reset_index()
+		temp_['space'] = temp
+		
     # tools    
     def set_difficulty(self, base, Regent, Target, hostile=False, assassination=False, player_rbid=None):
         '''

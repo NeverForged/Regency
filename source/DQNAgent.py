@@ -626,6 +626,8 @@ class DQNAgent(object):
             model.fit(np.array([state]), target_f, epochs=1, verbose=0)
             
     def train_short_memory(self, state, action, reward, next_state, type, done=False):
+        state = np.array(state)
+        next_state = np.array(next_state)
         if type == 'Taxes':
             rs = (1,25)
             model = self.tax_model
