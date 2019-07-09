@@ -209,6 +209,9 @@ class Mapping(object):
             for word in Prov.split():
                 name.append(r"$\bf{" + word + "}$")
             text = text + ' '.join(name)
+            # capital
+            if Game.Provences[Game.Provences['Provence']==Prov]['Capital'].values[0] == True:
+                text = text + ' [Capital]'
             # Regent
             name = []
             text = text+'\n' + r"$\bf{" + '[' + "}$"

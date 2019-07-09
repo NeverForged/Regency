@@ -3657,7 +3657,7 @@ class Regency(object):
             assassination = True
         cost = 1
         dc = 15
-        lst = [Regent, Target, 0, 0, 0, 0]
+        lst = [Regent, Target, '', '', '', '']
         # adjust dc based on provence targeted
         victim = self.Regents[self.Regents['Regent'] == Target]['Full Name'].values[0]
 
@@ -3682,7 +3682,7 @@ class Regency(object):
             self.change_regent(Regent, Gold_Bars = self.Regents[self.Regents['Regent']==Regent]['Gold Bars'].values[0] - cost, Regency_Points = self.Regents[self.Regents['Regent']==Regent]['Regency Points'].values[0] - cost)
         # Results...
         if Type == 'Assassination':
-            lst[2] = 1
+            lst[2] = self.Season
             # this one is serious
             if Capital == False and crit == False:
                 success = False  # bonus action to kill cannot succeed unless a crit if not in capital
@@ -3706,7 +3706,7 @@ class Regency(object):
             if self.Regents[self.Regents['Regent']==Regent]['Attitude'].values[0] == 'Peaceful':
                 reward = reward - 3
         elif Type == 'Troops':
-            lst[4] = 1
+            lst[4] = self.Season
             reward = 0
             temp = self.Troops[self.Troops['Regent']==Target].copy()
             if temp[temp['Provence'] == Provence].shape[0] == 0:
@@ -3722,7 +3722,7 @@ class Regency(object):
                     reward = 2*reward
             message = "Spied on {}'s troops!".format(victim)
         elif Type == 'Trade':
-            lst[3] = 1
+            lst[3] = self.Season
             reward = 0
             temp = self.Geography[self.Geography['Provence']==Provence].copy()
             if pd.concat([temp[temp['Caravan']==1].copy(), temp[temp['Shipping']==1].copy()], sort=False).shape[0] == 0:
@@ -3775,8 +3775,8 @@ class Regency(object):
                     reward = 2*reward
             message = "Caused {} in {}'s court!".format(Type, victim)
         # update espionage thing ['Regent', 'Target', 'Assassination', 'Diplomacy', 'Troop Movements', 'Other']
-        if success:
-            self.Espionage.append(pd.DataFrame([lst], columns=['Regent', 'Target', 'Assassination', 'Diplomacy', 'Troop Movements', 'Other']), sort=True)
+        if success == True:
+            self.Espionage = self.Espionage.append(pd.DataFrame([lst], columns=['Regent', 'Target', 'Assassination', 'Diplomacy', 'Troop Movements', 'Other']), sort=True)
         return success, reward, message
         
     def bonus_action_grant(self, Regent, Target, Amount):
@@ -5076,6 +5076,7 @@ class Regency(object):
         temp = temp[temp['Type']=='Source'][['Type', 'Level', 'Provence']].groupby(['Type', 'Provence']).max().reset_index()
         success = False
         reward = 0
+        lst = []
         message = 'Lacks the resources to cast Death Plague'
         temp = temp[temp['Level']>=5]
         if temp.shape[0] > 0:
@@ -5092,7 +5093,7 @@ class Regency(object):
                 return False, 0, message
             Level = self.Regents[self.Regents['Regent']==Regent]['Level'].values[0]
             message = "{} cast 'Death Plague' on {}'s lands; ".format(self.Regents[self.Regents['Regent']==Regent]['Full Name'].values[0], elf.Regents[self.Regents['Regent']==Target]['Full Name'].values[0])
-            lst = []
+            
             RP = self.Regents[self.Regents['Regent'] == Regent]['Regency Points'].values[0]
             Limits = [1,5,11,17]
             for i, pro in enumerate(Targets):
@@ -5204,8 +5205,8 @@ class Regency(object):
                     RP = RP - 4
                     GB = GB - 1
                     N += 1
-                    self.Troops.append(pd.DataFrame([[Regent, Provence, 'Undead Troops', 0, 2, 0, '', 0]]), columns=self.Troops.keys())
-                    self.Projects.append(pd.DataFrame([[Regent, 'Undead Troops', '', 0]], columns = self.Projects.keys()))
+                    self.Troops.append(pd.DataFrame([[Regent, Provence, 'Undead Troops', 0, 2, 0, '', 0]], columns=self.Troops.keys()))
+                    self.Projects.append(pd.DataFrame([[Regent, 'Undead Troops', '', 0]], columns=self.Projects.keys()))
             self.change_regent(Regent, Gold_Bars=GB, Regency_Points=RP)
             message = "{} Cast 'Legion of the Dead', summong {} Undead Troops in {}".format(self.Regents[self.Regents['Regent']==Regent]['Full Name'].values[0], N, Provence)
             reward = N
@@ -5764,7 +5765,7 @@ class Regency(object):
         
         # all of those were done where they happen
         
-		# Now, for the Building projects and other Projects..
+        # Now, for the Building projects and other Projects..
         self.Projects['Gold Bars Left'] = self.Projects['Gold Bars Left'] - np.random.randint(1,6,self.Projects.shape[0])
         temp = self.Projects[self.Projects['Gold Bars Left']<=0].copy()
         self.Projects = self.Projects[self.Projects['Gold Bars Left']>=1]
@@ -5781,15 +5782,27 @@ class Regency(object):
             elif row['Project Type'] == 'Realm Magic Stronghold':  # destroy the castle
                 castle = self.Provences[self.Provences['Provence']==row['Details'][0]].iloc[0]['Castle']
                 self.change_provence(row['Details'][0], Castle=castle - row['Details'][1] )
-		
-		# garrisoned/recently recruited Troops
-		temp = self.Troops[self.Troops['Garrisoned']==1]
-		temp = pd.merge(temp, self.Provences[['Provence', 'Castle']], on='Provence', how='left')
-		temp_ = temp[['Provence','Castle']].copy()
-		temp_['count'] = 1
-		temp_ = temp_.groupby(['Provence','Castle']).sum().reset_index()
-		temp_['space'] = temp
-		
+        
+        # garrisoned/recently recruited Troops
+        temp = self.Troops[self.Troops['Garrisoned']==1].copy()
+        # free 'em all
+        self.Troops['Garrisoned'] = 0
+        # put 'em back...
+        temp = pd.merge(temp, self.Provences[['Castle','Regent','Provence']], on=['Regent','Provence'], how='left').fillna(0)
+        temp = temp[temp['Castle'] >= 1]
+        if temp.shape[0] > 0:
+            for Prov in set(temp['Provence']):
+                N = 0
+                for i, row in temp[temp['Provence']==Prov].iterrows():
+                    if N < row['Castle']:
+                        N += 1
+                        # add the garrisoned flag...
+                        df = self.Troops[self.Troops['Provence']==Prov]
+                        df = df[df['Regent']==row['Regent']]
+                        lst = df.index[df['Type'] == row['Type']]
+                        self.Troops.loc[lst[0]]['Garrisoned'] = 1
+            
+        
     # tools    
     def set_difficulty(self, base, Regent, Target, hostile=False, assassination=False, player_rbid=None):
         '''
