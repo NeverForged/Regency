@@ -671,7 +671,7 @@ class Regency(object):
             # set the stats based on archetype
             Class, Level, Str, Dex, Con, Int, Wis, Cha, Insight, Deception, Persuasion, Divine, Arcane = self.get_archetype(Archetype)
 
-        df.loc[index] = [Regent, Name, Bloodline, Player, Class, Level, Alignment, Race, 
+        df.loc[index] = [Regent, Name, Bloodline, Culture, Player, Class, Level, Alignment, Race, 
                                Str, Dex, Con, Int, Wis, Cha, Insight, Deception, Persuasion,
                                Regency_Points, Gold_Bars, Regency_Bonus, Attitude, True, Divine, Arcane]
         df = df.drop_duplicates(subset='Regent', keep='last')
@@ -787,8 +787,22 @@ class Regency(object):
             return 'Green Hag', 11, 4, 1, 3, 1, 2, 2, 1, 4, 2,  False, True
         elif Archetype == 'Priest':
             return 'Priest', 5, 0, 0, 1, 1, 3, 1, 1, 1, 3,  True, False
-        elif Archetype == 'Cult' or Archetype = 'Cult Fanatic':
+        elif Archetype == 'Cultist' or Archetype == 'Cult Fanatic':
             return 'Cult Fanatic', 6, 0, 2, 1, 0, 1, 2, 1, 4, 4,  True, False
+        elif Archetype == 'Acolyte':
+            return 'Acolyte', 2, 0, 0, 0, 0, 2, 0, 0, 0, 0,  True, False    
+        elif Archetype == 'Berserker':
+            return 'Berserker', 9, 3, 1, 3, -1, 0, -1, 0, -1, -1, False, False
+        elif Archetype == 'Gladiator':
+            return 'Gladiator', 15, 4, 2, 3, 0, 1, 2, 1, 2, 2, False, False
+        elif Archetype == 'Scout':
+            return 'Scout', 3, 0, 2, 1, 0, 1, 0, 1, 0, 0, False, False
+        elif Archetype == 'Spy':
+            return 'Spy', 6, 0, 2, 0, 1, 2, 3, 4, 5, 5, False, False
+        elif Archetype == 'Thug':
+            return 'Thug', 5, 2, 0, 2, 0, 0, 0, 0, 0, 0, False, False
+        elif Archetype == 'Bard':
+            return 'Bard(Spy)', 6, 0, 2, 0, 1, 2, 3, 4, 5, 5, False, True
         # if none of the above, return Noble stats
         else:
             return 'Noble', 2, 0, 1, 0, 1, 2, 3, 4, 5, 5

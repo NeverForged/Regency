@@ -112,14 +112,59 @@ class Mapping(object):
                     self.annot.set_visible(False)
                     self.fig.canvas.draw_idle()
         self.fired = True
-                    
-    def show(self, fig_size=(10,10), bg=True, map_alpha=0.5, adj=100, line_len=150
+    
+    def travel_cost(self, Start, End):
+        '''
+        Get travel costs, and shortest distances
+        '''
+        Game = self.Game
+        temp = Game.Provences.copy()
+        lst = [('Desert', '2'), ('Tundra', '2')
+              , ('Mountains', '4'), ('Mountain', '4'), ('Glacier', '4')
+              , ('Forest', '2')
+              , ('Hills', '2')
+              , ('Plains', '2'), ('Farmland', '2'), ('Steppes', '2')
+              , ('Swamp', '3'), ('Marsh','3')]
+        for a in lst:
+            temp['Terrain'] = temp['Terrain'].str.replace(a[0], a[1])
+        travel = Game.Geography[Game.Geography['Border']==1]
+        travel = pd.concat([travel[travel['Neighbor']==P] for P in list(temp['Provence'])], sort=False)
+        temp['A'] = temp['Terrain'].astype(int)
+        travel = pd.merge(travel, temp[['Provence', 'A', 'Regent']], on='Provence', how='left')
+        temp['B'] = temp['Terrain'].astype(int)
+        temp['Other'] = temp['Regent']
+        temp['Neighbor'] = temp['Provence']
+        travel = pd.merge(travel, temp[['Neighbor', 'B', 'Other']], on='Neighbor', how='left')
+        travel = travel.fillna(1)
+        # set costs
+        travel['Cost'] = ((travel['A'] + travel['B'] + 1)/2).astype(int) - travel['Road']
+        # not sure how to stop after, so... Rivers cost 10 to cross
+        travel['Cost_Cal'] = travel['Cost'] + (travel['RiverChasm']-travel['Road'])*10
+        G = nx.from_pandas_edgelist(travel, source='Provence', target='Neighbor', edge_attr=['Cost', 'Cost_Cal'])
+        return nx.shortest_path(G, Provence, Target, 'Cost_Cal')
+        
+    def show(self, fig_size=(10,10), bg=True, map_alpha=0.5, adj=100, line_len=90
                 , caravans=True, shipping=False, roads=True, borders=False, show_holdings = True
                 , show_abbreviations=False, show_troops=False, show_castle=True):
         '''
         Show the map
         '''
+        # make sure we have all provences for caravans
         Game = self.Game
+        if caravans == True:
+            temp = pd.merge(pd.DataFrame(self.node_list, columns=['Provence']), Game.Geography[Game.Geography['Caravan']>=1]
+                            , on='Provence', how='left').fillna(0)
+            temp = pd.merge(pd.DataFrame(self.node_list, columns=['Neighbor']), temp[temp['Neighbor']!=0].copy()
+                            , on='Neighbor', how='left').fillna(0)
+            temp[temp['Provence']!=0]
+            lst = []
+			if temp.shape[0]>0:
+				for i, row in temp.iterrows():
+					lst = lst + self.travel_cost(row['Provence'], row['Neighbor'])
+				lst = lst(set(lst))
+				self.node_list = list(set(self.node_list + lst))
+                
+            
         node_list = self.node_list
         G = self.G
         
@@ -157,9 +202,18 @@ class Mapping(object):
         Plist = node_list
         Geography = Game.Geography.copy()
         if caravans:
-            edgelist = [(row['Provence'], row['Neighbor']) for i, row in Geography[Geography['Caravan']==1].iterrows() 
-                        if row['Provence'] in Plist and  row['Neighbor'] in Plist]
-            nx.draw_networkx_edges(G,pos,edgelist,width=2.0,alpha=0.3,edge_color='xkcd:red',style='dotted')
+            # edgelist = [(row['Provence'], row['Neighbor']) for i, row in Geography[Geography['Caravan']==1].iterrows() 
+            #            if row['Provence'] in Plist and  row['Neighbor'] in Plist]
+            edgelist = []
+            temp = pd.merge(pd.DataFrame([self.node_list], columns=['Provence']), Game.Geography[Game.Geography['Caravan']>=1]
+                            , on='Provence', how='left')
+            done_lst = []
+            for i, row in temp.iterrows():
+                if (row['Provence'], row['Neighbor']) not in done_lst:
+                    done_lst.append((row['Neighbor'],row['Provence']))
+                    lst = self.travel_cost(row['Provence'], row['Neighbor'])
+                    edgelist = [(lst[i],lst[i+1]) for i in range(len(lst)-1)]
+                    nx.draw_networkx_edges(G,pos,edgelist,width=2.0,alpha=0.3,edge_color='xkcd:red',style='dotted')
         if shipping:
             edgelist = [(row['Provence'], row['Neighbor']) for i, row in Geography[Geography['Shipping']==1].iterrows() 
                         if row['Provence'] in Plist and  row['Neighbor'] in Plist]
@@ -263,9 +317,9 @@ class Mapping(object):
                     print(reg)
             xtext =  r"$\bf{"+ 'Abbreviations: '+ "}$" + ' ' +'; '.join(xlabel) 
             N = line_len
-            while N < len(text):
-                N = text.find(' ', N)
-                text = text[:N] + '\n' + text[N+1:]
+            while N < len(xtext):
+                N = xtext.find(' ', N)
+                xtext = xtext[:N] + '\n' + xtext[N+1:]
                 N = line_len + N - N%line_len
             ax.set_xlabel(xtext)
 
