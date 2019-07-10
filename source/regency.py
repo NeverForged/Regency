@@ -389,7 +389,7 @@ class Regency(object):
         self.Provences = pd.DataFrame(columns=cols)
         
         # Regents
-        cols = ['Regent', 'Full Name', 'Player', 'Class', 'Level', 'Alignment', 'Race', 'Str', 'Dex', 'Con', 'Int', 'Wis', 'Cha', 'Insight', 'Deception', 'Persuasion', 'Regency Points', 'Gold Bars', 'Regency Bonus', 'Attitude', 'Alive']
+        cols = ['Regent', 'Full Name', 'Bloodline', 'Culture', 'Player', 'Class', 'Level', 'Alignment', 'Race', 'Str', 'Dex', 'Con', 'Int', 'Wis', 'Cha', 'Insight', 'Deception', 'Persuasion', 'Regency Points', 'Gold Bars', 'Regency Bonus', 'Attitude', 'Alive', 'Divine', 'Arcane']
         self.Regents = pd.DataFrame(columns=cols)
         
         # Geography
@@ -652,11 +652,13 @@ class Regency(object):
         index = temp.index[temp['Lieutenant'] == Lieutenant].tolist()[0]
         self.Lieutenants.loc[index] = [Regent, Lieutenant, Busy]
         
-    def add_regent(self, Regent, Name, Player=False, Class='Noble', Level=2, Alignment = 'NN', Race='Human'
+    def add_regent(self, Regent, Name, Bloodline='', Culture='A', Player=False
+                    , Class='Noble', Level=2, Alignment = 'NN', Race='Human'
                    , Str = 0, Dex = 1, Con = 0, Int = 1, Wis = 2, Cha = 3
                    , Insight = 4, Deception = 5, Persuasion = 5
                    , Regency_Points = 0, Gold_Bars = 0, Regency_Bonus = 1
-                   , Attitude = 'Normal', Lieutenants=[], Archetype=None):
+                   , Attitude = 'Normal', Lieutenants=[], Archetype=None
+                   , Divine = False, Arcane = False):
         '''
         Archetype: Allows for pre-loaded skill and ability mods based on NPC statblocks
         '''
@@ -667,17 +669,17 @@ class Regency(object):
         index = self.get_my_index(df, temp)
         if Archetype != None:
             # set the stats based on archetype
-            Class, Level, Str, Dex, Con, Int, Wis, Cha, Insight, Deception, Persuasion = self.get_archetype(Archetype)
+            Class, Level, Str, Dex, Con, Int, Wis, Cha, Insight, Deception, Persuasion, Divine, Arcane = self.get_archetype(Archetype)
 
-        df.loc[index] = [Regent, Name, Player, Class, Level, Alignment, Race, 
+        df.loc[index] = [Regent, Name, Bloodline, Player, Class, Level, Alignment, Race, 
                                Str, Dex, Con, Int, Wis, Cha, Insight, Deception, Persuasion,
-                               Regency_Points, Gold_Bars, Regency_Bonus, Attitude, True]
+                               Regency_Points, Gold_Bars, Regency_Bonus, Attitude, True, Divine, Arcane]
         df = df.drop_duplicates(subset='Regent', keep='last')
         self.Regents = df
         for Lieutenant in Lieutenants:
             self.add_lieutenant(Regent, Lieutenant)
 
-    def change_regent(self, Regent, Name=None, Player=False, Class=None, Level=None, reset_level=False, Alignment = None, Race=None, Str = None, Dex = None, Con = None, Int = None, Wis = None, Cha = None, Insight = None, Deception = None, Persuasion = None, Regency_Bonus = None, Alive=True, Regency_Points=None, Gold_Bars=None, Attitude=None):
+    def change_regent(self, Regent, Name=None, Bloodline=None, Player=False, Class=None, Level=None, reset_level=False, Alignment = None, Race=None, Str = None, Dex = None, Con = None, Int = None, Wis = None, Cha = None, Insight = None, Deception = None, Persuasion = None, Regency_Bonus = None, Alive=True, Regency_Points=None, Gold_Bars=None, Attitude=None, Divine=None, Arcane=None):
         
         
         if str(Gold_Bars) == 'nan' or str(Regency_Points) == 'nan':
@@ -697,6 +699,8 @@ class Regency(object):
                 Level = old['Level']
             elif reset_level == False:
                 Level = old['Level'] + Level
+            if Bloodline == None:
+                Bloodline = old['Bloodline']
             if Alignment == None:
                 Alignment = old['Alignment']
             if Race == None:
@@ -727,6 +731,10 @@ class Regency(object):
                 Gold_Bars = old['Gold Bars']
             if Attitude == None:
                 Attitude = old['Attitude']
+            if Divine == None:
+                Divine = old['Divine']
+            if Arcane == None:
+                Divine = old['Arcane']     
             if Alive==False:  # remove references
                 # Dead regents are removed at end of season, but their legacy dies now.
                 self.Holdings = self.Holdings[self.Holdings['Regent'] != Regent]
@@ -734,9 +742,9 @@ class Regency(object):
                 self.Relationships = self.Relationships[self.Relationships['Other'] != Regent]
                 self.Provences['Regent'] = self.Provences['Regent'].str.replace('Regent','')
             
-            self.Regents.loc[index] = [Regent, Name, Player, Class, Level, Alignment, Race, 
-                                   Str, Dex, Con, Int, Wis, Cha, Insight, Deception, Persuasion,
-                                   Regency_Points, Gold_Bars, Regency_Bonus, Attitude, Alive]
+            self.Regents.loc[index] = [Regent, Name, Bloodline, Culture, Player, Class, Level, Alignment
+                                        , Race, Str, Dex, Con, Int, Wis, Cha, Insight, Deception, Persuasion
+                                        , Regency_Points, Gold_Bars, Regency_Bonus, Attitude, Alive]
         else:
             print('-'*50)
             print('REGENT ERROR: {} not in Regents'.format(Regent))
@@ -755,31 +763,32 @@ class Regency(object):
               
     def get_archetype(self, Archetype):
         '''
-        return  Class, Level, Str, Dex, Con, Int, Wis, Cha, Insight, Deception, Persuasion
+        return  Class, Level, Str, Dex, Con, Int, Wis, Cha, Insight, Deception, Persuasion, Divine, Arcane
         '''
         if Archetype == 'Noble':
-            return 'Noble', 2, 0, 1, 0, 1, 2, 3, 4, 5, 5
+            return 'Noble', 2, 0, 1, 0, 1, 2, 3, 4, 5, 5, False, False
         elif Archetype == 'Archmage':
-            return 'Archmage', 18, 0, 2, 1, 5, 2, 3, 5, 3, 3
+            return 'Archmage', 18, 0, 2, 1, 5, 2, 3, 5, 3, 3,  False, True
         elif Archetype == 'Assassin':
-            return 'Assassin', 12, 0, 3, 2, 1, 0, 0, 1, 3, 0
+            return 'Assassin', 12, 0, 3, 2, 1, 0, 0, 1, 3, 0,  False, False
         elif Archetype == 'Bandit' or Archetype == 'Bandit Captain':
-            return 'Bandit Captain', 10, 2, 3, 2, 2, 0, 2, 2, 4, 2
+            return 'Bandit Captain', 10, 2, 3, 2, 2, 0, 2, 2, 4, 2,  False, False
         elif Archetype == 'Commoner':
-            return 'Commoner', 1, 0, 0, 0, 0, 0, 0, 0, 0, 0
+            return 'Commoner', 1, 0, 0, 0, 0, 0, 0, 0, 0, 0,  False, False
         elif Archetype == 'Druid':
-            return 'Druid', 5, 0, 1, 1, 1, 2, 0, 1, 0, 0
+            return 'Druid', 5, 0, 1, 1, 1, 2, 0, 1, 0, 0, True, False
         elif Archetype == 'Knight':
-            return 'Knight', 8, 3, 0, 2, 0, 0, 2, 0, 2, 2
+            return 'Knight', 8, 3, 0, 2, 0, 0, 2, 0, 2, 2,  False, False
         elif Archetype == 'Lich':
-            return 'Lich', 18, 0, 3, 3, 5, 2, 3, 9, 3, 3
+            return 'Lich', 18, 0, 3, 3, 5, 2, 3, 9, 3, 3,  False, True
         elif Archetype == 'Mage':
-            return 'Mage', 9, -1, 2, 0, 3, 1, 0, 3, 0, 0
+            return 'Mage', 9, -1, 2, 0, 3, 1, 0, 3, 0, 0,  False, True
         elif Archetype == 'Hag' or Archetype == 'Green Hag':
-            return 'Green Hag', 11, 4, 1, 3, 1, 2, 2, 1, 4, 2
+            return 'Green Hag', 11, 4, 1, 3, 1, 2, 2, 1, 4, 2,  False, True
         elif Archetype == 'Priest':
-            return 'Priest', 5, 0, 0, 1, 1, 3, 1, 1, 1, 3
-        
+            return 'Priest', 5, 0, 0, 1, 1, 3, 1, 1, 1, 3,  True, False
+        elif Archetype == 'Cult' or Archetype = 'Cult Fanatic':
+            return 'Cult Fanatic', 6, 0, 2, 1, 0, 1, 2, 1, 4, 4,  True, False
         # if none of the above, return Noble stats
         else:
             return 'Noble', 2, 0, 1, 0, 1, 2, 3, 4, 5, 5
