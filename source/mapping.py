@@ -276,7 +276,11 @@ class Mapping(object):
                 name.append(r"$\bf{" + word + "}$")
             
             text = text + ' '.join(name) + r"$\bf{" + ']' + r"}$"
-            text = text + '\n' + Game.Regents[Game.Regents['Regent'] == Game.Provences[Game.Provences['Provence']==Prov]['Regent'].values[0]]['Full Name'].values[0]
+            # add regent name
+            if Game.Regents[Game.Regents['Regent'] == Game.Provences[Game.Provences['Provence']==Prov]['Regent'].values[0]].shape[0]>0:
+                text = text + '\n' + Game.Regents[Game.Regents['Regent'] == Game.Provences[Game.Provences['Provence']==Prov]['Regent'].values[0]]['Full Name'].values[0]
+            else:
+                text = text + '\n(Unclaimed)' 
             if show_castle:
                 if Game.Provences[Game.Provences['Provence']==Prov]['Castle'].values[0] > 0:
                     text = text+'\n'+Game.Provences[Game.Provences['Provence']==Prov]['Castle Name'].values[0] + ' (Castle '+ str(Game.Provences[Game.Provences['Provence']==Prov]['Castle'].values[0])+')'
@@ -284,7 +288,8 @@ class Mapping(object):
                 temp = pd.merge(Game.Holdings[Game.Holdings['Provence']==Prov],Game.Regents[['Regent', 'Full Name']], on='Regent', how='left')
                 #temp['Regent'] = temp['Full Name'].str[:20]
                 temp['Holding'] = temp['Type']
-                text = text +'\n\n'+temp[['Regent', 'Holding', 'Level']].to_string(index=False, col_space=8, header=False, justify='justify')
+                if temp.shape[0] > 0:  # in case there are no Holdings
+                    text = text +'\n\n'+temp[['Regent', 'Holding', 'Level']].to_string(index=False, col_space=8, header=False, justify='justify')
                 
                 
                 self.regents_list = list(set(self.regents_list + list(temp['Regent'])))  
@@ -300,11 +305,11 @@ class Mapping(object):
                     allies, enemies = Game.allies_enemies(Game.Provences[Game.Provences['Provence']==Prov]['Regent'].values[0])
                     temp2 = pd.merge(temp, allies, on='Regent')
                     if temp2.shape[0] > 0:
-                        text = text +'\n'+'Allied Units Present'
+                        text = text +'\n\n'+'Allied Units Present'
                     
                     temp2 = pd.merge(temp, enemies, on='Regent')
                     if temp2.shape[0] > 0:
-                        text = text +'\n'+'Enemy Units Present'
+                        text = text +'\n\n'+'Enemy Units Present'
                     
             self.regents_list = list(set(self.regents_list + list(temp['Regent'])))        
             self.text_list.append(text)

@@ -45,6 +45,7 @@ class Regency(object):
         self.random_override = {}
         self.IntDC = IntDC
         self.errors = []
+        self.failed_actions = pd.DataFrame()
         self.Train = train
         self.Train_Short = train_short
 
@@ -462,7 +463,7 @@ class Regency(object):
             index=0
         return index
 
-    def add_holding(self, Provence, Regent, Type='Law', Level=1, Contested=0):
+    def add_holding(self, Provence, Regent, Type='Law', Level=0, Contested=0):
         '''
          Provence: match to provence
          Regent: match to regent
@@ -679,77 +680,79 @@ class Regency(object):
         for Lieutenant in Lieutenants:
             self.add_lieutenant(Regent, Lieutenant)
 
-    def change_regent(self, Regent, Name=None, Bloodline=None, Player=False, Class=None, Level=None, reset_level=False, Alignment = None, Race=None, Str = None, Dex = None, Con = None, Int = None, Wis = None, Cha = None, Insight = None, Deception = None, Persuasion = None, Regency_Bonus = None, Alive=True, Regency_Points=None, Gold_Bars=None, Attitude=None, Divine=None, Arcane=None):
-        
+    def change_regent(self, Regent, Name=None, Bloodline=None, Culture=None, Player=False, Class=None, Level=None, reset_level=False, Alignment = None, Race=None, Str = None, Dex = None, Con = None, Int = None, Wis = None, Cha = None, Insight = None, Deception = None, Persuasion = None, Regency_Bonus = None, Alive=True, Regency_Points=None, Gold_Bars=None, Attitude=None, Divine=None, Arcane=None):
+        '''
+		Make changes to a Regent.
+		'''
         
         if str(Gold_Bars) == 'nan' or str(Regency_Points) == 'nan':
             self.errors.append(Regent, self.state, self.action)
             
-        if Regent in list(self.Regents['Regent']):
-            index = self.Regents.index[self.Regents['Regent'] == Regent].tolist()[0]
-            try:
-                old = self.Regents.loc[index]
-            except:
-                print('{} Errored Out...'.format(Regent))
-            if Name == None:
-                Name = old['Full Name']
-            if Class == None:
-                Class = old['Class']
-            if Level == None:
-                Level = old['Level']
-            elif reset_level == False:
-                Level = old['Level'] + Level
-            if Bloodline == None:
-                Bloodline = old['Bloodline']
-            if Alignment == None:
-                Alignment = old['Alignment']
-            if Race == None:
-                Race = old['Race']
-            if Str == None:
-                Str = old['Str']
-            if Dex == None:
-                Dex = old['Dex']
-            if Con == None:
-                Con = old['Con']
-            if Int == None:
-                Int = old['Int']
-            if Wis == None:
-                Wis = old['Wis']
-            if Cha == None:
-                Cha = old['Cha']
-            if Insight == None:
-                Insight = old['Insight']
-            if Deception == None:
-                Deception = old['Deception']
-            if Persuasion == None:
-                Persuasion = old['Persuasion']
-            if Regency_Bonus == None:
-                Regency_Bonus = old['Regency Bonus']
-            if Regency_Points == None: # or str(Regency_Points) == 'nan':
-                Regency_Points = old['Regency Points']
-            if Gold_Bars == None: # or str(Gold_Bars) == 'nan':
-                Gold_Bars = old['Gold Bars']
-            if Attitude == None:
-                Attitude = old['Attitude']
-            if Divine == None:
-                Divine = old['Divine']
-            if Arcane == None:
-                Divine = old['Arcane']     
-            if Alive==False:  # remove references
-                # Dead regents are removed at end of season, but their legacy dies now.
-                self.Holdings = self.Holdings[self.Holdings['Regent'] != Regent]
-                self.Relationships = self.Relationships[self.Relationships['Regent'] != Regent]
-                self.Relationships = self.Relationships[self.Relationships['Other'] != Regent]
-                self.Provences['Regent'] = self.Provences['Regent'].str.replace('Regent','')
-            
-            self.Regents.loc[index] = [Regent, Name, Bloodline, Culture, Player, Class, Level, Alignment
-                                        , Race, Str, Dex, Con, Int, Wis, Cha, Insight, Deception, Persuasion
-                                        , Regency_Points, Gold_Bars, Regency_Bonus, Attitude, Alive]
-        else:
-            print('-'*50)
-            print('REGENT ERROR: {} not in Regents'.format(Regent))
-            print('-'*50)
-            input()
+        
+        index = self.Regents.index[self.Regents['Regent'] == Regent].tolist()[0]
+        try:
+            old = self.Regents.loc[index]
+        except:
+            print('{} Errored Out...'.format(Regent))
+        if old['Regent'] != Regent:
+            self.errors.append(('Change regent', old['Regent'], regent))
+        if Name == None:
+            Name = old['Full Name']
+        if Class == None:
+            Class = old['Class']
+        if Level == None:
+            Level = old['Level']
+        elif reset_level == False:
+            Level = old['Level'] + Level
+        if Bloodline == None:
+            Bloodline = old['Bloodline']
+        if Culture == None:
+            Culture = old['Culture']
+        if Alignment == None:
+            Alignment = old['Alignment']
+        if Race == None:
+            Race = old['Race']
+        if Str == None:
+            Str = old['Str']
+        if Dex == None:
+            Dex = old['Dex']
+        if Con == None:
+            Con = old['Con']
+        if Int == None:
+            Int = old['Int']
+        if Wis == None:
+            Wis = old['Wis']
+        if Cha == None:
+            Cha = old['Cha']
+        if Insight == None:
+            Insight = old['Insight']
+        if Deception == None:
+            Deception = old['Deception']
+        if Persuasion == None:
+            Persuasion = old['Persuasion']
+        if Regency_Bonus == None:
+            Regency_Bonus = old['Regency Bonus']
+        if Regency_Points == None: # or str(Regency_Points) == 'nan':
+            Regency_Points = old['Regency Points']
+        if Gold_Bars == None: # or str(Gold_Bars) == 'nan':
+            Gold_Bars = old['Gold Bars']
+        if Attitude == None:
+            Attitude = old['Attitude']
+        if Divine == None:
+            Divine = old['Divine']
+        if Arcane == None:
+            Arcane = old['Arcane']     
+        if Alive==False:  # remove references
+            # Dead regents are removed at end of season, but their legacy dies now.
+            self.Holdings = self.Holdings[self.Holdings['Regent'] != Regent]
+            self.Relationships = self.Relationships[self.Relationships['Regent'] != Regent]
+            self.Relationships = self.Relationships[self.Relationships['Other'] != Regent]
+            self.Provences['Regent'] = self.Provences['Regent'].str.replace('Regent','')
+        
+        self.Regents.loc[index] = [Regent, Name, Bloodline, Culture, Player, Class, Level, Alignment, Race, 
+                           Str, Dex, Con, Int, Wis, Cha, Insight, Deception, Persuasion,
+                           Regency_Points, Gold_Bars, Regency_Bonus, Attitude, Alive, Divine, Arcane]
+        
     
     def kill_regent(self, Regent):
         '''
@@ -1091,26 +1094,13 @@ class Regency(object):
         df = df[df['Other'] != 0].copy()
         rand_temp =  self.Regents[['Regent', 'Alignment']].copy()
         rand_temp['Other'] = rand_temp['Regent']
-        df = pd.merge(df, rand_temp[['Other', 'Alignment']], on='Other', how='left')
+        df = pd.merge(df, rand_temp[['Other', 'Alignment']], on='Other', how='left').fillna(0)
 
         # alignment
-        for ethics in ['L', 'N', 'C']:
-            for morals in ['G', 'N', 'E']:
-                al = ethics+morals
-                if al == 'CE':
-                    df['Alignment'] = df['Alignment'].replace(al,'15')
-                if al == 'LG':
-                    df['Alignment'] = df['Alignment'].replace(al,'-15')
-                elif al == 'CG':
-                    df['Alignment'] = df['Alignment'].replace(al,'0')
-                elif morals == 'E':
-                    df['Alignment'] = df['Alignment'].replace(al,'10')
-                elif ethics == 'C':
-                    df['Alignment'] = df['Alignment'].replace(al,'5')
-                elif morals == 'G' or ethics=='L':
-                    df['Alignment'] = df['Alignment'].replace(al,'-5')
-                else:
-                    df['Alignment'] = df['Alignment'].replace(al,'0')
+        # 10 for Evil, -10 for Good, 5 for chaotic, -5 for Lawful
+        df['Alignment'] = df['Alignment'].str.replace('LG','-15').replace('LN','-5').replace('LE','5')
+        df['Alignment'] = df['Alignment'].str.replace('NG','-10').replace('NN','0').replace('N','0').replace('NE','10') 
+        df['Alignment'] = df['Alignment'].str.replace('CG','-5').replace('CN','5').replace('CE','15')
         df = df.fillna(0)
         df['Likliehood'] = -1*df['Diplomacy'] + 5*df['At War'] - 10*df['Vassalage'] + df['Payment'] + df['Alignment'].astype(int)+3*df['Rivals']
         
@@ -1122,8 +1112,6 @@ class Regency(object):
         
         df2 = df[['Regent', 'Likliehood']].groupby('Regent').max().reset_index()
         df = pd.merge(df2, df, on=['Regent', 'Likliehood'], how='left')
-
-        df
         try:
             self.Seasons[self.Season][self.Action]
         except:
@@ -2166,6 +2154,7 @@ class Regency(object):
                                 if invalid == True:
                                     next_state = state
                                     self.agent.remember(state, decision, reward, next_state, 'Action', invalid)
+                                    self.failed_actions.append(pd.DataFrame([[Regent,action,Success]], columns=['Regent','Action','Success?']))
                                     # and train it... to prevent future mistakes
                                     self.agent.train_short_memory(state, action, reward, next_state, 'Action', invalid)
                                 else:  # update action vector
@@ -3152,7 +3141,7 @@ class Regency(object):
                 return [Regent, actor, Type, 'realm_magic_death_plague', decision, enemy, '', '', '',  False, -10, state, True, '']
             else:
                 success, reward, message = self.realm_magic_death_plague(Regent, enemy)
-                return [Regent, actor, Type, 'realm_magic_death_plague', decision, enemy, '', ', '.join(Target), '',  success, reward, state, False, message]
+                return [Regent, actor, Type, 'realm_magic_death_plague', decision, enemy, '', '', '',  success, reward, state, False, message]
         # realm_magic_demagogue_friend
         elif decision[59] == 1: 
             if state[3]==1 or state[35]==0 or state[94]==1 or state[95]==1:
@@ -4051,7 +4040,8 @@ class Regency(object):
         if temp.iloc[0]['Player'] == False:
             check = int(temp.iloc[0]['Level']/3)+2
             temp['Reward'] = np.random.randint(0,check,temp.shape[0])  # 0-4
-            
+            self.change_regent(Regent, Gold_Bars = temp['Gold Bars'].values[0]+temp['Reward'].values[0])
+            reward = temp['Reward'].values[0]
         return True, reward, message
                    
     def domain_action_contest(self, Regent, Target, Provence, Type, gbid=None):
@@ -4697,11 +4687,12 @@ class Regency(object):
             Holdings = self.Holdings[self.Holdings['Regent'] == Target]
             Holdings = Holdings[Holdings['Contested']==1]
             
+            
             # get the cost
             cost = np.sum(Provences['Population']) + np.sum(Provences['Castle']) + np.sum(Holdings['Level'])
             success = False
             message = '{} Failed to divest {} of their contested assets'.format(self.Regents[self.Regents['Regent']==Regent]['Full Name'].values[0], self.Regents[self.Regents['Regent']==Target]['Full Name'].values[0])
-            if self.Regents[self.Regents['Regent']==Regent]['Regency Points'].values[0] >= cost:
+            if self.Regents[self.Regents['Regent']==Regent]['Regency Points'].values[0] >= cost and Provences.shape[0] + Holdings.shape[0] > 0:
                 dc = 10 + self.Regents[self.Regents['Regent']==Target]['Regency Bonus'].values[0]
                 dc = self.set_difficulty(dc, Regent, Target, hostile=True)
                 self.change_regent(Regent, Regency_Points= self.Regents[self.Regents['Regent']==Regent]['Regency Points'].values[0]-cost)
