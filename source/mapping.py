@@ -31,12 +31,12 @@ class Mapping(object):
         temp = pd.concat([Game.Provences[Game.Provences['Regent']==Regent][['Provence']]
                      , Game.Holdings[Game.Holdings['Regent']==Regent][['Provence']]], sort=False)
         Provence_List = list(set(temp['Provence']))
-        temp = pd.merge(temp, Game.Geography, on='Provence')
+        temp = pd.merge(temp, Game.Geography[Game.Geography['Border']==1].copy(), on='Provence')
         Provence_List = list(set(Provence_List + list(temp['Neighbor'])))
         self.node_list = Provence_List
         temp = Game.Troops[Game.Troops['Regent']==Regent].copy()
         temp2 = temp[temp['Type'].str.lower().str.contains('scout')]
-        temp2 = pd.merge(temp2[['Provence']], Game.Geography, on='Provence', how='left')
+        temp2 = pd.merge(temp2[['Provence']], Game.Geography[Game.Geography['Border']==1].copy(), on='Provence', how='left')
         temp = pd.concat([temp[['Provence']], temp2[['Neighbor']]], keys=['Provence'])
 
         self.troop_provences = list(set(temp['Provence']))
@@ -55,10 +55,10 @@ class Mapping(object):
             # troop stuff
             temp = Game.Troops[Game.Troops['Regent']==Regent].copy()
             temp2 = temp[temp['Type'].str.lower().str.contains('scout')]
-            temp2 = pd.merge(temp2[['Provence']], Game.Geography, on='Provence', how='left')
+            temp2 = pd.merge(temp2[['Provence']], Game.Geography[Game.Geography['Border']==1].copy(), on='Provence', how='left')
             temp = pd.concat([temp[['Provence']], temp2[['Neighbor']]], keys=['Provence'])
             Troop_List = list(set(Provence_List + list(temp['Provence'])))
-        temp = pd.merge(temp, Game.Geography, on='Provence')
+        temp = pd.merge(temp, Game.Geography[Game.Geography['Border']==1].copy(), on='Provence')
         Provence_List = list(set(Provence_List + list(temp['Neighbor'])))
         self.node_list = Provence_List
         self.troop_provences = Troop_List
@@ -140,8 +140,10 @@ class Mapping(object):
         travel['Cost'] = ((travel['A'] + travel['B'] + 1)/2).astype(int) - travel['Road']
         # not sure how to stop after, so... Rivers cost 10 to cross
         travel['Cost_Cal'] = travel['Cost'] + (travel['RiverChasm']-travel['Road'])*10
+        travel = travel[travel['Provence'] != 0]
+        travel = travel[travel['Neighbor'] != 0]
         G = nx.from_pandas_edgelist(travel, source='Provence', target='Neighbor', edge_attr=['Cost', 'Cost_Cal'])
-        return nx.shortest_path(G, Provence, Target, 'Cost_Cal')
+        return nx.shortest_path(G, Start, End, 'Cost_Cal')
         
     def show(self, fig_size=(10,10), bg=True, map_alpha=0.5, adj=100, line_len=90
                 , caravans=True, shipping=False, roads=True, borders=False, show_holdings = True
@@ -151,18 +153,16 @@ class Mapping(object):
         '''
         # make sure we have all provences for caravans
         Game = self.Game
-        if caravans == True:
+        if caravans == True:  # this is for caravan routes, disabled but kept
             temp = pd.merge(pd.DataFrame(self.node_list, columns=['Provence']), Game.Geography[Game.Geography['Caravan']>=1]
                             , on='Provence', how='left').fillna(0)
-            temp = pd.merge(pd.DataFrame(self.node_list, columns=['Neighbor']), temp[temp['Neighbor']!=0].copy()
-                            , on='Neighbor', how='left').fillna(0)
-            temp[temp['Provence']!=0]
+            temp = temp[temp['Neighbor']!=0]
             lst = []
-			if temp.shape[0]>0:
-				for i, row in temp.iterrows():
-					lst = lst + self.travel_cost(row['Provence'], row['Neighbor'])
-				lst = lst(set(lst))
-				self.node_list = list(set(self.node_list + lst))
+            if temp.shape[0]>0:
+                for i, row in temp.iterrows():
+                    lst = lst + self.travel_cost(row['Provence'], row['Neighbor'])
+                lst = list(set(lst))
+                self.node_list = list(set(self.node_list + lst))
                 
             
         node_list = self.node_list
@@ -202,22 +202,25 @@ class Mapping(object):
         Plist = node_list
         Geography = Game.Geography.copy()
         if caravans:
-            # edgelist = [(row['Provence'], row['Neighbor']) for i, row in Geography[Geography['Caravan']==1].iterrows() 
-            #            if row['Provence'] in Plist and  row['Neighbor'] in Plist]
-            edgelist = []
-            temp = pd.merge(pd.DataFrame([self.node_list], columns=['Provence']), Game.Geography[Game.Geography['Caravan']>=1]
-                            , on='Provence', how='left')
-            done_lst = []
-            for i, row in temp.iterrows():
-                if (row['Provence'], row['Neighbor']) not in done_lst:
-                    done_lst.append((row['Neighbor'],row['Provence']))
-                    lst = self.travel_cost(row['Provence'], row['Neighbor'])
-                    edgelist = [(lst[i],lst[i+1]) for i in range(len(lst)-1)]
-                    nx.draw_networkx_edges(G,pos,edgelist,width=2.0,alpha=0.3,edge_color='xkcd:red',style='dotted')
+            edgelist = [(row['Provence'], row['Neighbor']) for i, row in Geography[Geography['Caravan']==1].iterrows()
+                        if row['Provence'] in Plist and  row['Neighbor'] in Plist]
+            #temp = pd.merge(pd.DataFrame(self.node_list, columns=['Provence']), Game.Geography[Game.Geography['Caravan']>=1]
+            #                , on='Provence', how='left').fillna(0)
+            #temp = pd.merge(pd.DataFrame(self.node_list, columns=['Neighbor']), temp[temp['Neighbor']!=0].copy()
+            #                , on='Neighbor', how='left').fillna(0)
+            #done_lst = []
+            #temp = temp[temp['Provence']!=0]
+            #temp = temp[temp['Neighbor']!=0]
+            #for i, row in temp.iterrows():
+            #    if (row['Provence'], row['Neighbor']) not in done_lst:
+            #        done_lst.append((row['Neighbor'],row['Provence']))
+            #        lst = self.travel_cost(row['Provence'], row['Neighbor'])
+            #        edgelist = [(lst[i],lst[i+1]) for i in range(len(lst)-1)]
+            nx.draw_networkx_edges(G,pos,edgelist,width=2.0,alpha=0.3,edge_color='xkcd:red', style='dashed')
         if shipping:
             edgelist = [(row['Provence'], row['Neighbor']) for i, row in Geography[Geography['Shipping']==1].iterrows() 
                         if row['Provence'] in Plist and  row['Neighbor'] in Plist]
-            nx.draw_networkx_edges(G,pos,edgelist,width=2.0,alpha=0.3,edge_color='xkcd:azure',style='dotted')
+            nx.draw_networkx_edges(G,pos,edgelist,width=2.0,alpha=0.3,edge_color='xkcd:azure', style='dashed')
         if borders:
             edgelist = [(row['Provence'], row['Neighbor']) for i, row in Geography[Geography['Border']==1].iterrows() 
                         if row['Provence'] in Plist and  row['Neighbor'] in Plist]
@@ -225,7 +228,7 @@ class Mapping(object):
         if roads:
             edgelist = [(row['Provence'], row['Neighbor']) for i, row in Geography[Geography['Road']==1].iterrows() 
                         if row['Provence'] in Plist and  row['Neighbor'] in Plist]
-            nx.draw_networkx_edges(G,pos,edgelist,width=1.0,alpha=0.5,edge_color='xkcd:brown',style='dashed')
+            nx.draw_networkx_edges(G,pos,edgelist,width=1.0,alpha=0.5,edge_color='xkcd:brown')
 
         # labels
         temp = pd.merge(pd.DataFrame(node_list, columns=['Provence']), Game.Provences.copy(), on='Provence', how='left')
@@ -272,23 +275,25 @@ class Mapping(object):
             for word in Game.Provences[Game.Provences['Provence']==Prov]['Domain'].values[0].split():
                 name.append(r"$\bf{" + word + "}$")
             
-            text = text + ' '.join(name) + r"$\bf{" + ']' + "}$"
-            text = text + '\n' + Game.Regents[Game.Regents['Regent'] == Game.Provences[Game.Provences['Provence']==Prov]['Regent'].values[0]]['Full Name'].values[0] + '\n'
+            text = text + ' '.join(name) + r"$\bf{" + ']' + r"}$"
+            text = text + '\n' + Game.Regents[Game.Regents['Regent'] == Game.Provences[Game.Provences['Provence']==Prov]['Regent'].values[0]]['Full Name'].values[0]
             if show_castle:
                 if Game.Provences[Game.Provences['Provence']==Prov]['Castle'].values[0] > 0:
-                    text = text+Game.Provences[Game.Provences['Provence']==Prov]['Castle Name'].values[0] + '(Castle '+ str(Game.Provences[Game.Provences['Provence']==Prov]['Castle'].values[0])+')'+'\n'
+                    text = text+'\n'+Game.Provences[Game.Provences['Provence']==Prov]['Castle Name'].values[0] + ' (Castle '+ str(Game.Provences[Game.Provences['Provence']==Prov]['Castle'].values[0])+')'
             if show_holdings:
                 temp = pd.merge(Game.Holdings[Game.Holdings['Provence']==Prov],Game.Regents[['Regent', 'Full Name']], on='Regent', how='left')
                 #temp['Regent'] = temp['Full Name'].str[:20]
                 temp['Holding'] = temp['Type']
-                text = text +'\n'+temp[['Regent', 'Holding', 'Level']].to_string(index=False, col_space=8, header=False, justify='left') + '\n'
+                text = text +'\n\n'+temp[['Regent', 'Holding', 'Level']].to_string(index=False, col_space=8, header=False, justify='justify')
+                
+                
                 self.regents_list = list(set(self.regents_list + list(temp['Regent'])))  
             if show_troops:
                 temp = Game.Troops[Game.Troops['Provence']==Prov]
                 temp['units'] = 1
                 temp = temp[['Regent', 'Type', 'units']].groupby(['Regent', 'Type']).sum().reset_index()
                 if Prov in self.troop_provences and temp.shape[0] > 0:
-                    text = text +'\n'+temp[['Regent', 'units', 'Type']].to_string(index=False, col_space=8, header=False, justify='left')
+                    text = text +'\n\n'+temp[['Regent', 'units', 'Type']].to_string(index=False, col_space=8, header=False, justify='left')
                     self.regents_list = list(set(self.regents_list + list(temp['Regent'])))  
                 elif temp.shape[0] > 0:
                     # figure out allies or enemies
@@ -315,7 +320,7 @@ class Mapping(object):
                     xlabel.append(reg+' = '+Game.Regents[Game.Regents['Regent']==reg].iloc[0]['Full Name'])
                 except:
                     print(reg)
-            xtext =  r"$\bf{"+ 'Abbreviations: '+ "}$" + ' ' +'; '.join(xlabel) 
+            xtext =  r"$\bf{"+ 'Abbreviations:'+ r"}$" + ' ' +'; '.join(xlabel) 
             N = line_len
             while N < len(xtext):
                 N = xtext.find(' ', N)
@@ -323,6 +328,12 @@ class Mapping(object):
                 N = line_len + N - N%line_len
             ax.set_xlabel(xtext)
 
+        # Turn off tick labels
+        ax.set_yticklabels([])
+        ax.set_xticklabels([])
+        ax.set_xticks([])
+        ax.set_yticks([])
+        
         self.fig.canvas.mpl_connect("motion_notify_event", self.hover)
        
         plt.show()
