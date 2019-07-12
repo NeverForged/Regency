@@ -176,8 +176,9 @@ class Mapping(object):
 
         # Positions
         pos = {}
-        xmin, xmax = Game.Provences['Position'].values[0][0], Game.Provences['Position'].values[0][0]
-        ymin, ymax = Game.Provences['Position'].values[0][1], Game.Provences['Position'].values[0][1]
+        Provences = pd.merge(pd.DataFrame(node_list, columns=['Provence']), Game.Provences, on='Provence', how='left')
+        xmin, xmax = Provences['Position'].values[0][0], Provences['Position'].values[0][0]
+        ymin, ymax = Provences['Position'].values[0][1], Provences['Position'].values[0][1]
         for pro in list(node_list):
             x =  Game.Provences[Game.Provences['Provence']==pro]['Position'].values[0][0]
             y =  Game.Provences[Game.Provences['Provence']==pro]['Position'].values[0][1]
@@ -331,6 +332,7 @@ class Mapping(object):
                 N = xtext.find(' ', N)
                 xtext = xtext[:N] + '\n' + xtext[N+1:]
                 N = line_len + N - N%line_len
+            print(xtext)
             ax.set_xlabel(xtext)
 
         # Turn off tick labels
