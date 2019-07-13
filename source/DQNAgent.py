@@ -26,7 +26,7 @@ class DQNAgent(object):
         self.agent_predict = 0
         self.learning_rate = 0.0005
         
-        self.action_size = 101
+        self.action_size = 105
         self.action_choices = 71
         
         # different models for different decisions
@@ -583,6 +583,18 @@ class DQNAgent(object):
             state[99] = 1 # i_have_divine_magic
         if Game.Regents[Game.Regents['Regent']==Regent]['Arcane'].values[0] == True:
             state[100] = 1 # i_have_arcane_magic
+        if Game.Regents[Game.Regents['Regent']==enemy]['Divine'].values[0] == True:
+            state[101] = 1 # enemy_has_divine_magic
+        if Game.Regents[Game.Regents['Regent']==enemy]['Arcane'].values[0] == True:
+            state[102] = 1 # enemy_has_arcane_magic
+        if Game.Regents[Game.Regents['Regent']==friend]['Divine'].values[0] == True:
+            state[101] = 1 # friend_has_divine_magic
+        if Game.Regents[Game.Regents['Regent']==friend]['Arcane'].values[0] == True:
+            state[102] = 1 # friend_has_arcane_magic
+        if Game.Regents[Game.Regents['Regent']==rando]['Divine'].values[0] == True:
+            state[103] = 1 # rando_has_divine_magic
+        if Game.Regents[Game.Regents['Regent']==rando]['Arcane'].values[0] == True:
+            state[104] = 1 # rando_has_arcane_magic
         return np.asarray(state), capital, high_pop, low_pop, friend, enemy, rando, enemy_capital
         
         

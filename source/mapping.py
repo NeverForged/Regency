@@ -23,23 +23,6 @@ class Mapping(object):
             self.image = Image.open('maps'+cam_map)
         self.troop_provences = []
         
-    def focus_regent(self, Regent):
-        '''
-        Only those that border or involve the regent
-        '''
-        Game = self.Game
-        temp = pd.concat([Game.Provences[Game.Provences['Regent']==Regent][['Provence']]
-                     , Game.Holdings[Game.Holdings['Regent']==Regent][['Provence']]], sort=False)
-        Provence_List = list(set(temp['Provence']))
-        temp = pd.merge(temp, Game.Geography[Game.Geography['Border']==1].copy(), on='Provence')
-        Provence_List = list(set(Provence_List + list(temp['Neighbor'])))
-        self.node_list = Provence_List
-        temp = Game.Troops[Game.Troops['Regent']==Regent].copy()
-        temp2 = temp[temp['Type'].str.lower().str.contains('scout')]
-        temp2 = pd.merge(temp2[['Provence']], Game.Geography[Game.Geography['Border']==1].copy(), on='Provence', how='left')
-        temp = pd.concat([temp[['Provence']], temp2[['Neighbor']]], keys=['Provence'])
-
-        self.troop_provences = list(set(temp['Provence']))
         
     def focus_regents(self, Regents):
         '''
@@ -48,7 +31,10 @@ class Mapping(object):
         Game = self.Game
         Provence_List = []
         Troop_List = []
+        self.suptitle = 'Lands & Holdings: '
+        lst = []
         for Regent in Regents:
+            lst.append(Game.Regents[Game.Regents['Regent']==Regent]['Full Name'].values[0])
             temp = pd.concat([Game.Provences[Game.Provences['Regent']==Regent][['Provence']]
                      , Game.Holdings[Game.Holdings['Regent']==Regent][['Provence']]], sort=False)
             Provence_List = list(set(Provence_List + list(temp['Provence'])))
@@ -58,17 +44,20 @@ class Mapping(object):
             temp2 = pd.merge(temp2[['Provence']], Game.Geography[Game.Geography['Border']==1].copy(), on='Provence', how='left')
             temp = pd.concat([temp[['Provence']], temp2[['Neighbor']]], keys=['Provence'])
             Troop_List = list(set(Provence_List + list(temp['Provence'])))
+        self.suptitle = self.suptitle + ', '.join(lst)
         temp = pd.merge(temp, Game.Geography[Game.Geography['Border']==1].copy(), on='Provence')
         Provence_List = list(set(Provence_List + list(temp['Neighbor'])))
         self.node_list = Provence_List
         self.troop_provences = Troop_List
         
         
-    def focus_domain(self, domains):
+        
+    def focus_domains(self, domains):
         '''
         '''
         Game = self.Game
         Provence_List = []
+        self.suptitle = 'Map of {}'.format(', '.join(domains))
         for domain in domains:
             Provence_List = list(set(Provence_List + list(Game.Provences[Game.Provences['Domain']==domain]['Provence'])))
         self.node_list = Provence_List  
@@ -79,6 +68,7 @@ class Mapping(object):
         '''
         Game = self.Game
         Provence_List = []
+        self.suptitle = 'Map of {}'.format(', '.join(regions))
         for region in regions:
             Provence_List = list(set(Provence_List + list(Game.Provences[Game.Provences['Region']==region]['Provence'])))
         self.node_list = Provence_List
@@ -168,7 +158,7 @@ class Mapping(object):
         node_list = self.node_list
         G = self.G
         
-        self.fig, self.ax = plt.subplots(1,1, figsize=fig_size)
+        self.fig, self.ax = plt.subplots(1,1, figsize=fig_size, num=self.suptitle)
         fig = self.fig
         ax = self.ax
         if bg == True:
@@ -225,7 +215,7 @@ class Mapping(object):
         if borders:
             edgelist = [(row['Provence'], row['Neighbor']) for i, row in Geography[Geography['Border']==1].iterrows() 
                         if row['Provence'] in Plist and  row['Neighbor'] in Plist]
-            nx.draw_networkx_edges(G,pos,edgelist,width=0.5,alpha=0.25,edge_color='xkcd:grey')
+            nx.draw_networkx_edges(G,pos,edgelist,width=5,alpha=0.25,edge_color='xkcd:grey')
         if roads:
             edgelist = [(row['Provence'], row['Neighbor']) for i, row in Geography[Geography['Road']==1].iterrows() 
                         if row['Provence'] in Plist and  row['Neighbor'] in Plist]
@@ -266,7 +256,9 @@ class Mapping(object):
             name = []
             for word in Prov.split():
                 name.append(r"$\bf{" + word + "}$")
+            
             text = text + ' '.join(name)
+            text = text +' '+ r"$\bf{" + '{}/{}'.format(Game.Provences[Game.Provences['Provence']==Prov]['Population'].values[0], Game.Provences[Game.Provences['Provence']==Prov]['Magic'].values[0]) +"}$"
             # capital
             if Game.Provences[Game.Provences['Provence']==Prov]['Capital'].values[0] == True:
                 text = text + ' [Capital]'
@@ -286,16 +278,18 @@ class Mapping(object):
                 if Game.Provences[Game.Provences['Provence']==Prov]['Castle'].values[0] > 0:
                     text = text+'\n'+Game.Provences[Game.Provences['Provence']==Prov]['Castle Name'].values[0] + ' (Castle '+ str(Game.Provences[Game.Provences['Provence']==Prov]['Castle'].values[0])+')'
             if show_holdings:
-                temp = pd.merge(Game.Holdings[Game.Holdings['Provence']==Prov],Game.Regents[['Regent', 'Full Name']], on='Regent', how='left')
-                #temp['Regent'] = temp['Full Name'].str[:20]
-                temp['Holding'] = temp['Type']
-                if temp.shape[0] > 0:  # in case there are no Holdings
-                    text = text +'\n\n'+temp[['Regent', 'Holding', 'Level']].to_string(index=False, col_space=8, header=False, justify='justify')
-                
-                
-                self.regents_list = list(set(self.regents_list + list(temp['Regent'])))  
+                # holdings!
+                text = text +'\n'
+                for holdtype in ['Law', 'Temple', 'Guild', 'Source']:
+                    temp = pd.merge(Game.Holdings[Game.Holdings['Provence']==Prov],Game.Regents[['Regent', 'Full Name']], on='Regent', how='left')
+                    temp = temp[temp['Type']==holdtype]
+                    #temp['Regent'] = temp['Full Name'].str[:20]
+                    temp = temp.sort_values('Level', ascending=False)
+                    if temp.shape[0] > 0:  # in case there are no Holdings of that type
+                        text = text +'\n'+temp[['Regent', 'Type', 'Level']].to_string(index=False, col_space=8, header=False, justify='left')
+                    self.regents_list = list(set(self.regents_list + list(temp['Regent'])))  
             if show_troops:
-                temp = Game.Troops[Game.Troops['Provence']==Prov]
+                temp = Game.Troops[Game.Troops['Provence']==Prov].copy()
                 temp['units'] = 1
                 temp = temp[['Regent', 'Type', 'units']].groupby(['Regent', 'Type']).sum().reset_index()
                 if Prov in self.troop_provences and temp.shape[0] > 0:
@@ -332,7 +326,6 @@ class Mapping(object):
                 N = xtext.find(' ', N)
                 xtext = xtext[:N] + '\n' + xtext[N+1:]
                 N = line_len + N - N%line_len
-            print(xtext)
             ax.set_xlabel(xtext)
 
         # Turn off tick labels

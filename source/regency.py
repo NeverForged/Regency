@@ -682,8 +682,8 @@ class Regency(object):
 
     def change_regent(self, Regent, Name=None, Bloodline=None, Culture=None, Player=False, Class=None, Level=None, reset_level=False, Alignment = None, Race=None, Str = None, Dex = None, Con = None, Int = None, Wis = None, Cha = None, Insight = None, Deception = None, Persuasion = None, Regency_Bonus = None, Alive=True, Regency_Points=None, Gold_Bars=None, Attitude=None, Divine=None, Arcane=None):
         '''
-		Make changes to a Regent.
-		'''
+        Make changes to a Regent.
+        '''
         
         if str(Gold_Bars) == 'nan' or str(Regency_Points) == 'nan':
             self.errors.append(Regent, self.state, self.action)
@@ -1967,7 +1967,7 @@ class Regency(object):
                 _temp = self.Troops.copy()
                 _temp = _temp[_temp['Regent'] == row['Regent']]
                 if row['Player']==False:
-                    while cost > gb and self.Troops[self.Troops['Regent']==row['Regent']].shape[0] > 0:
+                    if cost > gb and self.Troops[self.Troops['Regent']==row['Regent']].shape[0] > 0:
                         _temp = self.Troops[self.Troops['Regent'] == row['Regent']].copy()
                         _temp = _temp.sort_values('CR')  # want to dump levies first to get them back to work
                         for j, _row in _temp.iterrows():
@@ -2680,7 +2680,7 @@ class Regency(object):
                             found = 1
                             Target_Provence = row['Provence']
                     if found == 0:
-                        return [Regent, actor, Type, 'move_troops_into_enemy_terrirtory', decision, enemy, '', '', '',  False, -50, state, True, '']
+                        return [Regent, actor, Type, 'move_troops_into_enemy_terrirtory', decision, enemy, '', '', '',  False, -1, state, True, '']
                     else:
                         temp = self.Troops[self.Troops['Regent']==Regent].copy()
                         troops = []
@@ -2817,7 +2817,7 @@ class Regency(object):
                     dct['Provence'].append(p)
             temp_check = pd.DataFrame(dct)
             # Validity
-            if state[3] == 1 or temp_check.shape[0] == 0 or state[94]==1:
+            if state[3] == 1 or temp_check.shape[0] == 0 or state[94]==1 or (state[30]==1 and state[99]==0) or (state[31]==1 and state[100]==0):
                 return [Regent, actor, Type, 'create_' + Type.lower() + '_holding', decision, '', '', '', '',  False, -10, state, True, '']
             else:
                 temp_check = pd.merge(temp_check, self.Provences[['Provence', 'Population', 'Regent']].copy(), on='Provence', how='left')
@@ -3700,7 +3700,7 @@ class Regency(object):
                 success = False  # bonus action to kill cannot succeed unless a crit if not in capital
             reward = 0
             message = "An attempt was made on {}'s life!".format(victim)
-            if success:
+            if success == True:
                 self.change_regent(Target, Alive=False)
                 message = "{} was assassinated!".format(victim)
                 temp = self.Relationships.copy()
@@ -4186,6 +4186,8 @@ class Regency(object):
         success, crit = self.make_roll(Regent, dc, 'Persuasion')
         
         message = 'Failed to start a {} Holding in {}'.format(Type, Provence)
+        if (Type == 'Temple' and self.Regents[self.Regents['Regent']==Regent]['Divine'].values[0]==False) or (Type == 'Source' and self.Regents[self.Regents['Regent']==Regent]['Arcane'].values[0]==False):
+            success=False
         if success == True and 1 <= self.Regents[self.Regents['Regent']==Regent]['Gold Bars'].values[0]:
             message = 'Established a {} Holding in {}'.format(Type, Provence)
             level = 0
