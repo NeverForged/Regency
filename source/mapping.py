@@ -207,11 +207,11 @@ class Mapping(object):
             #        done_lst.append((row['Neighbor'],row['Provence']))
             #        lst = self.travel_cost(row['Provence'], row['Neighbor'])
             #        edgelist = [(lst[i],lst[i+1]) for i in range(len(lst)-1)]
-            nx.draw_networkx_edges(G,pos,edgelist,width=2.0,alpha=0.3,edge_color='xkcd:red', style='dashed')
+            nx.draw_networkx_edges(G,pos,edgelist,width=3.0,alpha=0.3,edge_color='xkcd:red', style='dashed')
         if shipping:
             edgelist = [(row['Provence'], row['Neighbor']) for i, row in Geography[Geography['Shipping']==1].iterrows() 
                         if row['Provence'] in Plist and  row['Neighbor'] in Plist]
-            nx.draw_networkx_edges(G,pos,edgelist,width=2.0,alpha=0.3,edge_color='xkcd:azure', style='dashed')
+            nx.draw_networkx_edges(G,pos,edgelist,width=3.0,alpha=0.3,edge_color='xkcd:azure', style='dashed')
         if borders:
             edgelist = [(row['Provence'], row['Neighbor']) for i, row in Geography[Geography['Border']==1].iterrows() 
                         if row['Provence'] in Plist and  row['Neighbor'] in Plist]
@@ -219,7 +219,7 @@ class Mapping(object):
         if roads:
             edgelist = [(row['Provence'], row['Neighbor']) for i, row in Geography[Geography['Road']==1].iterrows() 
                         if row['Provence'] in Plist and  row['Neighbor'] in Plist]
-            nx.draw_networkx_edges(G,pos,edgelist,width=1.0,alpha=0.5,edge_color='xkcd:brown')
+            nx.draw_networkx_edges(G,pos,edgelist,width=2.0,alpha=0.5,edge_color='xkcd:brown')
 
         # labels
         temp = pd.merge(pd.DataFrame(node_list, columns=['Provence']), Game.Provences.copy(), on='Provence', how='left')

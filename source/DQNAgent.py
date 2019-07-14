@@ -342,12 +342,19 @@ class DQNAgent(object):
                 state[41] = 1  # i_have_contested_holdings
             shared_holdings = pd.merge(my_holdings[['Provence']], Game.Holdings.copy(), on='Provence', how='left')
             temp = pd.merge(shared_holdings, Game.Provences[['Provence', 'Population', 'Magic']].copy(), on='Provence', how='left')
-            temp = temp[['Provence', 'Type', 'Level', 'Population', 'Magic']].groupby(['Provence', 'Type']).sum().reset_index()
-            temp = pd.merge(my_holdings[['Provence', 'Type']], temp, on=['Provence', 'Type'])
+            temp = temp[['Provence', 'Type', 'Level', 'Population', 'Magic']].groupby(['Provence', 'Type', 'Population', 'Magic']).sum().reset_index()
+            temp = pd.merge(my_holdings[['Provence', 'Type']], temp, on=['Provence', 'Type']).fillna(0)
             temp_s = temp[temp['Type'] == 'Source']
             temp = temp[temp['Type'] != 'Source' ]
-            if temp[temp['Level'] < temp['Population']].shape[0] > 0 or  temp_s[temp_s['Level'] < temp_s['Magic']].shape[0]:
-                state[42] = 1  # my_holdings_can_increase_in_level
+            temp = temp[temp['Provence']!=0]
+            
+            if temp.shape[0] > 0:
+                if temp[temp['Level'] < temp['Population']].shape[0]:
+                    state[42] = 1  # my_holdings_can_increase_in_level
+            if temp_s.shape[0] > 0:
+                if temp_s[temp_s['Level'] < temp_s['Magic']].shape[0]:
+                    state[42] = 1  # my_holdings_can_increase_in_level
+           
         '''   
                 i_am_at_war
         '''

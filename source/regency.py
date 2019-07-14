@@ -504,6 +504,7 @@ class Regency(object):
         if Contested == None:
             Contested = old['Contested']
         
+        self.Holdings = self.Holdings[['Provence', 'Regent', 'Type', 'Level', 'Contested']]
         self.Holdings.loc[index] = [Provence, new_Regent, Type, Level, Contested]
         
     def remove_holding(self, Provence, Regent, Type):
@@ -680,7 +681,7 @@ class Regency(object):
         for Lieutenant in Lieutenants:
             self.add_lieutenant(Regent, Lieutenant)
 
-    def change_regent(self, Regent, Name=None, Bloodline=None, Culture=None, Player=False, Class=None, Level=None, reset_level=False, Alignment = None, Race=None, Str = None, Dex = None, Con = None, Int = None, Wis = None, Cha = None, Insight = None, Deception = None, Persuasion = None, Regency_Bonus = None, Alive=True, Regency_Points=None, Gold_Bars=None, Attitude=None, Divine=None, Arcane=None):
+    def change_regent(self, Regent, Name=None, Bloodline=None, Culture=None, Player=False, Class=None, Level=None, reset_level=False, Alignment = None, Race=None, Str = None, Dex = None, Con = None, Int = None, Wis = None, Cha = None, Insight = None, Deception = None, Persuasion = None, Regency_Bonus = None, Alive=None, Regency_Points=None, Gold_Bars=None, Attitude=None, Divine=None, Arcane=None):
         '''
         Make changes to a Regent.
         '''
@@ -748,6 +749,8 @@ class Regency(object):
             self.Relationships = self.Relationships[self.Relationships['Regent'] != Regent]
             self.Relationships = self.Relationships[self.Relationships['Other'] != Regent]
             self.Provences['Regent'] = self.Provences['Regent'].str.replace('Regent','')
+        elif Alive == None:
+            Alive = old['Alive']
         
         self.Regents.loc[index] = [Regent, Name, Bloodline, Culture, Player, Class, Level, Alignment, Race, 
                            Str, Dex, Con, Int, Wis, Cha, Insight, Deception, Persuasion,
@@ -2892,7 +2895,7 @@ class Regency(object):
                 return [Regent, actor, Type, 'diplomacy_respond_to_unrest', decision, '', '', '', '',  success, reward, state, False, message]
         # decision[39] == 1:
         elif decision[39] == 1: #forge_ley_lines
-            if state[3]==1 or state[94]==1 or state[95]==1 or state[37]==0:  
+            if state[3]==1 or state[94]==1 or state[95]==1 or state[37]==0 or state[100]==0:  
                 return [Regent, actor, Type, 'forge_ley_lines', decision, '', '', '', '',  False, -10, state, True, '']
             else:
                 try:
@@ -3015,7 +3018,7 @@ class Regency(object):
                 return [Regent, actor, Type, 'rule_low_pop', decision, '', low_pop, '', '',  success, reward, state, False, message]
         # establish_trade_route_friend
         elif decision[52] == 1: 
-            if state[3]==1 or state[95]==1 or state[94]==1 or state[56]==0 or state[22]==0:
+            if state[3]==1 or state[95]==1 or state[94]==1 or state[56]==0 or state[23]==0:
                 return [Regent, actor, Type, 'establish_trade_route_friend', decision, friend, '', '', '',  False, -10, state, True, '']
             else:
                 # where from?
@@ -3759,9 +3762,9 @@ class Regency(object):
             else:  # change diplomacy to show what they did and how it impacts relations
                 temp['roll'] = np.random.randint(1,100,temp.shape[0])
                 temp = temp.sort_values('roll')
-                found = temp.iloc[0]['Assassination']*23 + temp.iloc[0]['Diplomacy'] + temp.iloc[0]['Troop Movements'] + temp.iloc[0]['Other']
+                found = np.sum(pd.concat([temp[temp[a]==self.Season][a] for a in ['Assassination', 'Assassination', 'Diplomacy', 'Troop Movements', 'Other']]))
                 if crit and temp.shape[0] >= 2:
-                    found = found + temp.iloc[1]['Assassination']*2 + temp.iloc[1]['Diplomacy'] + temp.iloc[1]['Troop Movements'] + temp.iloc[1]['Other']
+                    found = np.sum(pd.concat([temp[temp[a]==self.Season-1][a] for a in ['Assassination', 'Assassination', 'Diplomacy', 'Troop Movements', 'Other']]))
                 self.add_relationship(Target, Regent, Diplomacy=-1*found)
             if success:
                 temp = self.Relationships.copy()
@@ -4328,15 +4331,9 @@ class Regency(object):
             self.change_regent(Regent, Gold_Bars = self.Regents[self.Regents['Regent']==Regent]['Gold Bars'].values[0]-1)
         if success == True:  # yay!
             message = message_s
-            if Type == 'form_alliance':  # Alliance Worked.
-                if Diplomacy[1] > 0:
-                    self.add_relationship(Regent, Target, Vassalage=1)
-                    self.add_relationship(Target, Regent, Vassalage=1)
-                    reward = np.sum(Diplomacy)
-                else:
-                    success = False
-                    self.add_relationship(Regent, Target, Diplomacy=1)
-                    self.add_relationship(Target, Regent, Diplomacy=1)
+            if Type == 'form_alliance':  # Alliance Worked.       
+                self.add_relationship(Regent, Target, Diplomacy=2)
+                self.add_relationship(Target, Regent, Diplomacy=2)
             if Type == 'trade_agreement':  # Trade Agrrement!
                 self.add_relationship(Regent, Target, Diplomacy=1, Trade_Permission=1)
                 self.add_relationship(Target, Regent, Diplomacy=1, Trade_Permission=1)
@@ -4659,7 +4656,13 @@ class Regency(object):
             # check if they have the points...
             if self.Regents[self.Regents['Regent']==Regent]['Regency Points'].values[0] >= cost:
                 self.Provences['Regent'] = self.Provences['Regent'].str.replace(Regent, Target)
-                self.Holdings['Regent'] = self.Holdings['Regent'].str.replace(Regent, Target)
+                # careful with holdings..
+                for i, a in enumerate(['Law', 'Guild', 'Temple', 'Source']):
+                    Holdings1 = self.Holdings[self.Holdings['Type'] != a]
+                    Holdings2 = self.Holdings[self.Holdings['Type'] == a]
+                    if i <=1 or (i==2 and self.Regents[self.Regents['Regent']==Target]['Divine'].values[0]==True) or (i==3 and self.Regents[self.Regents['Regent']==Target]['Arcane'].values[0]==True):
+                       Holdings2['Regent'] = Holdings2['Regent'].str.replace(Regent, Target)
+                    self.Holdings = pd.concat([Holdings1[['Provence', 'Regent', 'Type', 'Level', 'Contested']], Holdings2[['Provence', 'Regent', 'Type', 'Level', 'Contested']]], sort=False)
                 self.Troops['Regent'] = self.Troops['Regent'].str.replace(Regent, Target)
                 self.Projects['Regent'] = self.Projects['Regent'].str.replace(Regent, Target)
                 self.Regents[self.Regents['Regent']==Target]['Full Name'].values[0]
@@ -5105,7 +5108,7 @@ class Regency(object):
             targets = list(valid['Provence']) + list(targets['Provence'])
             # targets aquired...
             Limits = [1,5,11,17]
-            if len(Targets) == 0:
+            if len(targets) == 0:
                 return False, 0, message
             Level = self.Regents[self.Regents['Regent']==Regent]['Level'].values[0]
             message = "{} cast 'Death Plague' on {}'s lands; ".format(self.Regents[self.Regents['Regent']==Regent]['Full Name'].values[0], elf.Regents[self.Regents['Regent']==Target]['Full Name'].values[0])
@@ -5798,7 +5801,8 @@ class Regency(object):
             elif row['Project Type'] == 'Realm Magic Stronghold':  # destroy the castle
                 castle = self.Provences[self.Provences['Provence']==row['Details'][0]].iloc[0]['Castle']
                 self.change_provence(row['Details'][0], Castle=castle - row['Details'][1] )
-        
+            elif row['Project Type'] == 'Troop Permission':
+                self.add_relationship(row['Regent'], row['Details'], Vassalage=-1)
         # garrisoned/recently recruited Troops
         temp = self.Troops[self.Troops['Garrisoned']==1].copy()
         # free 'em all
@@ -5865,7 +5869,11 @@ class Regency(object):
         temp = self.Regents[self.Regents['Regent']==Regent].copy()
         
         gbid = 0
-        bonus = self.Regents[self.Regents['Regent']==Regent][skill].values[0]
+        try:
+            bonus = self.Regents[self.Regents['Regent']==Regent][skill].values[0]
+        except:
+            self.errors.append[('Roll',Regent,skill)]
+            bonus=0
         if player_gbid == None: 
             # Regent spends gold to counter...
             if dc > 10 + bonus and  temp[temp['Regent']==Regent]['Gold Bars'].values[0] > 10:
@@ -5903,7 +5911,7 @@ class Regency(object):
         '''
         
         valid = pd.concat([self.Relationships[self.Relationships['Regent'] == Regent], self.Relationships[self.Relationships['Other']==Regent]], sort=False)
-        valid = pd.concat([valid[valid['Vassalage']>0], valid[valid['At War']>0]])
+        valid = pd.concat([valid[valid['Vassalage']>0], valid[valid['At War']>0], valid[valid['Diplomacy']>2]])
         valid['War'] = 1*(valid['At War'] > 0)
         valid_ = valid.copy()
         valid_['Regent'] = valid['Other']
