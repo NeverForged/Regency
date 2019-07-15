@@ -2650,9 +2650,9 @@ class Regency(object):
                     reward = Target_CR
                     return [Regent, Actor, Type, 'move_troops_defend_provence', '', '', Target, '', success, reward, state, invalid, message]
         # decision[22] == 1:
-        elif decision[22] == 1:  #move_troops_into_enemy_territory
+        elif decision[22] == 1:  #move_troops_into_enemy_territory  
             if state[43] == 0 or state[44]==0 or state[94]==1:  # not at war, or don't have troops
-                return [Regent, actor, Type, 'move_troops_into_enemy_terrirtory', decision, enemy, '', '', '',  False, -10, state, True, '']
+                return [Regent, actor, Type, 'move_troops_into_enemy_terrirtory', decision, enemy, '', '', '',  False, -1, state, True, '']
             else:
                 # how badly do I hate this guy
                 temp = self.Relationships[self.Relationships['Regent']==Regent]
@@ -2668,14 +2668,16 @@ class Regency(object):
                 Target_Provence = ''
                 s_dist = 9000
                 temp = self.Provences[self.Provences['Regent']==enemy].copy()
+                temp = pd.concat([temp[temp['Contested']==False][['Provence']], self.Troops[self.Troops['Regent']==enemy][['Provence']]], sort=False)
                 if temp.shape[0] == 0:
+                    self.errors.append((Regent, 'Move-step2', self.Season, temp))
                     return [Regent, actor, Type, 'move_troops_into_enemy_terrirtory', decision, enemy, '', '', '',  False, -10, state, True, '']
                 else:
                     temp['roll'] = np.random.randint(1, 100, temp.shape[0])
                     temp = temp.sort_values('roll')
                     for i, row in self.Provences[self.Provences['Regent']==enemy].copy().iterrows():
                         try:
-                            new_dist = get_travel_cost(Regent, self.Troops[self.Troops['Regent']==Regent].iloc[0]['Provence'].values[0], row['Provence'], 'test')
+                            new_dist = self.get_travel_cost(Regent, self.Troops[self.Troops['Regent']==Regent].iloc[0]['Provence'], row['Provence'], 'test')
                         except:
                             new_dist = 9000
                         if new_dist < s_dist*0.75:  # some randomness
@@ -2683,6 +2685,7 @@ class Regency(object):
                             found = 1
                             Target_Provence = row['Provence']
                     if found == 0:
+                        self.errors.append((Regent, 'Move-step3', self.Season, found, temp))
                         return [Regent, actor, Type, 'move_troops_into_enemy_terrirtory', decision, enemy, '', '', '',  False, -1, state, True, '']
                     else:
                         temp = self.Troops[self.Troops['Regent']==Regent].copy()
@@ -2694,6 +2697,7 @@ class Regency(object):
                                 provences.append(row['Provence'])
                         success, reward, message = self.bonus_action_move_troops(Regent, troops, provences, Target_Provence)
                         reward = animosity + 5*state[87]
+                        self.errors.append((Regent, 'Move-step4', self.Season, success, reward, message))
                         return [Regent, Actor, Type, 'move_troops_into_enemy_terrirtory', '', '', Target, '', success, reward, state, invalid, message]
         # decision[23] == 1:
         elif decision[23] == 1:  # muster_army
@@ -5318,7 +5322,7 @@ class Regency(object):
         temp = temp[temp['Type']=='Source'][['Type', 'Level', 'Provence']]
         temp = temp[temp['Level']>=5]
         temp = pd.concat([temp[['Provence']], self.LeyLines[self.LeyLines['Regent']==Regent][['Provence']]])
-        temp = temp[temp['Provence']==Provence]
+        temp = temp[temp['Provence']==Target]
         success = False
         reward = 0
         message = 'Lacks the resources to cast Legion of the Dead'
