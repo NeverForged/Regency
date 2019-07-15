@@ -877,25 +877,10 @@ class Regency(object):
         Payment -> How much Regent jas agreed to pay Other every season
         Vassalage -> How many of Regent's Regency Points are paid to Other as their Liege Lord
         '''
-        cols = ['Regent', 'Other', 'Diplomacy', 'Payment', 'Vassalage']
-        
-        df = self.Relationships.copy()
+        cols = ['Regent', 'Other', 'Diplomacy', 'Payment', 'Vassalage', 'At War', 'Trade Permission']
+        self.Relationships = self.Relationships.append(pd.DataFrame([[Regent, Other, Diplomacy, Payment, Vassalage, At_War, Trade_Permission]]), columns=cols)
+		self.Relationships = self.Relationships.groupby(['Regent', 'Other']).sum().reset_index()
        
-        temp = df[df['Regent']==Regent]
-        temp = temp.index[temp['Other']==Other]
-        
-         # only add what's being added
-        if len(temp) > 0:
-            temp_ = df[df['Regent'] == Regent].copy()
-            temp_ = temp_[temp_['Other']==Other]
-            Diplomacy = Diplomacy + temp_['Diplomacy'].values[0]
-            Payment = Payment + temp_['Payment'].values[0]
-            Vassalage = Vassalage + temp_['Vassalage'].values[0]
-        
-        index = self.get_my_index(df, temp)
-        df.loc[index] = [Regent, Other, Diplomacy, Payment, Vassalage, At_War, Trade_Permission]
-        self.Relationships = df
-        
     def add_troops(self, Regent, Provence, Type, Home='', Garrisoned=0):
         '''
         This is fired after a decision to buy a troop is made
@@ -3931,7 +3916,7 @@ class Regency(object):
         for i, unit in enumerate(Troops):
             cost = int(points/10)
             if cost <= gold:
-                points = points + get_travel_cost(Regent, provneces[i], Target, unit)
+                points = points + self.get_travel_cost(Regent, provneces[i], Target, unit)
                 if int(points/10) <= gold:
                     # do this!
                     temp = self.Troops[self.Troops['Regent']==Regent].copy()
@@ -5826,6 +5811,10 @@ class Regency(object):
                         lst = df.index[df['Type'] == row['Type']]
                         self.Troops.loc[lst[0]]['Garrisoned'] = 1
             
+        # clear dead regents
+        dead = self.Regents[self.Regents['Alive']==False]
+        for i, row in dead.iterrows():
+            self.kill_regent(row['Regent'])
         
     # tools    
     def set_difficulty(self, base, Regent, Target, hostile=False, assassination=False, player_rbid=None):
@@ -5920,6 +5909,9 @@ class Regency(object):
         valid_ = valid.copy()
         valid_['Regent'] = valid['Other']
         valid = pd.concat([valid[['Regent', 'War']], valid_[['Regent', 'War']]]).groupby('Regent').max().reset_index()
+		temp = self.Troops[self.Troops['Regent']==Regent]
+		temp['War'] = 0
+		valid = pd.concat([valid[['Regent', 'War']], temp[['Regent', 'War']])
 
         # get valid provences
         temp = pd.merge(valid, self.Provences.copy(), on='Regent', how='left').fillna(0)
@@ -5933,12 +5925,13 @@ class Regency(object):
             
         # get provence values
         lst = [('Desert', '2'), ('Tundra', '2')
-              , ('Mountain', '4'), ('Mountains', '4'), ('Glacier', '4')
+              , ('Mountains', '4'), ('Mountain', '4'), ('Glacier', '4')
               , ('Forest', '2')
               , ('Hills', '2')
               , ('Plains', '2'), ('Farmland', '2'), ('Steppes', '2')
               , ('Swamp', '3'), ('Marsh','3')]
         for a in lst:
+            print(a)
             temp['Terrain'] = temp['Terrain'].str.replace(a[0], a[1])
         travel = self.Geography[self.Geography['Border']==1].copy()
         travel = pd.merge(temp[['Provence', 'War']], travel, on='Provence', how='left')

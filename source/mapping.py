@@ -141,6 +141,7 @@ class Mapping(object):
         '''
         Show the map
         '''
+        
         # make sure we have all provences for caravans
         Game = self.Game
         if caravans == True:  # this is for caravan routes, disabled but kept
