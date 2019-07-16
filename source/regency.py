@@ -809,6 +809,14 @@ class Regency(object):
             return 'Thug', 5, 2, 0, 2, 0, 0, 0, 0, 0, 0, False, False
         elif Archetype == 'Bard':
             return 'Bard(Spy)', 6, 0, 2, 0, 1, 2, 3, 4, 5, 5, False, True
+        elif Archetype == 'Goblin':
+            return 'Goblin Boss', 6, 0, 2, 0, 0, -1, 0, -1, 0, 0, False, False
+        elif Archetype == 'Hobgoblin':
+            return 'Hobgoblin Captain', 6, 2, 2, 2, 1, 0, 1, 0, 1, 1, False, False
+        elif Archetype == 'Orc' or Archetype == 'Orog':
+            return 'Orog (Orc) Chief', 11, 4, 1, 4, 0, 0, 3, 0, 3, 3, False, False
+        elif Archetype == 'Bugbear':
+            return 'Bugbear Chief', 10, 3, 2, 2, 0, 1, 0, 1, 0, 0, False, False
         # if none of the above, return Noble stats
         else:
             return 'Noble', 2, 0, 1, 0, 1, 2, 3, 4, 5, 5
@@ -3912,6 +3920,7 @@ class Regency(object):
         move_troops_into_enemy_territory
         move_troops_to_provence
         '''
+        print('MOVE TROOPS', Regent, Troops, Provence, Target)
         gold = self.Regents[self.Regents['Regent'] == Regent]['Gold Bars'].values[0]
         cost = 0
         points = 9
@@ -3922,7 +3931,7 @@ class Regency(object):
                 if int(points/10) <= gold:
                     # do this!
                     temp = self.Troops[self.Troops['Regent']==Regent].copy()
-                    temp = temp[temp['Unit'] == unit]
+                    temp = temp[temp['Type'] == unit]
                     temp = temp[temp['Provence'] == Provence]
                     temp = temp[temp['Garrisoned'] == 0]
                     move = 0
