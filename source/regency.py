@@ -878,8 +878,10 @@ class Regency(object):
         Vassalage -> How many of Regent's Regency Points are paid to Other as their Liege Lord
         '''
         cols = ['Regent', 'Other', 'Diplomacy', 'Payment', 'Vassalage', 'At War', 'Trade Permission']
-        self.Relationships = self.Relationships.append(pd.DataFrame([[Regent, Other, Diplomacy, Payment, Vassalage, At_War, Trade_Permission]]), columns=cols)
-		self.Relationships = self.Relationships.groupby(['Regent', 'Other']).sum().reset_index()
+        self.Relationships = self.Relationships.append(pd.DataFrame([[Regent, Other, Diplomacy, Payment, Vassalage, At_War, Trade_Permission]], columns=cols))
+        self.Relationships = self.Relationships.groupby(['Regent', 'Other']).sum().reset_index()
+        self.Relationships['At War'] = 1*(self.Relationships['At War']>=1)
+        self.Relationships['Trade Permission'] = 1*(self.Relationships['Trade Permission']>=1)
        
     def add_troops(self, Regent, Provence, Type, Home='', Garrisoned=0):
         '''
@@ -2827,7 +2829,7 @@ class Regency(object):
                 return [Regent, actor, Type, 'create_holding', decision, enemy, temp_check.iloc[0]['Provence'], '', Type,  success, reward, state, False, message]                
         # decision[32] == 1:
         elif decision[32] == 1:  # declare_war
-            if state[3] == 0:
+            if state[3] == 0 and state[98] == 1:
                 return [Regent, actor, Type, 'declare_war', decision, '', '', '', '',  False, -10, state, True, '']
             else:
                 success, reward, message = self.domain_action_declare_war(Regent, enemy)
@@ -3916,7 +3918,7 @@ class Regency(object):
         for i, unit in enumerate(Troops):
             cost = int(points/10)
             if cost <= gold:
-                points = points + self.get_travel_cost(Regent, provneces[i], Target, unit)
+                points = points + self.get_travel_cost(Regent, Provence[i], Target, unit)
                 if int(points/10) <= gold:
                     # do this!
                     temp = self.Troops[self.Troops['Regent']==Regent].copy()
@@ -5428,6 +5430,7 @@ class Regency(object):
             A['Defense'] = 1
             lst.append(E)
             lst.append(A)
+            
         temp = pd.concat(lst, sort=False)
         temp =  temp[temp['Provence'] !=0]
 
@@ -5460,6 +5463,8 @@ class Regency(object):
                 '''
                 offense = attackers[attackers['Provence'] == Provence]
                 defense =  defenders[defenders['Provence'] == Provence]
+                defender = self.Provences[self.Provences['Provence']==Provence]['Regent'].values[0]
+                attacker = offense['Regent'].values[0]
                 write = defense[['Type','Regent','CR']].copy().groupby(['Regent', 'Type']).count().reset_index()
                 write['write'] = write['CR'].astype(str) + ' ' + write['Type']
                 message = '{} with a force of '.format(self.Regents[self.Regents['Regent'] == write.iloc[0]['Regent']]['Full Name'].values[0]) + ', '.join(list(write['write'])) + '. ' + message
@@ -5480,7 +5485,7 @@ class Regency(object):
                 def_score = 0
                 # Go until it's over
                 days = 0
-                while off_score-def_score < def_score and def_score-off_score < off_score and defense.shape[0]>0 and offense.shape[0]>0:
+                while off_score-def_score <= def_score and def_score-off_score <= off_score and defense.shape[0]>0 and offense.shape[0]>0:
                     # --- Modifiers ---
                     offense_strength = offense[['Type']].copy()
                     days += 1
@@ -5555,8 +5560,8 @@ class Regency(object):
                 # run away if alive     
                 if def_score < off_score and Castle==0:
                     if defense.shape[0]>0:
-                        if self.Provences[self.Provences['Regent'] == defense['Regent'].values[0]].shape[0] > 0:
-                            temp = self.Provences[self.Provences['Regent'] == defense['Regent'].values[0]]
+                        if self.Provences[self.Provences['Regent'] == defender].shape[0] > 0:
+                            temp = self.Provences[self.Provences['Regent'] == defender]
                             temp['Population'] = temp['Population'] + 3*temp['Capital']
                             temp = temp.sort_values('Population')
                             _, newp = self.get_travel_cost(defense['Regent'].values[0], Provence, temp.iloc[0]['Provence'], Path=True)
@@ -5591,27 +5596,28 @@ class Regency(object):
                 offense_['write'] = offense_['CR'].astype(str) + ' ' +offense_['Type']
                 defense_['write'] = defense_['CR'].astype(str) + ' ' +defense_['Type']
                 if off_score > def_score:
-                    message = message + '{} victorious, with a force of '.format(self.Regents[self.Regents['Regent']==offense_['Regent']]['Full Name'].values[0])
+                    message = message + '{} victorious, with a force of '.format(self.Regents[self.Regents['Regent']==offense_.iloc[0]['Regent']]['Full Name'].values[0])
                     message = message + ', '.join(list(offense_['write']))
-                    if deffense_.shape[0] == 0:
-                        message = ' slaghtering {} Troops to a man.'.format(self.Regents[self.Regents['Regent']==deffense['Regent']]['Full Name'].values[0])
+                    if defense_.shape[0] == 0:
+                        message = message + ' slaghtering {} Troops to a man.'.format(self.Regents[self.Regents['Regent']==defender]['Full Name'].values[0])
                     else:
                         if Castle == 0:
-                            message = " forcing {}'s Troops; ".format(self.Regents[self.Regents['Regent']==deffense_['Regent']]['Full Name'].values[0])
-                            message = ', '.join(list(defense_['write']))
-                            message = '; to flee to {}'.format(defense_['Provence'].values[0])
+                            message = message + " forcing {}'s Troops; ".format(self.Regents[self.Regents['Regent']==defender]['Full Name'].values[0])
+                            message = message + ', '.join(list(defense_['write']))
+                            message = message + '; to flee to {}'.format(defense_['Provence'].values[0])
                         else:
-                            message = " forcing {}'s Troops; ".format(self.Regents[self.Regents['Regent']==deffense_['Regent']]['Full Name'].values[0])
-                            message = ', '.join(list(defense_['write']))
-                            message = '; to hole-up in {}'.format(self.Provences[self.Provences['Provence']==Provence])
+                            message = " forcing {}'s Troops; ".format(self.Regents[self.Regents['Regent']==defender]['Full Name'].values[0])
+                            message = message + ', '.join(list(defense_['write']))
+                            message = message + '; to hole-up in {}'.format(self.Provences[self.Provences['Provence']==Provence])
                 else:
-                    message = message + '{} defended {}, with a force of '.format(self.Regents[self.Regents['Regent']==defense_.iloc[0]['Regent']]['Full Name'].values[0], Provence)
+                    print(defense_)
+                    message = message + '{} defended {}, with a force of '.format(self.Regents[self.Regents['Regent']==defender]['Full Name'], Provence)
                     message = message + ', '.join(list(offense_['write']))
-                    message = " forcing {}'s Troops; ".format(self.Regents[self.Regents['Regent']==offense.iloc[0]['Regent']]['Full Name'].values[0])
-                    message = ', '.join(list(offense_['write']))
-                    message = '; to flee to {}.'.format(defense_['Provence'].values[0])
-                            
-                record = record.append(pd.DataFrame([[time_reference, Provence, 'Battle of {}'.format(Provence), message]], columns=['Year','Location','Event','Notes']))
+                    message = message + " forcing {}'s Troops; ".format(self.Regents[self.Regents['Regent']==attacker]['Full Name'].values[0])
+                    message = message + ', '.join(list(offense_['write']))
+                   
+                print(message)        
+                self.War = self.War.append(pd.DataFrame([[time_reference, Provence, 'Battle of {}'.format(Provence), message]], columns=['Year','Location','Event','Notes']))
                 
                 # Loyalty Adjustment
                 if def_score > off_score:
@@ -5731,8 +5737,8 @@ class Regency(object):
                     self.change_regent(Regent, Gold_Bars = self.Regents[self.Regents['Regent']==Regent]['Gold Bars'].values[0] + tax)
                     self.change_provence(Provence, Population_Change=-1)
                     message = message + ' sacking and looting the provence.'
-                record = record.append(pd.DataFrame([[time_reference, Provence, 'Occupation of {}'.format(Provence), message]], columns=['Year','Location','Event','Notes']))
-        self.War.append(record)
+                self.War = self.War.append(pd.DataFrame([[time_reference, Provence, 'Occupation of {}'.format(Provence), message]], columns=['Year','Location','Event','Notes']))
+                
   
     def clean_up(self):
         '''
@@ -5909,13 +5915,15 @@ class Regency(object):
         valid_ = valid.copy()
         valid_['Regent'] = valid['Other']
         valid = pd.concat([valid[['Regent', 'War']], valid_[['Regent', 'War']]]).groupby('Regent').max().reset_index()
-		temp = self.Troops[self.Troops['Regent']==Regent]
-		temp['War'] = 0
-		valid = pd.concat([valid[['Regent', 'War']], temp[['Regent', 'War']])
+        #valid = pd.concat([valid[['Regent', 'War']], temp[['Regent', 'War']]], sort=False)
 
         # get valid provences
-        temp = pd.merge(valid, self.Provences.copy(), on='Regent', how='left').fillna(0)
+        temp = pd.concat([pd.merge(valid, self.Provences.copy(), on='Regent', how='left').fillna(0)
+                          , pd.merge(self.Holdings[self.Holdings['Regent']==Regent][['Provence']], self.Provences.copy(), on='Provence', how='left').fillna(0)],
+                          sort=False)
+                         
         temp = temp[temp['Provence'] != 0]
+        
         
         # racial modifiers
         if 'Elf' in unit.split():
