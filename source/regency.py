@@ -819,7 +819,7 @@ class Regency(object):
             return 'Bugbear Chief', 10, 3, 2, 2, 0, 1, 0, 1, 0, 0, False, False
         # if none of the above, return Noble stats
         else:
-            return 'Noble', 2, 0, 1, 0, 1, 2, 3, 4, 5, 5
+            return 'Noble', 2, 0, 1, 0, 1, 2, 3, 4, 5, 5, False, False
         
     def add_geo(self, Provence, Neighbor, Border=0, Road=0, Caravan=0, Shipping=0, RiverChasm=0):
         '''
@@ -1656,7 +1656,7 @@ class Regency(object):
                 else:
                     check = self.Regents[self.Regents['Regent'] == Regent+'_rebel'].copy()
                     if check.shape[0] == 0:
-                        self.add_regent(Regent+'_rebel', Name=row['Provence']+ ' Rebellion!', Archetype='Commoner')
+                        self.add_regent(Regent+'_rebel', Name=self.name_generator(self.Regents[self.Regents['Regent']==Regent]['Culture'].values[0], row['Provence']), Archetype='Commoner')
                     enemy = Regent+'_rebel'
                     self.add_relationship(enemy, Regent, Diplomacy = -3, At_War=1)
                     self.change_provence(row['Provence'], Loyalty='Rebellious', Population_Change=-1*row['Population'])
@@ -2578,12 +2578,13 @@ class Regency(object):
                 return [Regent, actor, Type, 'Lieutenant', decision, '', '', '', '',  success, reward, state, False, message]
         # decision[20] == 1:
         elif decision[20] == 1:  #move_troops_defend_provence
-            temp = pd.merge(self.Provences[self.Provences['Regent']==Regent][['Regent', 'Provence']].copy(), self.Troops.copy(), on='Provence', how='left').fillna(0)
-            temp = temp[temp['Type'] != 0]
-            temp = temp[temp['Regent_x'] != temp['Regent_y']]
-            if state[44] == 0 or temp.shape[0] == 0 or state[94]==1:  # no defense needed/able to be done
-                return [Regent, actor, Type, 'move_troops_defend_provence', decision, '', '', '', '',  False, -10, state, True, '']
+            if state[44] == 0 or state[23]==0 or state[80] == 0 or state[94]==1:  # no defense needed/able to be done
+                return [Regent, actor, Type, 'move_troops_defend_provence', decision, '', '', '', '',  False, -1, state, True, '']
             else:
+                temp = pd.merge(self.Provences[self.Provences['Regent']==Regent][['Regent', 'Provence']].copy(), self.Troops.copy(), on='Provence', how='left').fillna(0)
+                temp = temp[temp['Type'] != 0]
+                temp = temp[temp['Regent_x'] != temp['Regent_y']]
+            
                 temp = temp[['Provence', 'CR']].groupby('Provence').sum().reset_index()
                 temp['roll'] = np.random.randint(1, 100,temp.shape[0])+temp['CR']
                 temp = temp.sort_values('roll', ascending=False)
@@ -2611,15 +2612,16 @@ class Regency(object):
                     reward = Target_CR
                     return [Regent, Actor, Type, 'move_troops_defend_provence', '', '', Target, '', success, reward, state, invalid, message]
         # decision[21] == 1:
-        elif decision[21] == 1:  #move_troops_defend_friend
-            temp = pd.merge(self.Provences[self.Provences['Regent']==friend][['Regent', 'Provence']].copy(), self.Troops.copy(), on='Provence', how='left').fillna(0)
-            temp = temp[temp['Type'] != 0]
-            temp = temp[temp['Regent_x'] != temp['Regent_y']]
-            if state[44] == 0 or temp.shape[0] == 0 or state[94]==1:  # no defense needed/able to be done
-                return [Regent, actor, Type, 'move_troops_defend_friend', decision, friend, '', '', '',  False, -10, state, True, '']
+        elif decision[21] == 1:  #move_troops_defend_friend      
+            if state[44] == 0 or state[81] == 0 or state[94]==1 or state[97]==0:  # no defense needed/able to be done
+                return [Regent, actor, Type, 'move_troops_defend_friend', decision, friend, '', '', '',  False, -1, state, True, '']
             else:
+                print(friend, Regent, state[44], state[81], state[94], state[97])
+                temp = pd.merge(self.Provences[self.Provences['Regent']==friend][['Regent', 'Provence']].copy(), self.Troops.copy(), on='Provence', how='left').fillna(0)
+                temp = temp[temp['Type'] != 0]
+                temp = temp[temp['Regent_x'] != temp['Regent_y']]
                 temp = temp[['Provence', 'CR']].groupby('Provence').sum().reset_index()
-                temp['roll'] = np.random.randint(1, 100,temp.shape[0])+temp['CR']
+                temp['roll'] = np.random.randint(1, 10,temp.shape[0])+temp['CR']
                 temp = temp.sort_values('roll', ascending=False)
                 Target = temp.iloc[0]['Provence']
                 Target_CR = int(2*temp.iloc[0]['CR']/3)
@@ -2646,7 +2648,7 @@ class Regency(object):
                     return [Regent, Actor, Type, 'move_troops_defend_provence', '', '', Target, '', success, reward, state, invalid, message]
         # decision[22] == 1:
         elif decision[22] == 1:  #move_troops_into_enemy_territory  
-            if state[43] == 0 or state[44]==0 or state[94]==1:  # not at war, or don't have troops
+            if state[43] == 0 or state[44]==0 or state[94]==1 or state[98]==0:  # not at war, or don't have troops, or enemy has no lands to move into
                 return [Regent, actor, Type, 'move_troops_into_enemy_terrirtory', decision, enemy, '', '', '',  False, -1, state, True, '']
             else:
                 # how badly do I hate this guy
@@ -2691,7 +2693,7 @@ class Regency(object):
                                 troops.append(row['Type'])
                                 provences.append(row['Provence'])
                         success, reward, message = self.bonus_action_move_troops(Regent, troops, provences, Target_Provence)
-                        reward = animosity + 5*state[87]
+                        reward = animosity + 5*state[87] + 5*state[43]
                         self.errors.append((Regent, 'Move-step4', self.Season, success, reward, message))
                         return [Regent, Actor, Type, 'move_troops_into_enemy_terrirtory', '', '', Target, '', success, reward, state, invalid, message]
         # decision[23] == 1:
@@ -2837,7 +2839,7 @@ class Regency(object):
                 return [Regent, actor, Type, 'create_holding', decision, enemy, temp_check.iloc[0]['Provence'], '', Type,  success, reward, state, False, message]                
         # decision[32] == 1:
         elif decision[32] == 1:  # declare_war
-            if state[3] == 0 and state[98] == 1:
+            if state[3] == 0 and state[98] == 0:
                 return [Regent, actor, Type, 'declare_war', decision, '', '', '', '',  False, -10, state, True, '']
             else:
                 success, reward, message = self.domain_action_declare_war(Regent, enemy)
@@ -3698,8 +3700,6 @@ class Regency(object):
         if Type == 'Assassination':
             lst[2] = self.Season
             # this one is serious
-            if Capital == False and crit == False:
-                success = False  # bonus action to kill cannot succeed unless a crit if not in capital
             reward = 0
             message = "An attempt was made on {}'s life!".format(victim)
             if success == True:
@@ -3886,7 +3886,15 @@ class Regency(object):
             success = False
         else:
             self.change_regent(Regent, Gold_Bars = self.Regents[self.Regents['Regent']==Regent]['Gold Bars'].values[0] - cost)
-            name = 'Lieutenent Insert Name Later'
+            temp = self.Provences[self.Provences['Regent']==Regent][['Provence', 'Population']]
+            temp['Level'] = temp['Population']
+            temp = pd.concat([temp[['Provence', 'Level']], self.Holdings[self.Holdings['Regent'] == Regent][['Provence', 'Level']]], sort=False)
+            temp['Level'] = temp['Level'] + np.random.randint(1, 6, temp.shape[0])
+            temp = temp.sort_values('Level', ascending=False)
+			try:
+				name = self.name_generator(self.Regents[self.Regents['Regent']==Regent]['Culture'].values[0], temp['Provence'].values[0])
+			except:
+				name = self.name_generator(self.Regents[self.Regents['Regent']==Regent]['Culture'].values[0])
             self.add_lieutenant(Regent, name, True)
             message =  '{} hired {} as a Lieutenant'.format(self.Regents[self.Regents['Regent']==Regent]['Full Name'].values[0], name)
         return success, 5, message
@@ -3924,6 +3932,8 @@ class Regency(object):
         gold = self.Regents[self.Regents['Regent'] == Regent]['Gold Bars'].values[0]
         cost = 0
         points = 9
+        if len(Troops) != len(Provence):
+            self.errors.append('List Mismatch', Troops, Provence)
         for i, unit in enumerate(Troops):
             cost = int(points/10)
             if cost <= gold:
@@ -3935,15 +3945,15 @@ class Regency(object):
                     temp = temp[temp['Provence'] == Provence[i]]
                     temp = temp[temp['Garrisoned'] == 0]
                     move = 0
-                    for i, row in temp.iterrows():
+                    for j, row in temp.iterrows():
                         if move == 0:
                             move = 1  # only move the 1...
                             temp = self.Troops[self.Troops['Regent'] == Regent]
                             temp = temp[temp['Provence']==Provence[i]]
                             temp = temp[temp['Type'] == unit]
-                            Game.Troops.ix[temp.index[0], 'Provence'] = 'Target'
+                            self.Troops.ix[temp.index[0], 'Provence'] = 'Target'
         self.change_regent(Regent, Gold_Bars = self.Regents[self.Regents['Regent']==Regent]['Gold Bars'].values[0] - int(points/10))
-        return True, 0, '{} moved {} to {}'.format(self.Regents[self.Regents['Regent'] == Regent]['Full Name'].values[0], Troop, Target)
+        return True, 0, '{} moved {} to {}'.format(self.Regents[self.Regents['Regent'] == Regent]['Full Name'].values[0], ', '.join(Troops), Target)
         
     def bonus_action_muster_armies(self, Regent, Type, Provence, N=1):
         '''
@@ -6019,3 +6029,40 @@ class Regency(object):
                 
         return allies, enemies
     
+    def name_generator(self, Culture, Provence=None):
+        if Culture == 'A':  # Anuirean
+            names = 'Adaere, Aedric, Aeric, Agelmore, Anphelan, Ansen, Anuvier, Arlen, Arvuor, Bannier, Blaede, Boeric, Brosen, Caelan, Caern, Colier, Carel, Carilon, Coradan, Daene, Dietric, Droene, Duraend, Elamien, Eldried, Foerde, Friemen, Gaelin, Gavin, Hadrien, Halmied, Landen, Liemen, Moerel, Moergan, Mourde, Noelen, Norvien, Oeren, Oervel, Onwen, Parniel, Pierden, Raesene, Raenwe, Riegon, Ruinil, Ruormad, Shaemes, Shaene, Stiele, Tannen, Torele, Trevan, Vaesil, Vordhuine, Adrien, Aerona, Aithne. Arwen, Aubrae, Baele, Blaese, Briende, Caliendre, Cariene, Cristier, Darnae, Dierdren, Donele, Erin, Etiene, Faelan, Fhiele, Friede, Gael, Ghesele, Gwenevier, Halie, Idele, Ivinie, Jadrien, Laera, Laile, Lauriel, Loeren, Maesene, Marlae, Mieve, Morwe, Niela, Noeva, Oerwinde, Paeghen, Ranele, Raesa, Renae, Rieva, Ruimiele, Saebra, Savane, Seriena, Shannen, Tieghan'.split(', ')
+        elif Culture == 'B' or Culture == 'Br':  # Brecht
+            names = 'Adler, Alaric, Albrecht, Alden, Alford, Ansell, Bertram, Bram, Brand, Britter, Calder, Darold, Dekker, Dirk, Edsel, Eldred, Everard, Frederick, Garth, Gunther, Harold, Helmet, Hugo, Hubert, Karl, Kiel, Konrad, Kort, Kurt, Luther, Martel, Otto, Pieter, Richard, Siegfried, Tanbert, Victor, Wilhelm, Adele, Alberta, Alfreda, Alisse, Aloise, Averil, Arden, Arlinda, Belinda, Brenda, Delma, Edlin, Elma, Elsa, Emma, Frederica, Gretchen, Griselda, Heidi, Helga, Hilda, Ilse, Irma, Katherine, Matilda, Melisande, Selma, Sirena, Thelma, Wlma'.split(', ')
+        elif Culture == 'R' or Culture == 'Rj':  # Rjurik
+            names = 'Abeodan, Abrecan, Aella, Aethelbald, Aethelbjorht, Adalbjorht, Adalhard, Aethelhere, Aethelwold, Aethelwulf, Agdi, Agiefan, Agnar, Aiken, Aldbjorht, Aldfrith, Aldred, Aldwulf, Almund, Alrek, Alvin, Alwalda, An, Amalwin, Anders, Angantyr, Anhaga, Anwaelda, Aran, Archibald, Aric, Armrod, Arnfinn, Arngrim, Asmund, Atli, Auda, Audric, Awiergan, Axel, Baldlice, Bard, Barri, Beiti, Bild, Bern, Bernhard, Beowulf, Bjorhtwald, Bjorhtrek, Bjarkmar, Bjorn, Boden, Borg, Borgar, Brodric, Bosi, Brand, Brynjolf, Budli, Bui, Ceolfrith, Ceolred, Ceolwuld, Cuthbjorht, Cuthwin, Cynric, Dane, Drott, Eadbald, Eardwulf, Eberhard, Ecgfrith, Eddval, Edric, Einar, Egil, Egbjorht, Egfrid, Einar, Eirik, Eitil, Emmon, Eric, Eorp, Eorpwald, Eylimi, Eyolf, Eystein, Fafnir, Fardolf, Finnbogi, Fjolmod, Fjolvar, Fjori, Franmar, Frans, Freki, Fridleif, Frithjof, Frodi, Frodrek, Frosti, Fulbjorht, Fyri, Gardar, Gauk, Gauti, Gautrek, Geirmund, Geirrod, Geirthjof, Geomar, Gerold, Gilling, Gjuki, Glammad, Godric, Gothorm, Gunnar, Gunnbjorn, Guntbald, Gust, Guthorm, Hadding, Haeming, Hafgrim, Hagal, Hak, Haki, Hakon, Halfdan, Haltigar, Hamal, Hamdir, Harald, Hardrad, Harek, Hauk, Havard, Hedin, Hegibjorht, Heidrek, Heimir, Helgi, Hendrek, Herbjorn, Hererinc, Heretoga, Hertholf, Hervard, Hildigrim, Hjalmar, Hjalprek, Hjordmund, Hjorleif, Hjorolf, Hjorvard, Hlodvard, Hlodver, Hlothver, Hodbrodd, Hogni, Hoketil, Holmgeir, Holt, Hosvir, Hrefknel, Hrani, Hreggvid, Hring, Hroar, Hrodmar, Hroi, Hrolf, Hrollaug, Hrosskel, Hrotti, Hunding, Hunthjof, Hymling, Idmund, Illugi, Imsigull, Ingjald, Ingram, Ivar, Jan, Jarnskeggi, Jokul, Joris, Jormunrek, Karel, Kareloman, Kenric, Ketil, Kjar, Knui, Kol, Krabbi, Kraki, Lars, Leif, Lodevjek, Mathfrid, Meginhard, Melnir, Neri, Nordbjorht, Odd, Odolf, Olaf, Olvir, Orkning, Orr, Osmund, Osric, Oswald, Otgar, Otrygg, Ottar, Pieter, Poul, Raevil, Rainer, Raknar, Ref, Rennir, Rikhard, Rodstaff, Rolf, Rudolf, Runolf, Saemund, Sigmund, Sigurd, Sihtric, Sinfjotli, Sirnir, Sjolf, Skuli, Skuma, Slagfid, Smid, Snaeulf, Snaevar, Snidil, Snorri, Sorkvirm Sorli, Soti, Starkad, Steinthor, Storm, Storvirk, Styr, Svafnir, Svafrlami, Svart, Sven, Svidi, Svip, Thjobald, Thjodor, Thjodrek, Thor, Thord, Thorfinn, Thorgeir, Thorir, Thormod, Thorstein, Thrand, Thvari, Tind, Toki, Tryfing, Ulf, Ulfhedin, Vidgrip, Vignar, Vikar, Vilhjelm, Vilfrid, Visin, Volund, Vulfhere, Vulfric, Vulfrum, Yngvi, Ada, Adelind, Aesa, Alfhild, Alof, Anneke, Arnora, Asa, Aslaug, Astrid, Aud, Bekkhild, Bera, Bestla, Birditta, Bodvild, Borghild, Borgny, Brandi, Brynhild, Busla, Dagmar, Dagny, Dana, Eadith, Edda, Edny, Elke, Emila, Etta, Eyfura, Fjotra, Freya, Freydis,Galumvor, Geirrid, Geralda, Gerta, Gisela, Gjaflaug, Greta, Grimhild, Groa, Gudrid, Gudrun, Gullrond, Halldis, Hallfrid, Hallveig, Hedda, Hekja, Helga, Herborg, Herkja, Hervor, Hildigunn, Hildirid, Hjordis, Hjotra, Hleid, Hrafnhild, Hrodrglod, Inga, Ingibjorg, Ingigerd, Ingrid, Isgerd, Jannika, Kallan, Kara, Karela, Karelina, Karena, Kay, Kolina, Kolfrosta, Kostbera, Leoda, Linna, Lofnheid, Lofthaena, Lyngheid, Nauma, Malena, Oddrun, Olga, Olvor, Ragnhild, Rana, Rowena, Rjbekka, Saereid, Sigrid, Sigrlinn, Silksif, Sinrjod, Skjalf, Solvig, Svanhvit, Swanhild, Sylgja, Thjodhild, Thorgerd, Thorunn, Throa, Thurid, Tofa, Ulrika, Unn, Uta, Vaetild, Velda, Yrsa'.split(', ')
+        elif Culture == 'V' or Culture == 'Vo':  #Vosgaard
+            names = 'Anatoli, Barak, Baran, Basil, Boris, Dimas, Dmitri, Drago, Fyodr, Garan, Gregor, Karel, Kasimir, Igor, Ilya, Ivan, Josef, Leonid, Markov, Mikhail, Mischa, Nikoli, Orel, Pavel, Pavlov, Pyotr, Rodel, Sergei, Stefan, Victor, Vladimir, Yuri, Chessa, Danica, Fiala, Galina, Jana, Kalina, Kara, Kira, Krista, Lena, Lenora, Lida, Mara, Marya, Marisha, Nadia, Natasha, Neva, Olga, Pavla, Petra, Pola, Raisa, Sonya, Tamara, Tanya'.split(', ')
+        elif Culture == 'K' or Culture == 'Kh':  # Khinasi
+            names = 'Adan, Ahmed, Albin, Alejan, Alvaro, Aram, Arlando, Arturo, Boran, Cidro, Donato, Duarte, Farid, Faran, Gerad, Hakim, Hari, Hassan, Hussein, Ibrahim, Jahan, Jairo, Jakim, Jamal, Khalil, Karim, Kassim, Malik, Namir, Nuri, Omar, Rami, Rashad, Rigel, Salim, Tuarim, Abriana, Adara, Adaliz, Adira, Aisha, Akilah, Alima, Almira, Amara, Azusena, Bahira, Briseida, Carina, Chalina, Corazon, Corina, Drina, Fatima, Jamilah, Jasmina, Kaliliah, Kamilah, Karida, Ketifa, Laila, Medina, Rashida, Sadira, Sami'.split(', ')
+        elif Culture == 'G':
+            first = 'Gungax, Makdox, Gizil, Bilnix, Rukalog, Drax, Unkgil, Tiwin, Kawli, Wort, Ib, Drolaw, Marowa, Walow, Nott, Ithic'.split(', ')
+            mid = 'Rock, Elf, Dwarf, Man, Eye, Skull, Fang'.split(', ')
+            last = 'crusher, slayer, killer, eater, flayer, grabber'.split(', ')
+            names = []
+            for a in first:
+                for b in mid:
+                    for c in last:
+                        names.append(a + ' ' + b + c)
+        elif Culture == 'E':
+            names = 'Aedan, Aed, Ailbhe, Ailill, Ailin, Aingael, Aislin, Aithne, Allanleigh (al-LAN-lay), Ardghal, Barreight, Biorach, Blathnat, Brigh, Bronach, Bruibevann, Braedonnal, Byrnwbhie (BUR-noo-vee), Cadgwogawn, Caelcormac, Caellach, Cairbre, Calraath, Caoilfhionn, Caoimhin, Caolan, Cathair, Cathal, CathAn, Cearbhall, Ceincorinn, Cian, Ciardha, ColmAn, Conall, Conan, Conchobhar, Conlaed, Conleth, Connal, Conri, Conannelaght (koh-NAN-ne-lach), Corvwyn, Comhghan, Cormac, CuAn, Cuchulainn, Daegandal, Deaglan, Daire, Daithi, Dalaigh, Damhain, Dara, Darochinn, Delwynndwn (del-WIN-doon), Derwyndal, DeoradhAin, Devlyn, Donnachaidh, Donnabhain, Dubhghall (doy-al), Dubhghlas, Eachann, Eagandigh, Eamonnal, Eidirsceoil, Erghwen, Fiellnn, Finn, Fionnbharr, Gannelganwn (gan-nel-gan-NOON), Garradh, Glyngrean, Lachlan, Lynn, Merwyndin, Morgan, Niall (NYE-ull), Rhannoch, Rhaal, Rhys, Riordan, Seabharinn (she-VAR-in), Siele, Sliebheinn (slay-VEEN), Talerdigh, Tuall, Ailien, Alliena, Ardenna, Ashleight, Audreeana, Breeana, Brigyte, Briona, Bronwyn, Caitlannagh (kate-LAN-nay), Camrynnyd, Caileight, Dannagh, Deirdre, Duana, Erinn, Fiona, Finnegwyn, Glynna, Gwenyth, Gwenneigr (gwen-NEER), Iyaell, Leeana, Llewellyn, Mawrmaval (MOOR-ma-val), Maeghan, Maebhe, Mhiellwynn, Niobhe, Nysneirdre (nis-NEER-drey), Rhiannon, Rhondal, Rhuann, Shielynn, Sinead (she-NAYD), Siobhan (sheh-VAWN), Tuanala'.split(', ')
+        elif Culture == 'D':
+            first = 'Barrendd, Born, Brottor, Eberk, Einkil, Glarin, Oin, Olin, Taklinn, Thorin, Traubon, Uhr, Ulfgar, Tveit, Artin, Aulhil, Dargha, Dagnal, Diesa, Gunnloda, Hiln, Ilde, Liftrasa, Sannl, Trogga'.split(', ')
+            last = 'Arakh-Kahl ("Orogslayer"), Harldan-Erh ("Strongarm"), Stork-Khul ("Greystone"), Zhus-Khel ("Swift vengeance")'.split(', ')
+            names = []
+            for a in first:
+                for b in last:
+                    names.append(a + ' ' + b)
+        else:
+            names = 'Ander, Blath, Bran, Frath, Geth, Lander, Luth, Malcer, Stor, Taman, Urth, Amafrey, Betha, Cefrey, Kethra, Mara, Olga, Silifrey, Westra, Bor, Fodel, Glar, Grigor, Igan, Ivor, Kosef, Mival, Orel, Pavel, Sergor, Alethra, Kara, Katernin, Mara, Natali, Olma, Tana, Zora, Darvin, Dorn, Evendur, Gorstag, Grim, Helm, Malark, Morn, Randal, Stedd, Arveene, Esvele, Jhessail, Kerri, Lureene, Miri, Rowan, Shandri, Tessele'.split(', ')
+        ending = ''
+        if Culture != 'G' and Culture != 'D' and Provence != None:
+            ending = ' of {}'.format(Provence)
+        return names[np.random.randint(1, len(names) ,1)[0]]
+        
+        

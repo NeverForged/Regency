@@ -531,13 +531,19 @@ class DQNAgent(object):
             state[78] = 1  # all_enemy_provences_contested
         if np.sum(temp['Castle']) == 0 or np.sum(1.0*(temp['Castle']>temp['Occupying Troops'])) == 0:
             state[79] = 1  # enemy_has_no_castles_or_all_neutralized
-        etroops = Game.Troops[Game.Troops['Regent'] == enemy].copy()
+        allies, enemies = Game.allies_enemies(Regent)
+        if enemies.shape[0]>0:
+            etroops = pd.merge(enemies, Game.Troops, on='Regent', how='left')
+            etroops = pd.concat([Game.Troops[Game.Troops['Regent'] == enemy].copy()
+                                , etroops], sort=False)
+        else:               
+            etroops = Game.Troops[Game.Troops['Regent'] == enemy].copy()
         if pd.merge(my_provences, etroops, on='Provence', how='left').shape[0] > 0:
             state[80] = 1  # enemy has troops in my domain
         temp = Game.Provences[Game.Provences['Regent'] == friend]
         if pd.merge(temp, etroops, on='Provence', how='left').shape[0] > 0:
             state[81] = 1  # enemy_has_troops_in_friends_domain
-        if np.sum(etroops['CR']) > np.sum(my_troops['CR']):
+        if np.sum(Game.Troops[Game.Troops['Regent'] == enemy].copy()['CR']) > np.sum(my_troops['CR']):
             state[82] = 1  # enemy_has_stronger_army
         '''
                 random_event_monsters
