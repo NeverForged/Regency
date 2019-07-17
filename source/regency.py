@@ -3932,13 +3932,16 @@ class Regency(object):
                     # do this!
                     temp = self.Troops[self.Troops['Regent']==Regent].copy()
                     temp = temp[temp['Type'] == unit]
-                    temp = temp[temp['Provence'] == Provence]
+                    temp = temp[temp['Provence'] == Provence[i]]
                     temp = temp[temp['Garrisoned'] == 0]
                     move = 0
                     for i, row in temp.iterrows():
                         if move == 0:
                             move = 1  # only move the 1...
-                            self.Troops.loc[i] = [row['Regent'], Target, row['Type'], row['Cost'], row['Garrisoned'], row['Home']]
+                            temp = self.Troops[self.Troops['Regent'] == Regent]
+                            temp = temp[temp['Provence']==Provence[i]]
+                            temp = temp[temp['Type'] == unit]
+                            Game.Troops.ix[temp.index[0], 'Provence'] = 'Target'
         self.change_regent(Regent, Gold_Bars = self.Regents[self.Regents['Regent']==Regent]['Gold Bars'].values[0] - int(points/10))
         return True, 0, '{} moved {} to {}'.format(self.Regents[self.Regents['Regent'] == Regent]['Full Name'].values[0], Troop, Target)
         
@@ -5682,7 +5685,7 @@ class Regency(object):
                 self.change_provence(Provence, Contested=True)
                 self.change_loyalty(Provence, -1)
                 Regent = attackers['Regent'].values[0]
-                message = '{} occupied {} with '.format(Regent, Provence)
+                message = '{} occupied {} with '.format(self.Regents[self.Regents['Regent']==Regent]['Full Name'].values[0], Provence)
                 write = attackers[['Type','Regent','CR']].copy().groupby(['Regent', 'Type']).count().reset_index()
                 write['write'] = write['CR'].astype(str) + ' ' + write['Type']
                 message = message + ', '.join(list(write['write']))
@@ -5864,7 +5867,7 @@ class Regency(object):
                 rbid = 0
         else:
             rbid = player_rbid
-        if temp.shape[0]>0:
+        if temp[temp['Regent']==Target].shape[0]>0:
             self.change_regent(Target, Regency_Points = temp[temp['Regent']==Target]['Regency Points'].values[0] - rbid)
 
         difficulty = base - gbid - rbid
@@ -5880,7 +5883,7 @@ class Regency(object):
         try:
             bonus = self.Regents[self.Regents['Regent']==Regent][skill].values[0]
         except:
-            self.errors.append[('Roll',Regent,skill)]
+            self.errors.append(('Roll',Regent,skill))
             bonus=0
         if player_gbid == None: 
             # Regent spends gold to counter...
@@ -5948,7 +5951,6 @@ class Regency(object):
               , ('Plains', '2'), ('Farmland', '2'), ('Steppes', '2')
               , ('Swamp', '3'), ('Marsh','3')]
         for a in lst:
-            print(a)
             temp['Terrain'] = temp['Terrain'].str.replace(a[0], a[1])
         travel = self.Geography[self.Geography['Border']==1].copy()
         travel = pd.merge(temp[['Provence', 'War']], travel, on='Provence', how='left')
