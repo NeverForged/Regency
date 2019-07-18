@@ -533,15 +533,20 @@ class DQNAgent(object):
             state[79] = 1  # enemy_has_no_castles_or_all_neutralized
         allies, enemies = Game.allies_enemies(Regent)
         if enemies.shape[0]>0:
-            etroops = pd.merge(enemies, Game.Troops, on='Regent', how='left')
+            etroops = pd.merge(enemies, Game.Troops, on='Regent', how='left').fillna(0)
             etroops = pd.concat([Game.Troops[Game.Troops['Regent'] == enemy].copy()
                                 , etroops], sort=False)
+            etroops = etroops[etroops['Type'] != 0]           
         else:               
             etroops = Game.Troops[Game.Troops['Regent'] == enemy].copy()
-        if pd.merge(my_provences, etroops, on='Provence', how='left').shape[0] > 0:
+        check = pd.merge(my_provences, etroops, on='Provence', how='left').fillna(0)
+        check = check[check['Type']!=0]
+        if check.shape[0] > 0:
             state[80] = 1  # enemy has troops in my domain
         temp = Game.Provences[Game.Provences['Regent'] == friend]
-        if pd.merge(temp, etroops, on='Provence', how='left').shape[0] > 0:
+        check = pd.merge(temp, etroops, on='Provence', how='left').fillna(0)
+        check = check[check['Type']!=0]
+        if check.shape[0] > 0:
             state[81] = 1  # enemy_has_troops_in_friends_domain
         if np.sum(Game.Troops[Game.Troops['Regent'] == enemy].copy()['CR']) > np.sum(my_troops['CR']):
             state[82] = 1  # enemy_has_stronger_army

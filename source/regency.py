@@ -2206,6 +2206,7 @@ class Regency(object):
         ['Regent', 'Actor', 'Action Type', 'Action', 'Target Regent', 'Provence', 'Target Provence', 'Target Holding', 'Success?', 'Base Reward', 'State', invalid, message]
         '''
         invalid = False
+        
         self.action = decision
         self.state = state
         # decision[0] == 1
@@ -2616,7 +2617,7 @@ class Regency(object):
             if state[44] == 0 or state[81] == 0 or state[94]==1 or state[97]==0:  # no defense needed/able to be done
                 return [Regent, actor, Type, 'move_troops_defend_friend', decision, friend, '', '', '',  False, -1, state, True, '']
             else:
-                print(friend, Regent, state[44], state[81], state[94], state[97])
+                print(Regent, friend, enemy, state[44], state[81], state[94], state[97])
                 temp = pd.merge(self.Provences[self.Provences['Regent']==friend][['Regent', 'Provence']].copy(), self.Troops.copy(), on='Provence', how='left').fillna(0)
                 temp = temp[temp['Type'] != 0]
                 temp = temp[temp['Regent_x'] != temp['Regent_y']]
@@ -2645,7 +2646,7 @@ class Regency(object):
                             cr = cr + row['CR']
                     success, reward, message = self.bonus_action_move_troops(Regent, troops, provences, Target)
                     reward = Target_CR
-                    return [Regent, Actor, Type, 'move_troops_defend_provence', '', '', Target, '', success, reward, state, invalid, message]
+                    return [Regent, Actor, Type, 'move_troops_defend_provence', '', '', "", Target, '', success, reward, state, invalid, message]
         # decision[22] == 1:
         elif decision[22] == 1:  #move_troops_into_enemy_territory  
             if state[43] == 0 or state[44]==0 or state[94]==1 or state[98]==0:  # not at war, or don't have troops, or enemy has no lands to move into
@@ -2695,7 +2696,7 @@ class Regency(object):
                         success, reward, message = self.bonus_action_move_troops(Regent, troops, provences, Target_Provence)
                         reward = animosity + 5*state[87] + 5*state[43]
                         self.errors.append((Regent, 'Move-step4', self.Season, success, reward, message))
-                        return [Regent, Actor, Type, 'move_troops_into_enemy_terrirtory', '', '', Target, '', success, reward, state, invalid, message]
+                        return [Regent, actor, Type, 'move_troops_into_enemy_terrirtory', '', '', Target_Provence, '',"", success, reward, state, invalid, message]
         # decision[23] == 1:
         elif decision[23] == 1:  # muster_army
             # what can I muster
@@ -3891,10 +3892,10 @@ class Regency(object):
             temp = pd.concat([temp[['Provence', 'Level']], self.Holdings[self.Holdings['Regent'] == Regent][['Provence', 'Level']]], sort=False)
             temp['Level'] = temp['Level'] + np.random.randint(1, 6, temp.shape[0])
             temp = temp.sort_values('Level', ascending=False)
-			try:
-				name = self.name_generator(self.Regents[self.Regents['Regent']==Regent]['Culture'].values[0], temp['Provence'].values[0])
-			except:
-				name = self.name_generator(self.Regents[self.Regents['Regent']==Regent]['Culture'].values[0])
+            try:
+                name = self.name_generator(self.Regents[self.Regents['Regent']==Regent]['Culture'].values[0], temp['Provence'].values[0])
+            except:
+                name = self.name_generator(self.Regents[self.Regents['Regent']==Regent]['Culture'].values[0])
             self.add_lieutenant(Regent, name, True)
             message =  '{} hired {} as a Lieutenant'.format(self.Regents[self.Regents['Regent']==Regent]['Full Name'].values[0], name)
         return success, 5, message
