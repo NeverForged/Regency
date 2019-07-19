@@ -27,7 +27,7 @@ class DQNAgent(object):
         self.learning_rate = 0.0005
         
         self.action_size = 105
-        self.action_choices = 71
+        self.action_choices = 72
         
         # different models for different decisions
         self.tax_model = self.network(N=4, K=25)

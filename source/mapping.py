@@ -137,7 +137,7 @@ class Mapping(object):
         
     def show(self, fig_size=(10,10), bg=True, map_alpha=0.5, adj=100, line_len=90
                 , caravans=True, shipping=False, roads=True, borders=False, show_holdings = True
-                , show_abbreviations=False, show_troops=False, show_castle=True):
+                , show_abbreviations=False, show_troops=False, show_castle=True, show_ships=True):
         '''
         Show the map
         '''
@@ -306,8 +306,14 @@ class Mapping(object):
                     temp2 = pd.merge(temp, enemies, on='Regent')
                     if temp2.shape[0] > 0:
                         text = text +'\n\n'+'Enemy Units Present'
-                    
-            self.regents_list = list(set(self.regents_list + list(temp['Regent'])))        
+                self.regents_list = list(set(self.regents_list + list(temp['Regent'])))
+            if show_ships:
+                temp = Game.Navy[Game.Navy['Provence']==Prov].copy()
+                temp['Number'] = temp['Number'].astype(int)
+                if temp.shape[0]>0:
+                    text = text +'\n\n'+temp[['Number', 'Ship']].to_string(index=False, col_space=8, header=False, justify='left')
+            
+                self.regents_list = list(set(self.regents_list + list(temp['Regent'])))        
             self.text_list.append(text)
 
         # limit size
