@@ -2047,7 +2047,7 @@ class Regency(object):
         df['Cost'] = ((df['Domain']+4)/5).astype(int)
         df = df[['Regent','Cost']]
         
-        # 5.2 Pay Armies
+        # 5.2 Pay Armies & Maintain Ships
         temp = self.Troops[['Regent', 'Cost']].copy()  # this would be easy,        but we have to disband if we can't pay
         if Update:
             temp_ = temp.groupby('Regent').sum().reset_index()
@@ -2089,7 +2089,17 @@ class Regency(object):
             # now the easy step
             temp = self.Troops[['Regent', 'Cost']].copy()
         df = pd.concat([df, temp[['Regent','Cost']]], sort=False)
-        df = df[['Regent','Cost']]    
+        df = df[['Regent','Cost']]
+        
+        # ADD A WAY TO DISBAND SHIPS
+        ships = self.Navy[['Regent', 'Troop Capacity']].groupby('Regent').sum().reset_index()
+        ships['Cost'] = ((ships['Troop Capacity'] + 2)/3).astype(int)
+        ships_a = ships[ships['Cost']<=4]
+        ships_b = ships[ships['Cost']>4]
+        ships_b['Cost'] = 4
+        ships = pd.concat([ships_a, ships_b], sort=False)
+        df = pd.concat([df, ships[['Regent','Cost']]], sort=False)
+        df = df[['Regent','Cost']]
         
         # 5.3 Lieutenants
         temp = self.Lieutenants.copy()
@@ -2758,6 +2768,7 @@ class Regency(object):
                     animosity = 0
                 if animosity <= 0:
                     animosity = 1
+                animosity = 2*animosity - state[89] + 3*state[87]
                 # which should I attack?
                 found = 0
                 Target_Provence = ''
@@ -2793,7 +2804,7 @@ class Regency(object):
                         success, reward, message = self.bonus_action_move_troops(Regent, troops, provences, Target_Provence)
                         reward = animosity + 5*state[87] + 5*state[43]
                         self.errors.append((Regent, 'Move-step4', self.Season, success, reward, message))
-                        return [Regent, actor, Type, 'move_troops_into_enemy_terrirtory', '', '', Target_Provence, '',"", success, reward, state, invalid, message]
+                        return [Regent, actor, Type, 'move_troops_into_enemy_terrirtory', decision, '', Target_Provence, '',"", success, reward, state, invalid, message]
         # decision[23] == 1:
         elif decision[23] == 1:  # muster_army
             # what can I muster
@@ -4086,7 +4097,7 @@ class Regency(object):
         move_troops_into_enemy_territory
         move_troops_to_provence
         '''
-        print('MOVE TROOPS', Regent, Troops, Provence, Target)
+        #print('MOVE TROOPS', Regent, Troops, Provence, Target)
         gold = self.Regents[self.Regents['Regent'] == Regent]['Gold Bars'].values[0]
         cost = 0
         points = 9
@@ -4110,7 +4121,7 @@ class Regency(object):
                             ship_from = start
                             ship_to = tp[i+1]
                             navy = self.Navy[self.Navy['Regent']==Regent]
-                            capacity_old = np.sum(navy[navy['Provence']==ship_to]['Troop capacity']) 
+                            capacity_old = np.sum(navy[navy['Provence']==ship_to]['Troop Capacity']) 
                         else:
                             if check['Border'].values[0]==0:
                                 used_ship = True
@@ -4149,7 +4160,7 @@ class Regency(object):
                             temp = temp[temp['Type'] == unit]
                             self.Troops.ix[temp.index[0], 'Provence'] = Target
         self.change_regent(Regent, Gold_Bars = self.Regents[self.Regents['Regent']==Regent]['Gold Bars'].values[0] - int(points/10))
-        return True, 0, '{} moved {} to {}'.format(self.Regents[self.Regents['Regent'] == Regent]['Full Name'].values[0], ', '.join(Troops), Target)
+        return True, len(Troops), '{} moved {} to {}'.format(self.Regents[self.Regents['Regent'] == Regent]['Full Name'].values[0], ', '.join(Troops), Target)
         
     def bonus_action_muster_armies(self, Regent, Type, Provence, N=1):
         '''
@@ -5627,7 +5638,6 @@ class Regency(object):
         of the home regent).
         '''
         # track battles
-        record = pd.DataFrame()
         year = self.game_year + int(self.Season/4)
         cal_season = self.Season - int(self.Season/4)
         time_reference = str(cal_season).replace('0', 'Winter').replace('1','Spring').replace('2','Summer').replace('3','Autumn') + ', year {} HC'.format(year)
@@ -5636,33 +5646,27 @@ class Regency(object):
         temp['Home Regent'] = temp['Regent']
         temp = pd.merge(self.Troops, temp[['Home Regent', 'Provence']], on='Provence', how='left')
 
-        lst = []
-        temp['Defense'] = 0
-        temp['Offense'] = 0
-        M = temp[temp['Regent'] == temp['Home Regent']]
-        M['Defense'] = 1
-        lst.append(M)
-        temp =  temp[temp['Regent'] != temp['Home Regent']]
-        for HR in temp['Home Regent']:
-            allies, enemies = self.allies_enemies(HR)
-            
-            E = pd.merge(enemies, temp[temp['Home Regent']==HR], on='Regent', how='left').fillna(0)
-            E['Offense'] = 1
-            A = pd.merge(allies, temp[temp['Home Regent']==HR], on='Regent', how='left').fillna(0)
-            A['Defense'] = 1
-            lst.append(E)
-            lst.append(A)
-            
-        temp = pd.concat(lst, sort=False)
-        temp =  temp[temp['Provence'] !=0]
-
-        defenders = temp[temp['Defense']==1]
-        attackers = temp[temp['Offense']==1]
+        temp = pd.merge(temp, self.Relationships[['Regent','Other','At War']], left_on=['Regent', 'Home Regent'], right_on=['Regent', 'Other'], how='left').fillna(0)
+        temp['Offense'] = temp['At War']
+        temp = pd.merge(temp[['Regent', 'Provence', 'Type', 'CR', 'Garrisoned', 'Home', 'Injury', 'Home Regent', 'Offense']]
+                        , self.Relationships[['Regent', 'Other', 'Diplomacy']]
+                        , left_on=['Home Regent', 'Regent'], right_on=['Regent', 'Other'], how='left').fillna(0)
+        temp['Offense'] = 1*((temp['Offense'] + 1*(temp['Diplomacy']<0))>0)
+        temp['Defense'] = 1*(temp['Regent_x'] == temp['Home Regent'])
+        temp['Defense'] = 1*((temp['Defense'] + 1*(temp['Diplomacy']>0))>0)
+        temp['Regent'] = temp['Regent_x']
         
-        
-        for Provence in attackers['Provence']:
+        war_stuff = temp.copy()
+        print(temp.keys())
+        for Provence in set(war_stuff[war_stuff['Offense']==1]['Provence']):
             message = ''
+            temp__ = war_stuff[war_stuff['Provence']==Provence].copy()
+            print(temp__.keys())
+            defenders = temp__[temp__['Defense']==1]
+            attackers = temp__[temp__['Offense']==1]
             Castle = self.Provences[self.Provences['Provence']==Provence]['Castle'].values[0]
+            
+            # castle stuff
             if attackers.shape[0] >= Castle and Castle > 0 and np.sum(attackers['Type'].str.lower().str.contains('artillery|engineer')) > 0:
                 # Damage the Castle...
                     self.change_provence(Provence, Castle=Castle-1)
@@ -5671,7 +5675,7 @@ class Regency(object):
                         message = message + 'Castle {} was destroyed.'.format(elf.Provecnes[self.Provences['Provence']==Provence]['Castle Name'].values[0])
                     else:
                         message = message + 'Castle {} was damaged.'.format(elf.Provecnes[self.Provences['Provence']==Provence]['Castle Name'].values[0])
-            if defenders[defenders['Provence'] == Provence].shape[0] > 0:  # we have a war!
+            if defenders[defenders['Provence'] == Provence].shape[0] > 0:  # we have a war
                 '''
                 Resolving Battles
                 Herein is presented a method for quickly resolving engagements with hostile units. The 
@@ -5683,8 +5687,8 @@ class Regency(object):
                 the field, roll 1d6 to determine its state at the end of the engagement and add 
                 modifiers based on following table.
                 '''
-                offense = attackers[attackers['Provence'] == Provence]
-                defense =  defenders[defenders['Provence'] == Provence]
+                offense = attackers
+                defense =  defenders
                 defender = self.Provences[self.Provences['Provence']==Provence]['Regent'].values[0]
                 attacker = offense['Regent'].values[0]
                 write = defense[['Type','Regent','CR']].copy().groupby(['Regent', 'Type']).count().reset_index()
@@ -5797,7 +5801,7 @@ class Regency(object):
                 elif off_score < def_score:
                     if offense.shape[0] > 0:
                         if self.Provences[self.Provences['Regent'] == offense['Regent'].values[0]].shape[0] > 0:
-                            temp = self.Provences[self.Provences['Regent'] == offence['Regent'].values[0]]
+                            temp = self.Provences[self.Provences['Regent'] == offense['Regent'].values[0]]
                             temp['Population'] = temp['Population'] + 3*temp['Capital']
                             temp = temp.sort_values('Population')
                             _, newp = self.get_travel_cost(offense['Regent'].values[0], Provence, temp.iloc[0]['Provence'], Path=True)
