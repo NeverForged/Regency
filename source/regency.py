@@ -365,6 +365,18 @@ class Regency(object):
                                 ,1,1
                                 ,2
                                 ,2]
+        dct['Seaworthiness'] = [16
+                                ,15,15
+                                ,17,17
+                                ,16
+                                ,14
+                                ,13
+                                ,15
+                                ,10,10,10,10,10,10,10
+                                ,16
+                                ,14,14
+                                ,18
+                                ,15]
         self.ship_units = pd.DataFrame(dct)
         # Load the World
         self.load_world(world)
@@ -494,7 +506,7 @@ class Regency(object):
         self.War = pd.DataFrame(columns=['Year','Location','Event','Notes'])
         
         # Navy
-        self.Navy = pd.DataFrame(columns=['Regent', 'Provence','Ship','Number','Hull','Troop Capacity'])
+        self.Navy = pd.DataFrame(columns=['Regent', 'Provence','Ship','Hull','Troop Capacity', 'Seaworthiness', 'Name'])
         
         # Save it...
         self.save_world(world)
@@ -572,11 +584,15 @@ class Regency(object):
             Level = (old['Level'])*mult_level  # allows dropping to zero
         else:
             Level = old['Level'] + Level
+            
+            
+        
         if Contested == None:
             Contested = old['Contested']
         
         self.Holdings = self.Holdings[['Provence', 'Regent', 'Type', 'Level', 'Contested']]
         self.Holdings.loc[index] = [Provence, new_Regent, Type, Level, Contested]
+        
         
     def remove_holding(self, Provence, Regent, Type):
         '''
@@ -670,9 +686,73 @@ class Regency(object):
                 Loyalty = old['Loyalty']
         if Taxation == None:
             Taxation == old['Taxation']
-           
+        if Capital == None:
+            Capital = old['Capital']
         Population = old['Population'] + Population_Change
         Magic = old['Magic'] - Population_Change
+        if Population_Change != 0:
+            # determine max population level...
+            base = Terrain
+            if Regent != '':
+                race = self.Regents[self.Regents['Regent']==Regent]['Race'].values[0]
+            else:
+                race='Human'
+            if race.lower() == 'elf':
+                base.lower().replace('forest','8')
+            if race.lower() == 'dwarf':
+                base.lower().replace('mountains','7').replace('mountain','7')
+            for a in [('glacier','0'), ('desert','1'), ('scrub','3')
+                      ,('tundra','1'), ('mountains','3'), ('mountain','3')
+                      ,('forest','6'), ('jungle','6'), ('swamp','6')
+                      ,('hills','7'), ('plains','8')]:
+                base = base.lower().replace(a[0], a[1])
+            try:
+                base = int(base)
+            except:
+                base = 8
+            # I have no way to know Coastal v river...
+            if Waterway == True:
+                base = base + 1
+                if Capital == True:
+                    base = base + 1 
+            if Population > base:
+                Population = base
+            
+            # adjust magic level
+            sp = Terrain
+            for a in [('glacier','5'), ('desert','5'), ('scrub','5')
+                      ,('tundra','5'), ('mountains','7'), ('mountain','7')
+                      ,('forest','7'), ('jungle','7'), ('swamp','8')
+                      ,('hills','5'), ('plains','5')]:
+                sp = sp.lower().replace(a[0], a[1])
+            try:
+                sp = int(sp)
+            except:
+                sp = 5
+            if Waterway == True:
+                if sp <= 7:
+                    sp = 7
+            sp = sp - Population
+            if sp <0:
+                sp = 0
+            if Magic > sp:
+                Magic = sp
+            # change Holding Levels
+            for i, a in enumerate(['Law', 'Guild', 'Temple', 'Source']):
+                against = [Population, Population, Population, Magic][i]
+                check = against + 1
+                while check > against:
+                    temp = self.Holdings[self.Holdings['Provence']==Provence].copy()
+                    temp = temp[temp['Type']==a]
+                    temp = temp[temp['Level']>0]  # no point adjusting 0-level holdings
+                    check = np.sum(temp['Level'])
+                    '''
+                    If a province's ratings change in such a way as to make the current holding levels in the province illegal, then the holding levels must be immediately adjusted. The affected regent should be determined randomly in proportion to the number of holdings held.
+                    '''
+                    if check > against:  
+                        temp['Roll'] = np.random.randint(1,check+temp.shape[0],temp.shape[0]) + temp['Level'] + temp.shape[0]*temp['Contested']
+                        temp = temp.sort_values('Roll', ascending=False)
+                        self.change_holding(Provence, temp.iloc[0]['Regent'], a, Level=temp.iloc[0]['Level']-1)
         
         if Magic <= 0:
             Magic = 0
@@ -682,8 +762,7 @@ class Regency(object):
             Castle = old['Castle']
         if Castle_Name == None:
             Castle_Name = old['Castle Name']
-        if Capital == None:
-            Capital = old['Capital']
+        
         if x == None or y == None:
             pos = old['Position']
         else:
@@ -991,27 +1070,50 @@ class Regency(object):
                 self.change_provence(self.Troops.loc[temp[0]]['Home'], Population_Change=1)
             self.Troops.drop(temp[0], inplace=True)
   
-    def add_ship(self, Regent, Provence, Ship):
+    def add_ship(self, Regent, Provence, Ship, Name=None, Seaworthiness=None, Hull=None):
         '''
-        self.Navy = pd.DataFrame(columns=['Provence','Ship','Number','Hull','Troop Capacity'])
+        self.Navy = pd.DataFrame(columns=['Provence','Ship','Hull','Troop Capacity'])
         '''
         temp = self.ship_units[self.ship_units['Ship']==Ship]
-        self.Navy = self.Navy.append(pd.DataFrame([[Regent, Provence, Ship, 1, temp['Hull'].values[0], temp['Troop Capacity'].values[0]]],
-                                        columns=['Regent', 'Provence','Ship','Number','Hull','Troop Capacity']))
-        self.Navy = self.Navy.groupby(['Regent', 'Provence', 'Ship']).sum().reset_index()
+        if Name==None:
+            t1 = pd.read_csv('csv/ship_pre.csv')
+            t2 = pd.read_csv('csv/ship_post.csv')
+            temp['N'] = np.random.randint(0,t1.shape[0]-1,temp.shape[0])
+            temp['X'] = np.random.randint(0,t2.shape[0]-1,temp.shape[0])
+            temp = pd.merge(temp, t1, on='N', how='left')
+            temp = pd.merge(temp, t2, on='X', how='left')
+            temp['Name'] = temp['Name']+temp['End']
+            temp['Name'] = temp['Name'].str.replace('_', ' ')
+            temp['Name'] = temp['Name'].str.replace('PPP', Provence)
+            temp['Name'] = temp['Name'].str.replace('DDD', self.Provences[self.Provences['Provence']==Provence]['Domain'].values[0])
+            temp['Name'] = temp['Name'].str.replace('RRR', self.name_generator(self.Regents[self.Regents['Regent']==Regent]['Culture'].values[0]))
+            temp['Name'] = temp['Name'].str.title()
+            temp['Name'] = temp['Name'].str.replace("'S","'s")
+            Name = temp['Name'].values[0]
+        if Hull==None:
+            Hull=temp['Hull'].values[0]
+        if Seaworthiness == None:
+            temp['Seaworthiness'].values[0]
+        self.Navy = self.Navy.append(pd.DataFrame([[Regent, Provence, Ship, temp['Hull'].values[0], temp['Troop Capacity'].values[0], temp['Seaworthiness'].values[0], Name]],
+                                        columns=['Regent', 'Provence','Ship','Hull','Troop Capacity', 'Seaworthiness', 'Name']))
+        
     
-    def remove_ship(self, Regent, Provence, Ship):
+    def remove_ship(self, Regent, Provence, Ship, Name=None):
         '''
         Remove a ship from a give place
         '''
-        temp = self.ship_units[self.ship_units['Ship']==Ship]
-        check = self.Navy[self.Navy['Ship']==Ship]
-        check = check[check['Regent']==Regent]
-        check = check.index[check['Provence']==Provence]
-        old = self.Navy.iloc[check]
-
-        self.Navy.loc[check] = [Regent, Provence, Ship, old['Hull'].values[0] - temp['Hull'].values[0], old['Number'].values[0]-1,old['Troop Capacity'].values[0] - temp['Troop Capacity'].values[0]]
-        self.Navy = self.Navy[self.Navy['Number'] > 0]
+        A = self.Navy[self.Navy['Regent'] != Regent]
+        B = self.Navy[self.Navy['Regent'] == Regent]
+        C = B[B['Ship'] == Ship]
+        B = B[B['Ship'] != Ship]
+        if Name == None:
+            # any one
+            Name = C.iloc[0]['Name']
+        Hull = C[C['Name'] == Name]['Hull'].values[0]
+        Seaworthiness = C[C['Name'] == Name]['Seaworthiness'].values[0]
+        C = C[C['Name'] != Name]
+        self.Navy = pd.concat([A,B,C], sort=True)
+        return Name, Hull, Seaworthiness
     
     def move_ship(self, Regent, Ship, From, To):
         '''
@@ -1020,8 +1122,8 @@ class Regency(object):
         if self.Provences[self.Provences['Provence']==To]['Waterway'].values[0] == True:
             # ships can only go on water
             temp = self.ship_units[self.ship_units['Ship']==Ship]
-            self.remove_ship(Regent, From, Ship)
-            self.add_ship(Regent, To, Ship)
+            Name, Hull, Seaworthiness = self.remove_ship(Regent, From, Ship)
+            self.add_ship(Regent, To, Ship,  Name, Hull, Seaworthiness)
               
     # The Season
     # 1. RANDOM EVENTS 
@@ -5639,43 +5741,63 @@ class Regency(object):
         '''
         # track battles
         year = self.game_year + int(self.Season/4)
-        cal_season = self.Season - int(self.Season/4)
+        cal_season = self.Season - int(self.Season/4)*4
         time_reference = str(cal_season).replace('0', 'Winter').replace('1','Spring').replace('2','Summer').replace('3','Autumn') + ', year {} HC'.format(year)
         
-        temp = self.Provences.copy()
-        temp['Home Regent'] = temp['Regent']
-        temp = pd.merge(self.Troops, temp[['Home Regent', 'Provence']], on='Provence', how='left')
+        # find battles...
+        # Combine Army and navy in a single cohesive thing
+		navy = self.Navy.copy()
+		navy['Unit'] = navy['Ship']
+		navy['AN']='N'
+		army = self.Troops.copy()
+		army['Unit'] = army['Type']
+		army['AN'] = 'A'
+		combined_forces = pd.concat([army, navy]).fillna(0)
+		prov = self.Provences.copy()
+		prov['Home Regent'] = prov['Regent']
+		combined_forces = pd.merge(combined_forces, prov[['Provence', 'Home Regent']], on='Provence', how='left')
 
-        temp = pd.merge(temp, self.Relationships[['Regent','Other','At War']], left_on=['Regent', 'Home Regent'], right_on=['Regent', 'Other'], how='left').fillna(0)
-        temp['Offense'] = temp['At War']
-        temp = pd.merge(temp[['Regent', 'Provence', 'Type', 'CR', 'Garrisoned', 'Home', 'Injury', 'Home Regent', 'Offense']]
-                        , self.Relationships[['Regent', 'Other', 'Diplomacy']]
-                        , left_on=['Home Regent', 'Regent'], right_on=['Regent', 'Other'], how='left').fillna(0)
-        temp['Offense'] = 1*((temp['Offense'] + 1*(temp['Diplomacy']<0))>0)
-        temp['Defense'] = 1*(temp['Regent_x'] == temp['Home Regent'])
-        temp['Defense'] = 1*((temp['Defense'] + 1*(temp['Diplomacy']>0))>0)
-        temp['Regent'] = temp['Regent_x']
+		# determine who is fighting who
+		rel = self.Relationships.copy().groupby(['Regent', 'Other']).sum().reset_index()
+		rel_ = rel.copy()
+		rel_['R'] = rel['Other']
+		rel_['Other'] = rel_['Regent']
+		rel_['Regent'] = rel_['R']
+		rel_['Liege'] = rel_['Vassalage']
+		rel_['Enemy'] = rel_['At War']
+		rel = pd.merge(rel, rel_[['Regent', 'Other', 'Liege', 'Enemy']], on=['Regent', 'Other'], how='left').fillna(0)
+		rel['Attacker'] = (1*(rel['Diplomacy']<-2) + rel['At War'] + rel['Enemy'])>1
+		rel['Defender'] = (1*(rel['Diplomacy']>2) + rel['Vassalage'] + rel['Liege'])>1
+		rel['Home Regent'] = rel['Other']
+		# attackers and defnders based on data
+		A = combined_forces[combined_forces['Regent']!=combined_forces['Home Regent']]
+		B = combined_forces[combined_forces['Regent']==combined_forces['Home Regent']]
+		A = pd.merge(A, rel[['Regent', 'Home Regent', 'Attacker', 'Defender']], on=['Regent', 'Home Regent'], how='left').fillna(False)
+		B['Attacker'] = False
+		B['Defender'] = True
+		combined_forces = pd.concat([A, B], sort=True)
         
-        war_stuff = temp.copy()
-        print(temp.keys())
-        for Provence in set(war_stuff[war_stuff['Offense']==1]['Provence']):
+		# iterate thru each provence with enemy troops...
+        for Provence in set(combined_forces[combined_forces['Attacker']==True]['Provence']):
             message = ''
-            temp__ = war_stuff[war_stuff['Provence']==Provence].copy()
-            print(temp__.keys())
-            defenders = temp__[temp__['Defense']==1]
-            attackers = temp__[temp__['Offense']==1]
+            temp__ = combined_forces[combined_forces['Provence']==Provence].copy()
+            defenders = temp__[temp__['Defender']==True]
+            attackers = temp__[temp__['Attacker']==True]
+			defenders['Count'] = 1
+			attackers['Count'] = 1
             Castle = self.Provences[self.Provences['Provence']==Provence]['Castle'].values[0]
             
             # castle stuff
             if attackers.shape[0] >= Castle and Castle > 0 and np.sum(attackers['Type'].str.lower().str.contains('artillery|engineer')) > 0:
                 # Damage the Castle...
-                    self.change_provence(Provence, Castle=Castle-1)
-                    Castle = Castle - 1
-                    if castle > 0:
-                        message = message + 'Castle {} was destroyed.'.format(elf.Provecnes[self.Provences['Provence']==Provence]['Castle Name'].values[0])
-                    else:
-                        message = message + 'Castle {} was damaged.'.format(elf.Provecnes[self.Provences['Provence']==Provence]['Castle Name'].values[0])
-            if defenders[defenders['Provence'] == Provence].shape[0] > 0:  # we have a war
+				Castle = Castle - 1
+                self.change_provence(Provence, Castle=Castle-1)
+				# message
+				if castle > 0:
+					message = message + 'The Castle "{}" was destroyed.'.format(self.Provecnes[self.Provences['Provence']==Provence]['Castle Name'].values[0])
+				else:
+					message = message + 'The Castle "{}" was damaged.'.format(self.Provecnes[self.Provences['Provence']==Provence]['Castle Name'].values[0])
+            if defenders.shape[0] > 0:  # we have a war
                 '''
                 Resolving Battles
                 Herein is presented a method for quickly resolving engagements with hostile units. The 
@@ -5687,16 +5809,22 @@ class Regency(object):
                 the field, roll 1d6 to determine its state at the end of the engagement and add 
                 modifiers based on following table.
                 '''
-                offense = attackers
-                defense =  defenders
-                defender = self.Provences[self.Provences['Provence']==Provence]['Regent'].values[0]
-                attacker = offense['Regent'].values[0]
-                write = defense[['Type','Regent','CR']].copy().groupby(['Regent', 'Type']).count().reset_index()
-                write['write'] = write['CR'].astype(str) + ' ' + write['Type']
-                message = '{} with a force of '.format(self.Regents[self.Regents['Regent'] == write.iloc[0]['Regent']]['Full Name'].values[0]) + ', '.join(list(write['write'])) + '. ' + message
-                write = offense[['Type','Regent','CR']].copy().groupby(['Regent', 'Type']).count().reset_index()
-                write['write'] = write['CR'].astype(str) + ' ' + write['Type']
-                message = '{} with a force of '.format(self.Regents[self.Regents['Regent'] == write.iloc[0]['Regent']]['Full Name'].values[0]) + ', '.join(list(write['write'])) + ' battled ' + message
+                message = 'Battle of {}\n'.format(Provence) + message # castle damage was already reported
+				defender = self.Regents[self.Regents['Regent'] == defenders['Home Regent'].values[0]]['Full Name'].values[0]
+				attacker = self.Regents[self.Regents['Regent'] == attackers['Regent'].values[0]]['Full Name'].values[0]
+
+				message = message + '\nBelligerents:\n{} [A] vs. {} [D]'.format(attacker, defender)
+
+				if len(set(attackers['Regent'])) > 1 or len(set(defenders['Regent'])) > 1:
+					message = message + '\n\nLeaders:'
+					message = message + '\n[Offense]\n' + pd.merge(attackers[['Regent']],self.Regents[['Regent','Full Name']], on='Regent', how='left').drop_duplicates()['Full Name'].to_string(index=False)
+					message = message + '\n[Defense]\n' + pd.merge(defenders[['Regent']],self.Regents[['Regent','Full Name']], on='Regent', how='left').drop_duplicates()['Full Name'].to_string(index=False)
+					
+
+				message = message + '\n\nStrength:\n['+attacker+']\n'
+				message = message + attackers[['Count', 'Unit', 'CR']].copy().groupby('Unit').sum().reset_index().sort_values('CR', ascending=False)[['Unit', 'Count']].to_string(index=False)
+				message = message + '\n['+defender+']\n'
+				message = message +defenders[['Count', 'Unit', 'CR']].copy().groupby('Unit').sum().reset_index().sort_values('CR', ascending=False)[['Unit', 'Count']].to_string(index=False)
                 '''
                 --Resolving Battles--
                 Circumstance    Modifier
@@ -5706,154 +5834,130 @@ class Regency(object):
                 if the unit has already suffered 50% or greater casualties, it is destroyed. 
                 On a result of 2 to 5, the unit suffers 25% casualties, but survives the engagement. 
                 On a result of 6 or greater, the unit suffers no significant casualties.
+				
+				* injury will be a modifier if we have to roll again (-1 for 25%, -3 for 50%)
+				for soldiers
+				
+				for ships, 0 or less -2 Hull, -10 seaworthiness
+				1 -1 hull, -5 seaworthiness
+				2-5 -1 seaworthieness , roll vs seaworthiness to see if hull damaged by 1
+				
+				if hull or seawrthiness 0 or less, ship destroyed.
                 '''
                 off_score = 0
                 def_score = 0
                 # Go until it's over
                 days = 0
+				# save the original to see who's left
+				s_attackers = attackers.copy()
+				s_defenders = defenders.copy()
+				
                 while off_score-def_score <= def_score and def_score-off_score <= off_score and defense.shape[0]>0 and offense.shape[0]>0:
                     # --- Modifiers ---
-                    offense_strength = offense[['Type']].copy()
                     days += 1
-                    offense['mod'] = offense['Injury']
-                    defense['mod'] = defense['Injury']
-                    # Enemy force has Archer-class units and your force has no Cavalry-class units    -1
-                    if np.sum(offense['Type'].str.lower().str.contains('archer')) >=1 and\
-                       np.sum(defense['Type'].str.lower().str.contains('cavalry|knight')) == 0:
-                        defense['mod'] = defense['mod'] - 1
-                    if np.sum(defense['Type'].str.lower().str.contains('archer')) >=1 and\
-                       np.sum(offense['Type'].str.lower().str.contains('cavalry|knight')) == 0:
-                        offense['mod'] = offense['mod'] - 1
-                    # Enemy force has Cavalry-class units and your force has no Pikemen or Cavalry-class units    -1
-                    if np.sum(offense['Type'].str.lower().str.contains('cavalry|knight')) >=1 and\
-                       np.sum(defense['Type'].str.lower().str.contains('cavalry|knight|pikem')) == 0:
-                        defense['mod'] = defense['mod'] - 1
-                    if np.sum(defense['Type'].str.lower().str.contains('archer')) >=1 and\
-                       np.sum(offense['Type'].str.lower().str.contains('cavalry|knight|pikem')) == 0:
-                        offense['mod'] = offense['mod'] - 1
+                    
+					attackers['Mod'] = attackers['Injury']
+					defenders['Mod'] = defenders['Injury']
+					# LAND FORCES
+                    # Enemy force has Archer-class units and your force has no Cavalry-class units    -1 (A)
+					# Enemy has Archers -1 (N)  
+					# You have Archers +1 (N)
+                    if np.sum(attackers['Unit'].str.lower().str.contains('archer|crossbow'))>0:
+						attackers['Mod'] = attackers['Mod'] + (attackers['AN'].str.replace('A','0').replace('N','1')).astype(int)
+						if np.sum(defenders['Unit'].str.lower().str.contains('knight|cavalry'))<=0:
+							defenders['Mod'] = defenders['Mod'] -1
+						else:  # just the ships suffer
+							defenders['Mod'] = defenders['Mod'] + (defenders['AN'].str.replace('A','0').replace('N','-1')).astype(int)
+					if np.sum(defenders['Unit'].str.lower().str.contains('archer|crossbow'))>0:
+						defenders['Mod'] = defenders['Mod'] + (defenders['AN'].str.replace('A','0').replace('N','1')).astype(int)
+						if np.sum(attackers['Unit'].str.lower().str.contains('knight|cavalry'))<=0:
+							attackers['Mod'] = attackers['Mod'] -1
+						else:  # just the ships suffer
+							attackers['Mod'] = attackers['Mod'] + (attackers['AN'].str.replace('A','0').replace('N','-1')).astype(int)		
+                    # Enemy force has Cavalry-class units and your force has no Pikemen or Cavalry-class units    -1 (A)
+					if np.sum(attackers['Unit'].str.lower().str.contains('knight|cavalry'))>0 and np.sum(defenders['Unit'].str.lower().str.contains('knight|cavalry|pikem'))<=0:
+						defenders['Mod'] = defenders['Mod'] + (defenders['AN'].str.replace('A','-1').replace('N','0')).astype(int)
+					if np.sum(defenders['Unit'].str.lower().str.contains('knight|cavalry'))>0 and np.sum(attackers['Unit'].str.lower().str.contains('knight|cavalry|pikem'))<=0:
+						attackers['Mod'] = attackers['Mod'] + (attackers['AN'].str.replace('A','-1').replace('N','0')).astype(int)
+                    # The unit has terrain advantage (elves in forest, dwarves in mountains)  +1
+					Terrain = self.Provences[self.Provences['Provence']==Provence]['Terrain'].values[0]
+					if Terrain == 'Forest':
+						defenders['Mod'] = defenders['Mod'] + 1*defenders['Type'].str.lower().str.contains('elf')
+						attackers['Mod'] = attackers['Mod'] + 1*attackers['Type'].str.lower().str.contains('elf')
+					elif Terrain == 'Mountains' or Terrain == 'Mountain':
+						defenders['Mod'] = defenders['Mod'] + 1*defenders['Type'].str.lower().str.contains('dwar')
+						attackers['Mod'] = attackers['Mod'] + 1*attackers['Type'].str.lower().str.contains('dwar')
+                    # Your force has established fortifications and defenses and enemy force has no Artillery or Engineer-class units.    +1
+                    if Castle > 0 and np.sum(attackers['Unit'].str.lower().str.contains('artil|engin'))<=0:
+						defenders['Mod'] = defenders['Mod'] + defenders['Garrisoned']
+                    # The unit possesses an attached commander.   +1  [May Add later]
+					
+					# LAND AND SEA
                     # Per 2 total BCR the enemy force exceeds your own (maximum penalty -3)   -1
                     # Per 2 total BCR your force exceeds the enemy force (maximum bonus +3)   +1
-                    for a in range(0,int((np.sum(defense['CR'])-np.sum(offense['CR']))/2)):
-                        if a <= 2:
-                            offense['mod'] = offense['mod']-1
-                            defense['mod'] = defense['mod']+1
-                    for a in range(0,int((np.sum(offense['CR'])-np.sum(defense['CR']))/2)):
-                        if a <= 2:
-                            offense['mod'] = offense['mod']+1
-                            defense['mod'] = defense['mod']-1
-                    # The unit has terrain advantage (elves in forest, dwarves in mountains)  +1 [Skipping for now]
-                    # Your force has established fortifications and defenses and enemy force has no Artillery or Engineer-class units.    +1
-                    if self.Provences[self.Provences['Provence']==Provence]['Castle'].values[0] > 0 and np.sum(offense['Type'].str.lower().str.contains('artillery|engineer')) == 0:
-                            defense['mod'] = defense['mod'] + defense['Garrisoned']  # only those in the castle
-                    # The unit possesses an attached commander.   +1  [May Add later]
-                    offense['roll'] = np.random.randint(1,6,offense.shape[0]) + offense['mod']
-                    defense['roll'] = np.random.randint(1,6,defense.shape[0]) + defense['mod']
+					if np.sum(attackers['CR']) - np.sum(defenders['CR']) >= 6:
+						defenders['Mod'] = defenders['Mod'] - 3
+						attackers['Mod'] = attackers['Mod'] + 3
+					elif np.sum(attackers['CR']) - np.sum(defenders['CR']) >= 4:
+						defenders['Mod'] = defenders['Mod'] - 2
+						attackers['Mod'] = attackers['Mod'] + 2
+					elif np.sum(attackers['CR']) - np.sum(defenders['CR']) >= 2:
+						defenders['Mod'] = defenders['Mod'] - 1
+						attackers['Mod'] = attackers['Mod'] + 1
+					elif np.sum(defenders['CR']) - np.sum(attackers['CR']) >= 6:
+						defenders['Mod'] = defenders['Mod'] + 3
+						attackers['Mod'] = attackers['Mod'] - 3
+					elif np.sum(defenders['CR']) - np.sum(attackers['CR']) >= 4:
+						defenders['Mod'] = defenders['Mod'] + 2
+						attackers['Mod'] = attackers['Mod'] - 2
+					elif np.sum(defenders['CR']) - np.sum(attackers['CR']) >= 2:
+						defenders['Mod'] = defenders['Mod'] + 1
+						attackers['Mod'] = attackers['Mod'] - 1
+					
+				    # SEA FORCES
+					
+					# Enemy has Artillery -2, you have Artillery +1
+					if np.sum(attackers['Unit'].str.lower().str.contains('artill'))>0:
+						attackers['Mod'] = attackers['Mod'] + (attackers['AN'].str.replace('A','0').replace('N','1')).astype(int)
+						defenders['Mod'] = defenders['Mod'] + (defenders['AN'].str.replace('A','0').replace('N','-2')).astype(int)
+					if np.sum(defenders['Unit'].str.lower().str.contains('artill'))>0:
+						attackers['Mod'] = attackers['Mod'] + (attackers['AN'].str.replace('A','0').replace('N','-2')).astype(int)
+						defenders['Mod'] = defenders['Mod'] + (defenders['AN'].str.replace('A','0').replace('N','1')).astype(int)
+					# Every 2 total Troop Capacity the enemy force exceeds your own (maximum penalty -3)
+					# Per 2 total Troop Capacity your force exceeds the enemy force (maximum bonus +3)   +1
+					if np.sum(attackers['Troop Capacity']) - np.sum(defenders['Troop Capacity']) >= 6:
+						attackers['Mod'] = attackers['Mod'] + (attackers['AN'].str.replace('A','0').replace('N','3')).astype(int)
+						defenders['Mod'] = defenders['Mod'] + (defenders['AN'].str.replace('A','0').replace('N','-3')).astype(int)
+					elif np.sum(attackers['Troop Capacity']) - np.sum(defenders['Troop Capacity']) >= 4:
+						attackers['Mod'] = attackers['Mod'] + (attackers['AN'].str.replace('A','0').replace('N','2')).astype(int)
+						defenders['Mod'] = defenders['Mod'] + (defenders['AN'].str.replace('A','0').replace('N','-2')).astype(int)
+					elif np.sum(attackers['Troop Capacity']) - np.sum(defenders['Troop Capacity']) >= 2:
+						attackers['Mod'] = attackers['Mod'] + (attackers['AN'].str.replace('A','0').replace('N','1')).astype(int)
+						defenders['Mod'] = defenders['Mod'] + (defenders['AN'].str.replace('A','0').replace('N','-1')).astype(int)
+					elif np.sum(defenders['Troop Capacity']) - np.sum(attackers['Troop Capacity']) >= 6:
+						attackers['Mod'] = attackers['Mod'] + (attackers['AN'].str.replace('A','0').replace('N','-3')).astype(int)
+						defenders['Mod'] = defenders['Mod'] + (defenders['AN'].str.replace('A','0').replace('N','3')).astype(int)
+					elif np.sum(defenders['Troop Capacity']) - np.sum(attackers['Troop Capacity']) >= 4:
+						attackers['Mod'] = attackers['Mod'] + (attackers['AN'].str.replace('A','0').replace('N','-2')).astype(int)
+						defenders['Mod'] = defenders['Mod'] + (defenders['AN'].str.replace('A','0').replace('N','2')).astype(int)
+					elif np.sum(defenders['Troop Capacity']) - np.sum(attackers['Troop Capacity']) >= 2:
+						attackers['Mod'] = attackers['Mod'] + (attackers['AN'].str.replace('A','0').replace('N','-1')).astype(int)
+						defenders['Mod'] = defenders['Mod'] + (defenders['AN'].str.replace('A','0').replace('N','1')).astype(int)
+										
+					# ROLL!
                     # deal with causulties
-                    offense_50 = offense[offense['roll']==1]
-                    defense_50 = defense[defense['roll']==1]
-                    offense_25 = offense[offense['roll']>=2]
-                    defense_25 = defense[defense['roll']>=2]
-                    offense_25 = offense_25[offense_25['roll']<=5]
-                    defense_25 = defense_25[defense_25['roll']<=5]
-                    offense_good = offense[offense['roll']>5]
-                    defense_good = defense[defense['roll']>5]
-                    offense_50['Injury'] = offense_50['Injury'] - 2
-                    defense_50['Injury'] = defense_50['Injury'] - 2
-                    offense_25['Injury'] = offense_25['Injury'] - 1
-                    defense_25['Injury'] = defense_25['Injury'] - 1
-                    dead = pd.concat([offense[offense['roll']<=0], defense[defense['roll']<=0]])
-                    offense = pd.concat([offense_50,offense_25,offense_good])
-                    defense = pd.concat([defense_50,defense_25,defense_good])
-                    dead = pd.concat([dead, offense[offense['Injury']<=-4], defense[defense['Injury']<=-4]])
-                    for i, row in dead.iterrows():
-                        self.disband_troops(row['Regent'], row['Provence'], row['Type'], True)  # kill 'em
-                    off_score = np.sum(offense['CR'])
-                    def_score = np.sum(defense['CR'])
+                
                 # deal with injuries
-                defense_ = defense[defense['Injury'] >= -3]
-                offense_ = offense[offense['Injury'] >= -3]
-                defense_ = defense_[['Regent', 'Provence', 'Type', 'Injury', 'CR', 'Home', 'Garrisoned']].groupby(['Regent', 'Provence', 'Type', 'Injury', 'Home', 'Garrisoned']).count().reset_index()
-                defense_['Injury'] = defense_['Injury'].astype(str).str.replace('-2','0.5').replace('-1','0.75').replace('-3','0.25').replace('0','1').astype(float)
-                defense_['CR'] = defense_['CR']*defense_['Injury']
-                defense_ = defense_[['Regent', 'Provence', 'Type', 'CR', 'Garrisoned']].groupby(['Regent', 'Provence', 'Type', 'Garrisoned']).sum().reset_index()
-                defense_['CR'] = (defense_['CR']+0.5).astype(int)
-                offense_ = offense[['Regent', 'Provence', 'Type', 'Injury', 'CR', 'Home']].groupby(['Regent', 'Provence', 'Type', 'Injury', 'Home']).count().reset_index()
-                offense_['Injury'] = offense_['Injury'].astype(str).str.replace('-2','0.5').replace('-1','0.75').replace('-3','0.25').replace('0','1').astype(float)
-                offense_['CR'] = offense_['CR']*offense_['Injury']
-                offense_ = offense_[['Regent', 'Provence', 'Type', 'CR']].groupby(['Regent', 'Provence', 'Type']).sum().reset_index()
-                offense_['CR'] = (offense_['CR']+0.5).astype(int)
-                message = message + ' The engagement lasted {} days, ending with '.format(days)
+        
                 # run away if alive     
-                if def_score < off_score and Castle==0:
-                    if defense.shape[0]>0:
-                        if self.Provences[self.Provences['Regent'] == defender].shape[0] > 0:
-                            temp = self.Provences[self.Provences['Regent'] == defender]
-                            temp['Population'] = temp['Population'] + 3*temp['Capital']
-                            temp = temp.sort_values('Population')
-                            _, newp = self.get_travel_cost(defense['Regent'].values[0], Provence, temp.iloc[0]['Provence'], Path=True)
-                            if len(newp) > 1:
-                                defense_['Provence'] = newp[1]
-                                defense_['Garrisoned'] = 0
-                                # no friendly forces remain, so...
-                                self.change_provence(Provence, Contested=True)
-                elif def_score < off_score and Castle > 0:  
-                    defense_['Garrisoned'] = 1
-                elif off_score < def_score:
-                    if offense.shape[0] > 0:
-                        if self.Provences[self.Provences['Regent'] == offense['Regent'].values[0]].shape[0] > 0:
-                            temp = self.Provences[self.Provences['Regent'] == offense['Regent'].values[0]]
-                            temp['Population'] = temp['Population'] + 3*temp['Capital']
-                            temp = temp.sort_values('Population')
-                            _, newp = self.get_travel_cost(offense['Regent'].values[0], Provence, temp.iloc[0]['Provence'], Path=True)
-                            if len(newp) > 1:
-                                offense_['Provence'] = newp[1]
+                
                 # consolidate troops down... and officially move them
-                for i, row in defense.iterrows():
-                    self.disband_troops(row['Regent'], row['Provence'], row['Type'], Real=False)
-                for i, row in offense.iterrows():
-                    self.disband_troops(row['Regent'], row['Provence'], row['Type'], Real=False)
-                for i, row in defense_.iterrows():
-                    for a in range(int(row['CR'])):
-                        # let flee to/out-of castle if needed
-                        self.add_troops(row['Regent'], row['Provence'], row['Type'], Garrisoned = row['Garrisoned'])
-                for i, row in offense_.iterrows():
-                    for a in range(int(row['CR'])):
-                        self.add_troops(row['Regent'], row['Provence'], row['Type'])
-                offense_['write'] = offense_['CR'].astype(str) + ' ' +offense_['Type']
-                defense_['write'] = defense_['CR'].astype(str) + ' ' +defense_['Type']
-                if off_score > def_score:
-                    message = message + '{} victorious, with a force of '.format(self.Regents[self.Regents['Regent']==offense_.iloc[0]['Regent']]['Full Name'].values[0])
-                    message = message + ', '.join(list(offense_['write']))
-                    if defense_.shape[0] == 0:
-                        message = message + ' slaghtering {} Troops to a man.'.format(self.Regents[self.Regents['Regent']==defender]['Full Name'].values[0])
-                    else:
-                        if Castle == 0:
-                            message = message + " forcing {}'s Troops; ".format(self.Regents[self.Regents['Regent']==defender]['Full Name'].values[0])
-                            message = message + ', '.join(list(defense_['write']))
-                            message = message + '; to flee to {}'.format(defense_['Provence'].values[0])
-                        else:
-                            message = " forcing {}'s Troops; ".format(self.Regents[self.Regents['Regent']==defender]['Full Name'].values[0])
-                            message = message + ', '.join(list(defense_['write']))
-                            message = message + '; to hole-up in {}'.format(self.Provences[self.Provences['Provence']==Provence])
-                else:
-                    print(defense_)
-                    message = message + '{} defended {}, with a force of '.format(self.Regents[self.Regents['Regent']==defender]['Full Name'], Provence)
-                    message = message + ', '.join(list(offense_['write']))
-                    message = message + " forcing {}'s Troops; ".format(self.Regents[self.Regents['Regent']==attacker]['Full Name'].values[0])
-                    message = message + ', '.join(list(offense_['write']))
-                   
-                print(message)        
-                self.War = self.War.append(pd.DataFrame([[time_reference, Provence, 'Battle of {}'.format(Provence), message]], columns=['Year','Location','Event','Notes']))
+            
+          
                 
                 # Loyalty Adjustment
-                if def_score > off_score:
-                    for Reg in set(defense['Regent']):
-                        for Prov in set(self.Provences[self.Provences['Regent']==Reg]['Provence']):
-                            self.change_loyalty(Prov, 1)
-                elif off_score > def_score:
-                    for Reg in set(offense['Regent']):
-                        for Prov in set(self.Provences[self.Provences['Regent']==Reg]['Provence']):
-                            self.change_loyalty(Prov, 1)
+
+             
                 '''
                 The side that suffers the most results of 1 or lower is considered defeated, and must 
                 retreat to a province with no hostile force present on the same turn of its defeat. 

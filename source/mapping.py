@@ -309,9 +309,11 @@ class Mapping(object):
                 self.regents_list = list(set(self.regents_list + list(temp['Regent'])))
             if show_ships:
                 temp = Game.Navy[Game.Navy['Provence']==Prov].copy()
-                temp['Number'] = temp['Number'].astype(int)
+                temp = temp.sort_values('Troop Capacity', ascending=False)
+                temp['Ship'] = '(' + temp['Ship'].astype(str) + ')'
+                temp['Name'] = '"' + temp['Name'].astype(str) + '"'
                 if temp.shape[0]>0:
-                    text = text +'\n\n'+temp[['Number', 'Ship']].to_string(index=False, col_space=8, header=False, justify='left')
+                    text = text +'\n\n'+temp[['Name', 'Ship']].to_string(index=False, col_space=8, header=False, justify='left')
             
                 self.regents_list = list(set(self.regents_list + list(temp['Regent'])))        
             self.text_list.append(text)
