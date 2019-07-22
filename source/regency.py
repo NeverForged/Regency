@@ -1887,6 +1887,12 @@ class Regency(object):
         
         Season = pd.merge(self.Seasons[self.Season]['Season'], temp[['Regent', 'Initiative']], on='Regent', how='left')
         self.Seasons[self.Season]['Season'] = Season.sort_values('Initiative', ascending=False)
+        self.Seasons[self.Season]['Override']={}
+        self.Seasons[self.Season]['Override'][1]={}
+        self.Seasons[self.Season]['Override'][2]={}
+        self.Seasons[self.Season]['Override'][3]={}
+        self.Seasons[self.Season]['Actions'] = {}
+    
     
     # 3. COLLECT REGENCY POINTS
     def collect_regency_points(self):
@@ -2330,7 +2336,7 @@ class Regency(object):
         
         '''
         self.Action=Action
-        self.Seasons[self.Season]['Actions'] = {}
+        
         
         if self.Action < 4:
             # Make A DataFrame
@@ -2377,7 +2383,7 @@ class Regency(object):
                         print('Player...')
                     else:  # NPC!
                         try:
-                            over = self.Seasons[self.Season][self.Action]['Override'][Regent]
+                            over = self.Seasons[self.Season]['Override'][self.Action][Regent]
                         except:
                             over = None
                         state, capital, high_pop, low_pop, friend, enemy, rando, enemy_capital = self.agent.get_action_state(row['Regent'], self, over)  # allow player actions to inform Agent
@@ -2388,6 +2394,10 @@ class Regency(object):
                             if tries == 0:
                                 decision = self.make_decision('', self.agent.action_choices, 'Action', state, row['Regent'], over)
                             else:
+                                try:
+                                    check = self.Seasons[self.Season]['Override'][self.Action+1][Regent]
+                                except: 
+                                    self.Seasons[self.Season]['Override'][self.Action+1][Regent] = over
                                 decision = self.make_decision('', self.agent.action_choices, 'Action', state, row['Regent'],None)
                            
                             # translate into action...
@@ -2405,6 +2415,7 @@ class Regency(object):
                                 if over != None and tries == 0:
                                     del self.Seasons[self.Season][self.Action]['Override'][Regent]
             # War Move & clean up
+            print('Time to Finish the Round')
             self.war_move()
             self.clean_up()
             
@@ -5786,38 +5797,40 @@ class Regency(object):
         prov['Home Regent'] = prov['Regent']
         combined_forces = pd.merge(combined_forces, prov[['Provence', 'Home Regent']], on='Provence', how='left')
 
+        combined_forces
         # determine who is fighting who
         rel = self.Relationships.copy().groupby(['Regent', 'Other']).sum().reset_index()
         rel_ = rel.copy()
-        rel_['R'] = rel['Other']
-        rel_['Other'] = rel_['Regent']
-        rel_['Regent'] = rel_['R']
+        # rel_['R'] = rel['Other']
+        # rel_['Other'] = rel_['Regent']
+        # rel_['Regent'] = rel_['R']
         rel_['Liege'] = rel_['Vassalage']
         rel_['Enemy'] = rel_['At War']
         rel = pd.merge(rel, rel_[['Regent', 'Other', 'Liege', 'Enemy']], on=['Regent', 'Other'], how='left').fillna(0)
-        rel['Attacker'] = (1*(rel['Diplomacy']<-2) + rel['At War'] + rel['Enemy'])>1
-        rel['Defender'] = (1*(rel['Diplomacy']>2) + rel['Vassalage'] + rel['Liege'])>1
+        rel['Attacker'] = (1*(rel['Diplomacy']<-1) + rel['At War'] + rel['Enemy'])>1
+        rel['Defender'] = (1*(rel['Diplomacy']>1) + rel['Vassalage'] + rel['Liege'])>1
         rel['Home Regent'] = rel['Other']
-        # attackers and defnders based on data
-        A = combined_forces[combined_forces['Regent']!=combined_forces['Home Regent']]
-        B = combined_forces[combined_forces['Regent']==combined_forces['Home Regent']]
-        A = pd.merge(A, rel[['Regent', 'Home Regent', 'Attacker', 'Defender']], on=['Regent', 'Home Regent'], how='left').fillna(False)
-        B['Attacker'] = False
-        B['Defender'] = True
-        combined_forces = pd.concat([A, B], sort=True)
-        
-        # iterate thru each provence with enemy troops...
+        rel
+        combined_forces = pd.merge(combined_forces, rel[['Regent', 'Home Regent','Attacker','Defender']], on=['Regent','Home Regent']).fillna(False)
+        # # iterate thru each provence with enemy troops...
+    
+        self.save_forces = combined_forces
         for Provence in set(combined_forces[combined_forces['Attacker']==True]['Provence']):
             message = ''
             temp__ = combined_forces[combined_forces['Provence']==Provence].copy()
             defenders = temp__[temp__['Defender']==True]
             attackers = temp__[temp__['Attacker']==True]
+            self.defenders = defenders.copy()
+            self.attackers = attackers.copy()
             defenders['Count'] = 1
             attackers['Count'] = 1
             Castle = self.Provences[self.Provences['Provence']==Provence]['Castle'].values[0]
             
             # castle stuff
             if attackers.shape[0] >= Castle and Castle > 0 and np.sum(attackers['Type'].str.lower().str.contains('artillery|engineer')) > 0:
+                print(attackers)
+                print()
+                print(defenders)
                 # Damage the Castle...
                 Castle = Castle - 1
                 self.change_provence(Provence, Castle=Castle-1)
@@ -6516,7 +6529,7 @@ class Regency(object):
     
     def name_generator(self, Culture, Provence=None):
         if Culture == 'A':  # Anuirean
-            names = 'Adaere, Aedric, Aeric, Agelmore, Anphelan, Ansen, Anuvier, Arlen, Arvuor, Bannier, Blaede, Boeric, Brosen, Caelan, Caern, Colier, Carel, Carilon, Coradan, Daene, Dietric, Droene, Duraend, Elamien, Eldried, Foerde, Friemen, Gaelin, Gavin, Hadrien, Halmied, Landen, Liemen, Moerel, Moergan, Mourde, Noelen, Norvien, Oeren, Oervel, Onwen, Parniel, Pierden, Raesene, Raenwe, Riegon, Ruinil, Ruormad, Shaemes, Shaene, Stiele, Tannen, Torele, Trevan, Vaesil, Vordhuine, Adrien, Aerona, Aithne. Arwen, Aubrae, Baele, Blaese, Briende, Caliendre, Cariene, Cristier, Darnae, Dierdren, Donele, Erin, Etiene, Faelan, Fhiele, Friede, Gael, Ghesele, Gwenevier, Halie, Idele, Ivinie, Jadrien, Laera, Laile, Lauriel, Loeren, Maesene, Marlae, Mieve, Morwe, Niela, Noeva, Oerwinde, Paeghen, Ranele, Raesa, Renae, Rieva, Ruimiele, Saebra, Savane, Seriena, Shannen, Tieghan'.split(', ')
+            names = 'Adaere, Aedric, Aeric, Agelmore, Anphelan, Ansen, Anuvier, Arlen, Arvuor, Bannier, Blaede, Boeric, Brosen, Caelan, Caern, Colier, Carel, Carilon, Coradan, Daene, Dietric, Droene, Duraend, Elamien, Eldried, Foerde, Friemen, Gaelin, Gavin, Hadrien, Halmied, Landen, Liemen, Moerel, Moergan, Mourde, Noelen, Norvien, Oeren, Oervel, Onwen, Parniel, Pierden, Raesene, Raenwe, Riegon, Ruinil, Ruormad, Shaemes, Shaene, Stiele, Tannen, Torele, Trevan, Vaesil, Vordhuine, Adrien, Aerona, Aithne. Arwen, Aubrae, Baele, Blaese, Briende, Caliendre, Cariene, Cristier, Darnae, Dierdren, Donele, Erin, Etiene, Faelan, Fhiele, Friede, Gael, Ghesele, Gwenevier, Halie, Idele, Ivinie, Jadrien, Laera, Laile, Lauriel, Loeren, Maesene, Marlae, Mieve, Morwe, Niela, Noeva, Oerwinde, Paeghen, Ranele, Raesa, Renae, Rieva, Ruimiele, Saebra, Savane, Seriena, Shannen, Tieghan, Rainer, Wimunt, Guian, Fulke, Azelma, Fresende, Arlette, Jeulie, Hawise, Hugbert, Anthoine, Jean, Osmund, Berthille, Jehanne, Adile, Molle, Laurent, Boemund, Madeleine, Aveline, Aaliz, Colas, Drogue, Albreid, Lina, Maria, Isabel, Ezilda, Suzanne, Herluin, Edelmir, Gilles, Haelfreid'.split(', ')
         elif Culture == 'B' or Culture == 'Br':  # Brecht
             names = 'Adler, Alaric, Albrecht, Alden, Alford, Ansell, Bertram, Bram, Brand, Britter, Calder, Darold, Dekker, Dirk, Edsel, Eldred, Everard, Frederick, Garth, Gunther, Harold, Helmet, Hugo, Hubert, Karl, Kiel, Konrad, Kort, Kurt, Luther, Martel, Otto, Pieter, Richard, Siegfried, Tanbert, Victor, Wilhelm, Adele, Alberta, Alfreda, Alisse, Aloise, Averil, Arden, Arlinda, Belinda, Brenda, Delma, Edlin, Elma, Elsa, Emma, Frederica, Gretchen, Griselda, Heidi, Helga, Hilda, Ilse, Irma, Katherine, Matilda, Melisande, Selma, Sirena, Thelma, Wlma'.split(', ')
         elif Culture == 'R' or Culture == 'Rj':  # Rjurik
