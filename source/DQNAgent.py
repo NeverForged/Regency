@@ -213,7 +213,7 @@ class DQNAgent(object):
         low_pop = None
         # 23-33 all imply that the Regent has provences
         if my_provences.shape[0] > 0:
-            state[23] == 1  # i_have_provences
+            state[23] = 1  # i_have_provences
             if my_provences[my_provences['Brigands'] == True].shape[0] > 0:
                 state[24] = 1  # i_have_brigands
             if my_provences[my_provences['Contested'] == True].shape[0] > 0:
@@ -543,8 +543,14 @@ class DQNAgent(object):
         check = check[check['Type']!=0]
         if check.shape[0] > 0:
             state[80] = 1  # enemy has troops in my domain
-        temp = Game.Provences[Game.Provences['Regent'] == friend]
-        check = pd.merge(temp, etroops, on='Provence', how='left').fillna(0)
+        temp = Game.Provences[Game.Provences['Regent'] == friend]  # my friend's provences
+        # does any enemy of my friend have troops in their domain
+        ctroops = Game.Troops.copy()
+        ctroops = ctroops[ctroops['Regent']!=Regent]
+        ctroops = ctroops[ctroops['Regent']!=friend]
+        fally, fenemy = Game.allies_enemies(friend)
+        ctroops = pd.merge(fenemy, ctroops)
+        check = pd.merge(temp, ctroops, on='Provence', how='left').fillna(0)
         check = check[check['Type']!=0]
         if check.shape[0] > 0:
             state[81] = 1  # enemy_has_troops_in_friends_domain

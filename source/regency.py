@@ -1433,7 +1433,7 @@ class Regency(object):
         of corruption. A particularly influential regent may be able to safely ignore this accusation, but 
         for a fresh, inexperienced ruler this may be a stain they must scrub out immediately.
         
-        The Game Master determines whether or not the accusations are true, and the regent’s response 
+        The Game Master determines whether or not the accusations are True, and the regent’s response 
         determines the outcome. This may take the form of ordering and funding an investigation, which costs
         1d4 GB each season it continues, or calling all parties to court to deal with the matter personally
         (which requires that the regent expended funds on court costs this season).
@@ -2808,6 +2808,7 @@ class Regency(object):
                 return [Regent, actor, Type, 'Lieutenant', decision, '', '', '', '',  success, reward, state, False, message]
         # decision[20] == 1:
         elif decision[20] == 1:  #move_troops_defend_provence
+            print(20, Regent, state[44], state[23], state[80], state[94])
             if state[44] == 0 or state[23]==0 or state[80] == 0 or state[94]==1:  # no defense needed/able to be done
                 return [Regent, actor, Type, 'move_troops_defend_provence', decision, '', '', '', '',  False, -1, state, True, '']
             else:
@@ -2820,29 +2821,27 @@ class Regency(object):
                 temp = temp.sort_values('roll', ascending=False)
                 Target = temp.iloc[0]['Provence']
                 Target_CR = temp.iloc[0]['CR']
-                temp = self.Troops[self.Troops['Regent']=='Regent'].copy()
-                temp = temp[temp['Provence'] != Target]
-                temp = temp[temp['Garrisoned']==0]
-                if temp.shape[0] == 0:
-                    return [Regent, actor, Type, 'move_troops_defend_provence', decision, friend, '', '', '',  False, -10, state, True, '']
-                else:
-                    temp['roll'] = np.random.randint(1, 100,temp.shape[0])+temp['CR']
-                    temp = temp.sort_values('roll', ascending=False)
+                my_troops = self.Troops[self.Troops['Regent']==Regent]
+                my_troops = my_troops[my_troops['Garrisoned']==0]
+                if my_troops.shape[0]>0:
+                    my_troops['roll'] = np.random.randint(1, 100,temp.shape[0])+my_troops['CR']
+                    my_troops = my_troops.sort_values('roll', ascending=False)
                     troops = []
                     provences = []
                     i = 0
                     cr = 0
-                    for i, row in temp.iterrows():
-                        if row['CR'] + cr < Target_CR and i < temp.shape[0]:
-                            troops.append(row['Unit'])
+                    for i, row in my_troops.iterrows():     
+                        if row['CR'] + cr < Target_CR:
+                            troops.append(row['Type'])
                             provences.append(row['Provence'])
                             i += 1
                             cr = cr + row['CR']
                     success, reward, message = self.bonus_action_move_troops(Regent, troops, provences, Target)
                     reward = Target_CR
-                    return [Regent, Actor, Type, 'move_troops_defend_provence', '', '', Target, '', success, reward, state, invalid, message]
+                    return [Regent, actor, Type, 'move_troops_defend_provence',decision, '', '', Target, '', success, reward, state, invalid, message]
         # decision[21] == 1:
-        elif decision[21] == 1:  #move_troops_defend_friend      
+        elif decision[21] == 1:  #move_troops_defend_friend
+            # print(21, Regent, state[44], state[81], state[94], state[97])
             if state[44] == 0 or state[81] == 0 or state[94]==1 or state[97]==0:  # no defense needed/able to be done
                 return [Regent, actor, Type, 'move_troops_defend_friend', decision, friend, '', '', '',  False, -1, state, True, '']
             else:
@@ -2877,7 +2876,7 @@ class Regency(object):
                     reward = Target_CR
                     return [Regent, Actor, Type, 'move_troops_defend_provence', '', '', "", Target, '', success, reward, state, invalid, message]
         # decision[22] == 1:
-        elif decision[22] == 1:  #move_troops_into_enemy_territory  
+        elif decision[22] == 1:  #move_troops_into_enemy_territory  --confirmed
             if state[43] == 0 or state[44]==0 or state[94]==1 or state[98]==0:  # not at war, or don't have troops, or enemy has no lands to move into
                 return [Regent, actor, Type, 'move_troops_into_enemy_terrirtory', decision, enemy, '', '', '',  False, -1, state, True, '']
             else:
@@ -3232,21 +3231,21 @@ class Regency(object):
             if state[3]==1 or state[95]==1 or state[94]==1 or state[23]==0:
                 return [Regent, actor, Type, 'rule_holdings', decision, friend, '', '', '',  False, -10, state, True, '']
             else:
-                success, reward, message = self.domain_action_rule(Regent, Holdings=false, Provence=capital)
+                success, reward, message = self.domain_action_rule(Regent, Holdings=False, Provence=capital)
                 return [Regent, actor, Type, 'rule_capital', decision, '', capital, '', '',  success, reward, state, False, message]
         # rule_high_pop
         elif decision[50] == 1: 
             if state[3]==1 or state[95]==1 or state[94]==1 or state[23]==0:
                 return [Regent, actor, Type, 'rule_high_pop', decision, friend, '', '', '',  False, -10, state, True, '']
             else:
-                success, reward, message = self.domain_action_rule(Regent, Holdings=false, Provence=high_pop)
+                success, reward, message = self.domain_action_rule(Regent, Holdings=False, Provence=high_pop)
                 return [Regent, actor, Type, 'rule_high_pop', decision, '', high_pop, '', '',  success, reward, state, False, message]
         # rule_low_pop
         elif decision[51] == 1: 
             if state[3]==1 or state[95]==1 or state[94]==1 or state[23]==0:
                 return [Regent, actor, Type, 'rule_low_pop', decision, '', '', '', '',  False, -10, state, True, '']
             else:
-                success, reward, message = self.domain_action_rule(Regent, Holdings=false, Provence=low_pop)
+                success, reward, message = self.domain_action_rule(Regent, Holdings=False, Provence=low_pop)
                 return [Regent, actor, Type, 'rule_low_pop', decision, '', low_pop, '', '',  success, reward, state, False, message]
         # establish_trade_route_friend
         elif decision[52] == 1: 
@@ -3259,9 +3258,9 @@ class Regency(object):
                     temp['routes'] = temp['Shipping'] + temp['Caravan']
                     temp = temp[['Provence', 'routes']].groupby('Provence').sum().reset_index()
                     temp = pd.merge(temp, self.Provences[['Provence', 'Population']], on='Provence', how='left')
-                    temp['allowed'] = ((temp['Population'] + 2)/3).asType(int)
-                    temp['allowed'] = temp['allowed'].asType(str).str.replace('0','1').replace('4','3').replace('5','3')
-                    temp['allowed']  = temp['allowed'].asType(int)
+                    temp['allowed'] = ((temp['Population'] + 2)/3).astype(int)
+                    temp['allowed'] = temp['allowed'].astype(str).str.replace('0','1').replace('4','3').replace('5','3')
+                    temp['allowed']  = temp['allowed'].astype(int)
                     temp = temp[temp['routes'] < temp['allowed']]
                     temp = temp.sort_values('Population', ascending=False)
                     Base = temp.iloc[0]['Provence']
@@ -3269,9 +3268,9 @@ class Regency(object):
                     temp['routes'] = temp['Shipping'] + temp['Caravan']
                     temp = temp[['Provence', 'routes']].groupby('Provence').sum().reset_index()
                     temp = pd.merge(temp, self.Provences[['Provence', 'Population']], on='Provence', how='left')
-                    temp['allowed'] = ((temp['Population'] + 2)/3).asType(int)
-                    temp['allowed'] = temp['allowed'].asType(str).str.replace('0','1').replace('4','3').replace('5','3')
-                    temp['allowed']  = temp['allowed'].asType(int)
+                    temp['allowed'] = ((temp['Population'] + 2)/3).astype(int)
+                    temp['allowed'] = temp['allowed'].astype(str).str.replace('0','1').replace('4','3').replace('5','3')
+                    temp['allowed']  = temp['allowed'].astype(int)
                     temp = temp[temp['routes'] < temp['allowed']]
                     temp = temp.sort_values('Population', ascending=False)
                     Target = temp.iloc[0]['Provence']
@@ -3296,9 +3295,9 @@ class Regency(object):
                 temp['routes'] = temp['Shipping'] + temp['Caravan']
                 temp = temp[['Provence', 'routes']].groupby('Provence').sum().reset_index()
                 temp = pd.merge(temp, self.Provences[['Provence', 'Population']], on='Provence', how='left')
-                temp['allowed'] = ((temp['Population'] + 2)/3).asType(int)
-                temp['allowed'] = temp['allowed'].asType(str).str.replace('0','1').replace('4','3').replace('5','3')
-                temp['allowed']  = temp['allowed'].asType(int)
+                temp['allowed'] = ((temp['Population'] + 2)/3).astype(int)
+                temp['allowed'] = temp['allowed'].astype(str).str.replace('0','1').replace('4','3').replace('5','3')
+                temp['allowed']  = temp['allowed'].astype(int)
                 temp = temp[temp['routes'] < temp['allowed']]
                 temp = temp.sort_values('Population', ascending=False)
                 if temp.shape[0] > 0:
@@ -3307,9 +3306,9 @@ class Regency(object):
                     temp['routes'] = temp['Shipping'] + temp['Caravan']
                     temp = temp[['Provence', 'routes']].groupby('Provence').sum().reset_index()
                     temp = pd.merge(temp, self.Provences[['Provence', 'Population']], on='Provence', how='left')
-                    temp['allowed'] = ((temp['Population'] + 2)/3).asType(int)
-                    temp['allowed'] = temp['allowed'].asType(str).str.replace('0','1').replace('4','3').replace('5','3')
-                    temp['allowed']  = temp['allowed'].asType(int)
+                    temp['allowed'] = ((temp['Population'] + 2)/3).astype(int)
+                    temp['allowed'] = temp['allowed'].astype(str).str.replace('0','1').replace('4','3').replace('5','3')
+                    temp['allowed']  = temp['allowed'].astype(int)
                     temp = temp[temp['routes'] < temp['allowed']]
                     temp = temp.sort_values('Population', ascending=False)
                     Target = temp.iloc[0]['Provence']
@@ -3594,7 +3593,7 @@ class Regency(object):
             temp['Terrain'] = temp['Terrain'].str.replace('Hills','4').replace('Swamp','4').replace('Marsh','4')
             temp['Terrain'] = temp['Terrain'].str.replace('Mountains', '8').replace('Glacier','8').replace('Mountain','8')
 
-            cost = np.sum(temp['Terrain'].asType(int))
+            cost = np.sum(temp['Terrain'].astype(int))
             temp['bridge'] = temp['RiverChasm']*np.random.randint(2,5,temp.shape[0])
             cost = cost + np.sum(temp['bridge'])*2
 
@@ -3846,8 +3845,8 @@ class Regency(object):
         Temple Holding in Enemy Provence
         Has Temple Holding (can't do without)
         
-        agitate_conflict_true
-        agitate_conflict_false
+        agitate_conflict_True
+        agitate_conflict_False
         '''
         cost = len(Provences)
         dc = 10
@@ -5811,7 +5810,8 @@ class Regency(object):
         rel['Defender'] = (1*(rel['Diplomacy']>1) + rel['Vassalage'] + rel['Liege'])>1
         rel['Home Regent'] = rel['Other']
         rel
-        combined_forces = pd.merge(combined_forces, rel[['Regent', 'Home Regent','Attacker','Defender']], on=['Regent','Home Regent']).fillna(False)
+        combined_forces = pd.concat([pd.merge(combined_forces, rel[['Regent', 'Home Regent','Attacker','Defender']], on=['Regent','Home Regent']).fillna(False)
+                                    ,combined_forces[combined_forces['Regent']==combined_forces['Home Regent']]], sort=False).fillna(True)
         # # iterate thru each provence with enemy troops...
     
         self.save_forces = combined_forces
