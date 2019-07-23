@@ -751,8 +751,8 @@ class Regency(object):
                     '''
                     if check > against:      
                         temp['Roll'] = np.random.randint(1,check+temp.shape[0],temp.shape[0]) + temp['Level']
-                        temp = temp.sort_values(['Contested', 'Roll'], ascending=False)
-                        self.change_holding(Provence, temp.iloc[0]['Regent'], a, Level=temp.iloc[0]['Level']-1)
+                        temp = temp.sort_values(['Contested', 'Roll'], ascending=False).copy().reset_index(drop=True)
+                        self.change_holding(Provence, temp['Regent'].values[0], a, Level=temp['Level'].values[0]-1)
         
         if Magic <= 0:
             Magic = 0
@@ -1041,7 +1041,7 @@ class Regency(object):
         self.Relationships['At War'] = 1*(self.Relationships['At War']>=1)
         self.Relationships['Trade Permission'] = 1*(self.Relationships['Trade Permission']>=1)
        
-    def add_troops(self, Regent, Provence, Type, Home='', Garrisoned=0):
+    def add_troops(self, Regent, Provence, Type, Home='', Garrisoned=0, Injury=0):
         '''
         This is fired after a decision to buy a troop is made
         OR for setting up troops in the begining
@@ -1049,7 +1049,7 @@ class Regency(object):
 
         temp = self.troop_units[self.troop_units['Unit Type'] == Type]
 
-        self.Troops = self.Troops.append(pd.DataFrame([[Regent, Provence, Type, temp['Maintenance Cost'].values[0], temp['BCR'].values[0], Garrisoned, Home, 0]]
+        self.Troops = self.Troops.append(pd.DataFrame([[Regent, Provence, Type, temp['Maintenance Cost'].values[0], temp['BCR'].values[0], Garrisoned, Home, Injury]]
                                                       , columns=['Regent', 'Provence', 'Type', 'Cost', 'CR', 'Garrisoned', 'Home', 'Injury']), ignore_index=True)
         
     def disband_troops(self, Regent, Provence, Type, Killed=False, Real=True):
@@ -2807,8 +2807,7 @@ class Regency(object):
                     del self.random_override[Regent]
                 return [Regent, actor, Type, 'Lieutenant', decision, '', '', '', '',  success, reward, state, False, message]
         # decision[20] == 1:
-        elif decision[20] == 1:  #move_troops_defend_provence
-            print(20, Regent, state[44], state[23], state[80], state[94])
+        elif decision[20] == 1:  #move_troops_defend_provence --confirmed
             if state[44] == 0 or state[23]==0 or state[80] == 0 or state[94]==1:  # no defense needed/able to be done
                 return [Regent, actor, Type, 'move_troops_defend_provence', decision, '', '', '', '',  False, -1, state, True, '']
             else:
@@ -2824,7 +2823,7 @@ class Regency(object):
                 my_troops = self.Troops[self.Troops['Regent']==Regent]
                 my_troops = my_troops[my_troops['Garrisoned']==0]
                 if my_troops.shape[0]>0:
-                    my_troops['roll'] = np.random.randint(1, 100,temp.shape[0])+my_troops['CR']
+                    my_troops['roll'] = np.random.randint(1, 100,my_troops.shape[0])+my_troops['CR']
                     my_troops = my_troops.sort_values('roll', ascending=False)
                     troops = []
                     provences = []
@@ -2841,7 +2840,7 @@ class Regency(object):
                     return [Regent, actor, Type, 'move_troops_defend_provence',decision, '', '', Target, '', success, reward, state, invalid, message]
         # decision[21] == 1:
         elif decision[21] == 1:  #move_troops_defend_friend
-            # print(21, Regent, state[44], state[81], state[94], state[97])
+            print(21, Regent, state[44], state[81], state[94], state[97])
             if state[44] == 0 or state[81] == 0 or state[94]==1 or state[97]==0:  # no defense needed/able to be done
                 return [Regent, actor, Type, 'move_troops_defend_friend', decision, friend, '', '', '',  False, -1, state, True, '']
             else:
@@ -2858,7 +2857,7 @@ class Regency(object):
                 temp = temp[temp['Provence'] != Target]
                 temp = temp[temp['Garrisoned']==0]
                 if temp.shape[0] == 0:
-                    return [Regent, actor, Type, 'move_troops_defend_friend', decision, friend, '', '', '',  False, -10, state, True, '']
+                    return [Regent, actor, Type, 'move_troops_defend_friend', decision, friend, '', '', '',  False, -1, state, True, '']
                 else:
                     temp['roll'] = np.random.randint(1, 100,temp.shape[0])+temp['CR']
                     temp = temp.sort_values('roll', ascending=False)
@@ -5809,19 +5808,31 @@ class Regency(object):
         rel['Attacker'] = (1*(rel['Diplomacy']<-1) + rel['At War'] + rel['Enemy'])>1
         rel['Defender'] = (1*(rel['Diplomacy']>1) + rel['Vassalage'] + rel['Liege'])>1
         rel['Home Regent'] = rel['Other']
-        rel
         combined_forces = pd.concat([pd.merge(combined_forces, rel[['Regent', 'Home Regent','Attacker','Defender']], on=['Regent','Home Regent']).fillna(False)
                                     ,combined_forces[combined_forces['Regent']==combined_forces['Home Regent']]], sort=False).fillna(True)
+        C = combined_forces[combined_forces['Attacker']==combined_forces['Defender']]
+        D = C[C['Attacker']==True]  # attack and defnder?
+        D['Attacker']=False
+        C = C[C['Attacker']==False] 
+        combined_forces = combined_forces[combined_forces['Attacker']!=combined_forces['Defender']]
+        A = combined_forces[combined_forces['Attacker']==True]
+        B = combined_forces[combined_forces['Defender']==True]
+        A_ = A[A['Regent']==A['Home Regent']]
+        A =  A[A['Regent']!=A['Home Regent']]
+        A_['Attacker'] = False
+        A_['Defender'] = True
+        B['Attacker'] = False
+        combined_forces = pd.concat([A, A_, B, C, D], sort=False)
+        
         # # iterate thru each provence with enemy troops...
     
         self.save_forces = combined_forces
         for Provence in set(combined_forces[combined_forces['Attacker']==True]['Provence']):
+            event_name =  'Occupation of {}'.format(Provence)
             message = ''
             temp__ = combined_forces[combined_forces['Provence']==Provence].copy()
             defenders = temp__[temp__['Defender']==True]
             attackers = temp__[temp__['Attacker']==True]
-            self.defenders = defenders.copy()
-            self.attackers = attackers.copy()
             defenders['Count'] = 1
             attackers['Count'] = 1
             Castle = self.Provences[self.Provences['Provence']==Provence]['Castle'].values[0]
@@ -5842,6 +5853,7 @@ class Regency(object):
             
             #WA- (headline continued on page 2)
             if defenders.shape[0] > 0:  # we have a war
+                event_name =  'Battle of {}'.format(Provence)
                 '''
                 Resolving Battles
                 Herein is presented a method for quickly resolving engagements with hostile units. The 
@@ -5868,11 +5880,11 @@ class Regency(object):
                 message = message + '\n\nStrength:\n['+attacker+']\n'
                 message = message + attackers[attackers['Name']==0][['Count', 'Unit', 'CR']].copy().groupby('Unit').sum().reset_index().sort_values('CR', ascending=False)[['Unit', 'Count']].to_string(index=False)
                 if attackers[attackers['AN']=='N'].shape[0]>0:
-                    message = message + '\n' + attackers[attackers['Name']!=0][['Name','Ship']].sort_values('Troop Capacity', ascending=False).to_string(index=False)
+                    message = message + '\n' + attackers[attackers['AN']=='N'].sort_values('Troop Capacity', ascending=False)[['Name','Ship']].to_string(index=False)
                 message = message + '\n['+defender+']\n'
                 message = message +defenders[defenders['Name']==0][['Count', 'Unit', 'CR']].copy().groupby('Unit').sum().reset_index().sort_values('CR', ascending=False)[['Unit', 'Count']].to_string(index=False)
                 if defenders[defenders['AN']=='N'].shape[0]>0:
-                    message = message + '\n' + defenders[defenders['Name']!=0][['Name','Ship']].sort_values('Troop Capacity', ascending=False).to_string(index=False)
+                    message = message + '\n' + defenders[defenders['AN']=='N'].sort_values('Troop Capacity', ascending=False)[['Name','Ship']].to_string(index=False)
                 '''
                 --Resolving Battles--
                 Circumstance    Modifier
@@ -5894,7 +5906,7 @@ class Regency(object):
                 '''
                 off_score = 0
                 def_score = 0
-                # Go until it's over
+                # Go until it's over, or stop after 
                 days = 0
                 # save the original to see who's left
                 s_attackers = attackers.copy()
@@ -5902,12 +5914,16 @@ class Regency(object):
                 
                 dead_o = pd.DataFrame()
                 dead_d = pd.DataFrame()
-                while off_score-def_score <= def_score and def_score-off_score <= off_score and defenders.shape[0]>0 and attackers.shape[0]>0:
+                off_check = int(attackers.shape[0]/2+0.5)
+                def_check = int(defenders.shape[0]/2+0.5)
+                while off_score < off_check and def_score < def_check and defenders.shape[0]>0 and attackers.shape[0]>0:
                     # --- Modifiers ---
                     days += 1
                     
                     attackers['Mod'] = attackers['Injury']
                     defenders['Mod'] = defenders['Injury']
+                    # remove all...
+                    
                     # LAND FORCES
                     # Enemy force has Archer-class units and your force has no Cavalry-class units    -1 (A)
                     # Enemy has Archers -1 (N)  
@@ -5992,50 +6008,45 @@ class Regency(object):
                     elif np.sum(defenders['Troop Capacity']) - np.sum(attackers['Troop Capacity']) >= 2:
                         attackers['Mod'] = attackers['Mod'] + (attackers['AN'].str.replace('A','0').replace('N','-1')).astype(int)
                         defenders['Mod'] = defenders['Mod'] + (defenders['AN'].str.replace('A','0').replace('N','1')).astype(int)
-                                        
-                    # ROLL!
-                    for j, df in enumerate([attackers, defenders]):
-                        df['Roll'] = np.random.randint(1,6,df.shape[0]) + df['Mod']
-                        A = df[df['AN']=='A'].copy()
-                        N = df[df['AN']=='N'].copy()
-                        # <0 = -5, 1 = -3, 2-5 = -1
-                        A['Injury'] = A['Injury'] - 2*(A['Roll']<=0) -2*(A['Roll']<=1) -1*(A['Roll']<=5)
-                        cas = A[A['Injury'] <=-5]
-                        A = A[A['Injury'] >= -4]
-                      
-                        # kill all those that rolled 0 or lower
-                        if j == 0:
-                            dead_o = pd.concat([dead_o, cas])
-                        else:
-                            dead_d = pd.concat([dead_d, cas])
-                        for i, row in cas.iterrows():
-                            self.disband_troops(row['Regent'], row['Provence'], row['Type'], Killed=True, Real=True)
-                            if j == 0:
-                                off_score += 1
-                            else:
-                                def_score += 1
-                            
-                        N['Seaworthiness'] = N['Seaworthiness'] - 5*(N['Roll']<=0) -3*(N['Roll']<=1) -1*(N['Roll']<=5)
-                        N['Sea Roll'] = np.random.randint(1,20,N.shape[0])
-                        N['Hull'] = N['Hull'] -1*(N['Roll']<=0) -1*(N['Sea Roll']>N['Seaworthiness'])
-                        
-                        NA = N[N['Hull']<=0].copy()
-                        N = N[N['Hull']>0].copy()
-                        NB = N[N['Seaworthiness']<=0]
-                        N = N[N['Seaworthiness']>0].copy()
-                        
-                        # remove the broken
-                        cas = pd.concat([NA, NB], sort=False)
-                        if j == 0:
-                            dead_o = pd.concat([dead_o, cas])
-                        else:
-                            dead_d = pd.concat([dead_d, cas])
-                        for i, row in cas.iterrows():
-                            self.remove_ship(row['Regent'], row['Provence'], row['Ship'], row['Name'])
-                            if j == 0:
-                                off_score += 1
-                            else:
-                                def_score += 1
+                                 
+                                 
+                    # Roll!
+                    attackers['Roll'] = np.random.randint(1,6,attackers.shape[0]) + attackers['Mod']
+                    defenders['Roll'] = np.random.randint(1,6,defenders.shape[0]) + defenders['Mod']
+                    
+                    # Score
+                    off_scroe = np.sum(attackers['Roll']<=1)
+                    def_scroe = np.sum(attackers['Roll']<=1)
+                    
+                    # Damage Units
+                    attackers['injury'] = (attackers['injury'] - 3*(attackers['Roll']<=0) - 1*(attackers['Roll']<=1) - 1*(attackers['Roll']<=5))*(attackers['AN']=='A')
+                    attackers['Seaworthiness'] = (attackers['AN']=='N')*(attackers['Seaworthiness'] - 2*(attackers['Roll']<=1) - 1*(attackers['Roll']<=5))
+                    attackers['Sea Roll'] = np.random(randint(1,20,attackers.shape[0])
+                    attackers['Hull'] = (attackers['AN']=='N')*(attackers['Hull'] - 1*(attackers['Roll']<=0) - 1*(attackers['Sea Roll'] > attackers['Seaworthiness']) -10*(attackers['Seaworthiness']<=0)
+                    defenders['injury'] = (defenders['injury'] - 3*(defenders['Roll']<=0) - 1*(defenders['Roll']<=1) - 1*(defenders['Roll']<=5))*(defenders['AN']=='A')
+                    defenders['Seaworthiness'] = (defenders['AN']=='N')*(defenders['Seaworthiness'] - 2*(defenders['Roll']<=1) - 1*(defenders['Roll']<=5))
+                    defenders['Sea Roll'] = np.random(randint(1,20,defenders.shape[0])
+                    defenders['Hull'] = (defenders['AN']=='N')*(defenders['Hull'] - 1*(defenders['Roll']<=0) - 1*(defenders['Sea Roll'] > defenders['Seaworthiness']) -10*(defenders['Seaworthiness']<=0)
+                    
+                    # remove destroyed units from attackers/defenders
+                    AA = attackers[attackers['AN'] == 'A']
+                    AN = attackers[attackers['AN'] == 'N']
+                    DA = defenders[defenders['AN'] == 'A']
+                    DN = defenders[defenders['AN'] == 'N']
+                    dead_o = pd.merge([AA[AA['Injury'] <= -4], AN[AN['Hull'] <= 0]])
+                    dead_d = pd.merge([DA[DA['Injury'] <= -4], DN[DN['Hull'] <= 0]])
+                    cas = pd.merge([dead_o, dead_d])
+                    attackers = pd.merge([AA[AA['Injury'] > -4],AN[AN['Hull'] > 0]], sort=False)
+                    defenders = pd.merge([DA[DA['Injury'] > -4],DN[DN['Hull'] > 0]], sort=False)
+                    
+                    # remove cas from game..
+                    for jj, row in cas.iterrows():
+                        if row['AN'] == 'A':  # soldiers
+                            self.disband_troops(row['Regent'], Provence, row['Type'], Killed=True, Real=False)
+                        else:  # ship
+                             self.remove_ship(row['Regent'], Provence, row['Ship'], Name=row['Name'])
+                
+                # update survivor lists...
                 # message
                 message = message + '\n\nCasualties:\n'
                 message = message + '['+attacker+']\n'
@@ -6061,8 +6072,7 @@ class Regency(object):
                 message = message + '\n\nResult: '
                 loser = ''
                 if off_score > def_score:  # defense won
-                    message = message+'{} victory after {} days of fighting.'.format(defender, days)
-                    df = attackers
+                    message = message+'{} victory after {} hours of fighting.'.format(defender, days)
                     loser = attacker
                     for prov_ in set(pd.merge(s_defenders[['Regent']], self.Provences, on='Regent', how='left')['Provence']):
                         try:
@@ -6072,9 +6082,25 @@ class Regency(object):
                     for reg in set(s_defenders['Regent']):
                         # reward for winning a battle
                         self.Seasons[self.Season]['Actions'][self.Action][self.Seasons[self.Season]['Actions'][self.Action]['Regent']==reg]['Base Reward'] = self.Seasons[self.Season]['Actions'][self.Action]['Base Reward'] + 10
+                    # losers will retreat
+                    prov_find = self.Provences[self.Provences['Regent']==loser]
+                    prov_find = prov_find.sort_values('Capital', ascending=False)
+                    if np.sum(attackers['AN'] == 'N')>=1;
+                        prov_find = prov_find[prov_find['Waterway']==True]
+                        attackers['Provence'] = prov_find['Provence'].values[0]
+                    elif prov_find.shape[0]>0:
+                        _, path = self.get_travel_cost(loser, Provence, prov_find['Provence'].values[0], path=True)
+                        attackers['Provence'] = path[1]
+                    else:
+                        try:
+                            prov_find = self.Geography[self.Geography['Provence']==Provence]
+                            prov_find['roll'] = np.random.randint(1,6,prov_find.shape[0])
+                            prov_find = prov_find.sort-values('roll')
+                            attackers['Provence'] = prov_find['Neighbor'].values[0]
+                        except:
+                            print('not retreating')
                 else:
-                    message = message+'{} victory after {} days of fighting.'.format(attacker,days)
-                    df =  defenders
+                    message = message+'{} victory after {} hours of fighting.'.format(attacker,days)
                     loser = defender
                     for prov_ in set(pd.merge(s_attackers[['Regent']], self.Provences, on='Regent', how='left')['Provence']):
                         try:
@@ -6084,48 +6110,48 @@ class Regency(object):
                     for reg in set(s_attackers['Regent']):
                         # reward for winning a battle
                         self.Seasons[self.Season]['Actions'][self.Action][self.Seasons[self.Season]['Actions'][self.Action]['Regent']==reg]['Base Reward'] = self.Seasons[self.Season]['Actions'][self.Action]['Base Reward'] + 10
-                # losers go home...is
+                    # losers will retreat, but home regent's forces will hole up in the castle
+                    prov_find = self.Provences[self.Provences['Regent']==loser]
+                    prov_find = prov_find.sort_values('Capital', ascending=False)
+                    if np.sum(defenders['AN'] == 'N')>=1;
+                        prov_find = prov_find[prov_find['Waterway']==True]
+                        defenders['Provence'] = prov_find['Provence'].values[0]
+                    elif prov_find.shape[0]>0:
+                        _, path = self.get_travel_cost(loser, Provence, prov_find['Provence'].values[0], path=True)
+                        defenders['Provence'] == path[1]
+                    else:
+                        try:
+                            prov_find = self.Geography[self.Geography['Provence']==Provence]
+                            prov_find['roll'] = np.random.randint(1,6,prov_find.shape[0])
+                            prov_find = prov_find.sort-values('roll')
+                            defenders['Provence'] = prov_find['Neighbor'].values[0]
+                        except:
+                            print('not retreating')
+                    D0 = defenders[defenders['Garrisoned']==1]
+                    defenders = defenders[defenders['Garrisoned']==0]
+                    D1 = defenders[defenders['Regent']==['Home Regent']]
+                    D2 = defenders[defenders['Regent']!=['Home Regent']]
+                    if Castle < D0.shape[0]:
+                        for n in range(D0.shape[0]-Castle):
+                            D0['Garrisoned'].values[n] = 0
+                    else:
+                        for n in range(Castle - D0.shape[0]):
+                            D1['Provence'].values[n] = Provence
+                            D1['Garrisoned'].values[n] = 1
+                    D4 = D0[D0['Garrisoned']==0]
+                    D0 = D0[D0['Garrisoned']==1]
+                    D0['Provence']=Provence
+                    defenders = pd.concat([D0, D1, D2, D4])
                 
-                for reg in set(df['Regent']):
-                    capacity = 0
-                    df_ = df[df['Regent']==reg]
-                    if df_[df_['AN']=='N'].shape[0]>0:
-                        # find a home port to escape to...
-                        temp = pd.concat([self.Provences[self.Provences['Regent']==Regent][['Provence']], self.Holdings[self.Holdings['Regent']==reg][['Provence']]], sort=False)
-                        temp = pd.merge(temp, self.Provences, on='Provence', how='left')
-                        temp = temp[temp['Waterway']==True]
-                        temp['Roll'] = np.random.randint(1,temp.shape[0],temp.shape[0])
-                        temp = temp.sort_values('Roll')
-                        
-                        ship_prov = ''
-                        if temp.shape[0]>0:
-                            ships = df_[df_['AN']=='N']
-                            capacity = int(np.sum(ships['Troop Capacity']))
-                            for _, row in ships.iterrows():
-                                self.move_ship(reg, row['Ship'], Provence, temp.iloc[0]['Provence'])
-                            ship_prov = temp.iloc[0]['Provence']
-                    transported = 0
-                    last = 0
-                    df_= df_[df_['AN']=='A']  # just soldiers
-                    df_ = df_[df_['Garrisoned']==0]  # not hiding in castle.
-                    ret_prov = ''
-                    try:
-                        targ = self.Provences[self.Provences['Regent']==loser]
-                        targ = targ[targ['Capital']==True]
-                        _, path = self.get_travel_cost(self, loser, Provence, targ, unit='levies', Path=True)
-                        ret_prov = path[1]
-                    except:
-                        ret_prov = Provence
-                    for num_tran, row in df_.iterrows():
-                        if transported < capacity and ship_prove != '':
-                            transported += 1
-                            self.disband_troops(reg, Provence, row['Type'], Killed=False, Real=True)
-                            self.add_troops(reg, ship_prov, row['Type'], Home=row['Home'])
-                        else:
-                            self.disband_troops(reg, Provence, row['Type'], Killed=False, Real=True)
-                            self.add_troops(reg, ret_prov, row['Type'], Home=row['Home'])
-                                    
-                                    
+                # update troops by removing/adding and propping injury
+                for i, row in pd.concat([attackers, defenders], sort=False).iterrows();
+                    if row['AN'] == 'N':
+                        self.remove_ship(row['Regent'], Provence, row['Ship'], Name=row['Name'])
+                        self.add_ship(row['Regent'], row['Provence'], row['Ship'], row['Name'], row['Seaworthiness'], row['Hull'])
+                    else:
+                        self.disband_troops(row['Regent'], Provence, row['Type'], Killed=False, Real=False)
+                        self.add_troops(row['Regent'], row['Provence'], row['Type'], Home=row['Home'], Garrisoned=row['Garrisoned'], Injury=row['Injury'])
+               
                 '''
                 The side that suffers the most results of 1 or lower is considered defeated, and must 
                 retreat to a province with no hostile force present on the same turn of its defeat. 
@@ -6140,12 +6166,7 @@ class Regency(object):
                 In the event one force’s total BCR is at least twice that of the opposing force, the 
                 other force is automatically destroyed and no dice need be rolled (won't do this,
                 since this makes the Spartan thing impossible)
-                
-                --Changes--
-                * Not sure when the author wanted to run this, I run at end of Season.
-                * Rolls are made until one side wins (whoever got more 1's)
-                * casualties will be a modifier if we have to roll again (-1 for 25%, -3 for 50%)
-                
+              
                 When done, or when there are no enemies in the provence and you end there, your troops 
                 will do one of theactions listed:
                 '''
@@ -6232,7 +6253,7 @@ class Regency(object):
                     self.change_regent(Regent, Gold_Bars = self.Regents[self.Regents['Regent']==Regent]['Gold Bars'].values[0] + tax)
                     self.change_provence(Provence, Population_Change=-1)
                     message = message + ' sacking and looting the provence.'
-            self.War = self.War.append(pd.DataFrame([[time_reference, Provence, 'Occupation of {}'.format(Provence), message]], columns=['Year','Location','Event','Notes']))
+            self.War = self.War.append(pd.DataFrame([[time_reference, Provence, event_name, message]], columns=['Year','Location','Event','Notes']))
                 
   
     def clean_up(self):
@@ -6460,7 +6481,7 @@ class Regency(object):
         # set costs
         travel['Cost'] = ((travel['A'] + travel['B'] + 1)/2).astype(int) - travel['Road']
         # not sure how to stop after, so... Rivers cost 10 to cross
-        travel['Cost_Cal'] = travel['Cost'] + (travel['RiverChasm']-travel['Road'])*10
+        travel['Cost_Cal'] = travel['Cost'] + travel['RiverChasm']*(travel['RiverChasm']-travel['Road'])*10
 
         # castles...
         temp_ = self.Provences[self.Provences['Castle']>0][['Provence', 'Castle']]
