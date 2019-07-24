@@ -1330,7 +1330,7 @@ class Regency(object):
         the form of a duel, insult, or announcement of impending invasion. The ultimate goal of this agent is
         to conquer the regent and usurp their bloodline by force
   
-        - Determine if the regent survives; if so, add 1 to ther Regency_Bonus.  If not, well, that happened.
+        - Determine if the regent survives: if so, add 1 to ther Regency_Bonus.  If not, well, that happened.
         
         Survival Chance?  Level check, dc 15 (plus regency)
         '''
@@ -1537,7 +1537,7 @@ class Regency(object):
                     ans = 'hi'
                     while ans.lower()[0] != 'y' and ans.lower()[0] != 'n':
                         self.clear_screen()
-                        print('{}: There is a festival in {}; would you like to provide gifts for {} gold bars [you have {} Gold Bars]?'.format(self.Regents[self.Regents['Regent']==row['Regent']]['Full Name'], row['Province'], row['Cost'], row['Gold Bars'] ))
+                        print('{}: There is a festival in {}: would you like to provide gifts for {} gold bars [you have {} Gold Bars]?'.format(self.Regents[self.Regents['Regent']==row['Regent']]['Full Name'], row['Province'], row['Cost'], row['Gold Bars'] ))
                         ans = imput('[y/n]')
                         if ans == 'y':
                             self.change_regent(row['Regent'], Gold_Bars = row['Gold Bars'] - row['Cost'])
@@ -1601,7 +1601,7 @@ class Regency(object):
     def random_event_great_captain_or_heresy(self, df):
         '''
         A mighty individual rises to prominence in the regent’s domain. The Game Master determines the traits 
-        and goals of the individual in question; they may be a potential ally or lieutenant, or a demagogue 
+        and goals of the individual in question: they may be a potential ally or lieutenant, or a demagogue 
         attempting to rally the people against the regent. In the case of the former, this may lead to an 
         Unrest event on the following season.
         
@@ -2275,7 +2275,7 @@ class Regency(object):
                 if most_can_spend >= 2:
                     print()
                     print('[2] - Bare')
-                    print('For two Gold Bars, your court is at the bare minimum to function. Your Decree and Diplomacy actions are at disadvantage for the domain action check; no one likes a stingy regent, especially expectant ambassadors.')
+                    print('For two Gold Bars, your court is at the bare minimum to function. Your Decree and Diplomacy actions are at disadvantage for the domain action check: no one likes a stingy regent, especially expectant ambassadors.')
                 if most_can_spend >= 5:
                     print()
                     print('[5] - Average')
@@ -3537,13 +3537,13 @@ class Regency(object):
         enable troops and the populace to get about the province more easily,
         while bridges are used to cross rivers and chasms. A bridge can cost 
         anywhere from 2 to 5 GB (1d4+1). A road costs a single gold bar for a
-        plains province; a forest, tundra, or desert costs two; a hilly 
-        province or swamp costs four; and mountains cost eight. Typically,
+        plains province: a forest, tundra, or desert costs two: a hilly 
+        province or swamp costs four: and mountains cost eight. Typically,
         the construction of a “road” really means any number of paths 
         throughout the province.
 
         The more remote and rural a province, the more expensive a 
-        construction project; this represents the cost to secure and move the 
+        construction project: this represents the cost to secure and move the 
         building materials to the site. If the target province for the 
         building project is rated as 0 or 1, the cost is doubled. If the 
         target province is 3 or 4, the cost is increased by 50%.
@@ -4196,7 +4196,7 @@ class Regency(object):
 
         Using this domain action, the regent orders any number of loyal troops
         to another location within their own domain. Financing the movement of 
-        the troops costs 1 GB for every 10 units or provinces; for example, 1 GB
+        the troops costs 1 GB for every 10 units or provinces: for example, 1 GB
         can move a unit across 10 provinces, or 10 units across 1 province, or 
         any combination that can be mathematically derived. The troops are not 
         available for use while moving, and the movement completes at the end of 
@@ -4562,9 +4562,9 @@ class Regency(object):
         them, unless permission is obtained by use of the Diplomacy action. The regent can begin making war
         moves and conducting battles against enemy troops in provinces where they clash.
 
-        If enemy troops are in your province, you do not need to Declare War; you may move your troops on the 
+        If enemy troops are in your province, you do not need to Declare War: you may move your troops on the 
         respective phase of the season within your own territory. The target of a declaration of war must use 
-        this action on their turn in order to counterattack into enemy territory; this is not merely the 
+        this action on their turn in order to counterattack into enemy territory: this is not merely the 
         public declaration, but also preparing the logistics of entering enemy territory.
 
 
@@ -4585,7 +4585,7 @@ class Regency(object):
 
         Base Success: DC 10+ (or Automatic)
 
-        Neighboring regents can generally be assumed to remain in correspondence with one another throughout the course of a season. The Diplomacy action has a much wider impact, and is typically a court affair with dignitaries, soirees, and document signings. Typically, this action is taken in relation to NPC regents or random events; if a player character regent is the target of the Diplomacy action, they can determine whether it is automatically successful (but the expense of GB and action must be made in order to gain the effects).
+        Neighboring regents can generally be assumed to remain in correspondence with one another throughout the course of a season. The Diplomacy action has a much wider impact, and is typically a court affair with dignitaries, soirees, and document signings. Typically, this action is taken in relation to NPC regents or random events: if a player character regent is the target of the Diplomacy action, they can determine whether it is automatically successful (but the expense of GB and action must be made in order to gain the effects).
 
         The DC of the domain action check depends on the specific action being taken. Diplomacy checks are typically simple affairs, but care must be taken with the proposals and the mood and standing of a regent. If a deal is outright insulting, the self Master can rule the action has no chance of success.
 
@@ -4600,7 +4600,7 @@ class Regency(object):
         DC 15: Allow troops to move through the targeted domain without the need to Declare War.
         DC 15: Force a targeted regent to provide tribute or concessions.
         DC 15: Respond to a domain event such as brigandage, unrest, or feuds, causing its effects to subside.
-        As it pertains to forcing tribute, a regent typically offers no more than a quarter of what they collect each turn in Gold bars; unless threatened with overwhelming force, a regent will never capitulate to more than that.
+        As it pertains to forcing tribute, a regent typically offers no more than a quarter of what they collect each turn in Gold bars: unless threatened with overwhelming force, a regent will never capitulate to more than that.
 
         Critical Success: The RP and GB costs for this action are immediately recouped.
         
@@ -4746,7 +4746,7 @@ class Regency(object):
 
         Spellcasters can also expand on ley lines by creating “networks” 
         stemming from the home Source province. Consider existing ley lines 
-        when calculating the cost of new ones; the spellcaster need only pay 
+        when calculating the cost of new ones: the spellcaster need only pay 
         for extension of a ley line rather than recalculating from the home 
         Source, if it is cost-effective.
 
@@ -4947,7 +4947,7 @@ class Regency(object):
         Bars from either asset Type.
 
         To invest provinces and holdings, the asset in question must either be 
-        willingly given to the investing regent; otherwise, it must be 
+        willingly given to the investing regent: otherwise, it must be 
         conquered or contested by that regent, and there must not be an enemy 
         Castle present that is not neutralized. The regent must pay Regency 
         Points equal to the combined levels of all holdings, provinces, and 
@@ -4970,7 +4970,7 @@ class Regency(object):
         blood abilities. If the recipient is not a blooded individual, they 
         gain a Bloodline score of 11 and the derivation of the divested scion,
         unless that scion’s Bloodline score was less than 11 (in which case,
-        the new value is equal to the scion’s previous value; for this reason,
+        the new value is equal to the scion’s previous value: for this reason,
         Tainted bloodlines are almost never invested in this way). If the 
         recipient of the investiture is already blooded, their Bloodline score
         permanently increases by 1, to a maximum value of 20.
@@ -5111,7 +5111,7 @@ class Regency(object):
         wishes to improve. Ashira must spend 3 GB and 11 RP (4 + 5 + 3) and then 
         make her domain action check.
 
-        Secondly, a regent may elect to rule a province; only one province can 
+        Secondly, a regent may elect to rule a province: only one province can 
         be ruled at a time by this action. The cost to rule a province is equal
         to RP and GB equal to the new level of the affected province, and the 
         regent must succeed at a DC 10 domain action check.
@@ -5461,7 +5461,7 @@ class Regency(object):
             if len(targets) == 0:
                 return False, 0, message
             Level = self.Regents[self.Regents['Regent']==Regent]['Level'].values[0]
-            message = "{} cast 'Death Plague' on {}'s lands; ".format(self.Regents[self.Regents['Regent']==Regent]['Full Name'].values[0], elf.Regents[self.Regents['Regent']==Target]['Full Name'].values[0])
+            message = "{} cast 'Death Plague' on {}'s lands: ".format(self.Regents[self.Regents['Regent']==Regent]['Full Name'].values[0], elf.Regents[self.Regents['Regent']==Target]['Full Name'].values[0])
             
             RP = self.Regents[self.Regents['Regent'] == Regent]['Regency Points'].values[0]
             Limits = [1,5,11,17]
@@ -5524,9 +5524,9 @@ class Regency(object):
             self.change_regent(Regent, Gold_Bars = self.Regents[self.Regents['Regent']==Regent]['Gold Bars'].values[0]-1, Regency_Points = RP)
             message = message + ', '.join(lst)
             if Increase == True:
-                message = message + ' ; increasing their loyalty'
+                message = message + ' : increasing their loyalty'
             else:
-                message = message + ' ; decreasing their loyalty'
+                message = message + ' : decreasing their loyalty'
         return success, reward, message
             
     def realm_magic_legion_of_the_dead(self, Regent, Provence):
@@ -5890,12 +5890,12 @@ class Regency(object):
                 Circumstance    Modifier
                 
                 On a result of zero or lower, the unit is destroyed. On a result of 1, 
-                the unit has suffered 50% casualties;
+                the unit has suffered 50% casualties:
                 if the unit has already suffered 50% or greater casualties, it is destroyed. 
                 On a result of 2 to 5, the unit suffers 25% casualties, but survives the engagement. 
                 On a result of 6 or greater, the unit suffers no significant casualties.
                 
-                * injury will be a modifier if we have to roll again (-1 for 25%, -3 for 50%)
+                * Injury will be a modifier if we have to roll again (-1 for 25%, -3 for 50%)
                 for soldiers
                 
                 for ships, 0 or less -2 Hull, -10 seaworthiness
@@ -6019,25 +6019,25 @@ class Regency(object):
                     def_scroe = np.sum(attackers['Roll']<=1)
                     
                     # Damage Units
-                    attackers['injury'] = (attackers['injury'] - 3*(attackers['Roll']<=0) - 1*(attackers['Roll']<=1) - 1*(attackers['Roll']<=5))*(attackers['AN']=='A')
+                    attackers['Injury'] = (attackers['Injury'] - 3*(attackers['Roll']<=0) - 1*(attackers['Roll']<=1) - 1*(attackers['Roll']<=5))*(attackers['AN']=='A')
                     attackers['Seaworthiness'] = (attackers['AN']=='N')*(attackers['Seaworthiness'] - 2*(attackers['Roll']<=1) - 1*(attackers['Roll']<=5))
-                    attackers['Sea Roll'] = np.random(randint(1,20,attackers.shape[0])
-                    attackers['Hull'] = (attackers['AN']=='N')*(attackers['Hull'] - 1*(attackers['Roll']<=0) - 1*(attackers['Sea Roll'] > attackers['Seaworthiness']) -10*(attackers['Seaworthiness']<=0)
-                    defenders['injury'] = (defenders['injury'] - 3*(defenders['Roll']<=0) - 1*(defenders['Roll']<=1) - 1*(defenders['Roll']<=5))*(defenders['AN']=='A')
+                    attackers['Sea Roll'] = np.random.randint(1,20,attackers.shape[0])
+                    attackers['Hull'] = (attackers['Hull'] - 1*(attackers['Roll']<=0) - 1*(attackers['Sea Roll'] > attackers['Seaworthiness']) -10*(attackers['Seaworthiness']<=0))*(attackers['AN']=='N')
+                    defenders['Injury'] = (defenders['Injury'] - 3*(defenders['Roll']<=0) - 1*(defenders['Roll']<=1) - 1*(defenders['Roll']<=5))*(defenders['AN']=='A')
                     defenders['Seaworthiness'] = (defenders['AN']=='N')*(defenders['Seaworthiness'] - 2*(defenders['Roll']<=1) - 1*(defenders['Roll']<=5))
-                    defenders['Sea Roll'] = np.random(randint(1,20,defenders.shape[0])
-                    defenders['Hull'] = (defenders['AN']=='N')*(defenders['Hull'] - 1*(defenders['Roll']<=0) - 1*(defenders['Sea Roll'] > defenders['Seaworthiness']) -10*(defenders['Seaworthiness']<=0)
+                    defenders['Sea Roll'] = np.random.randint(1,20,defenders.shape[0])
+                    defenders['Hull'] = (defenders['AN']=='N')*(defenders['Hull'] - 1*(defenders['Roll']<=0) - 1*(defenders['Sea Roll'] > defenders['Seaworthiness']) -10*(defenders['Seaworthiness']<=0))
                     
                     # remove destroyed units from attackers/defenders
                     AA = attackers[attackers['AN'] == 'A']
                     AN = attackers[attackers['AN'] == 'N']
                     DA = defenders[defenders['AN'] == 'A']
                     DN = defenders[defenders['AN'] == 'N']
-                    dead_o = pd.merge([AA[AA['Injury'] <= -4], AN[AN['Hull'] <= 0]])
-                    dead_d = pd.merge([DA[DA['Injury'] <= -4], DN[DN['Hull'] <= 0]])
-                    cas = pd.merge([dead_o, dead_d])
-                    attackers = pd.merge([AA[AA['Injury'] > -4],AN[AN['Hull'] > 0]], sort=False)
-                    defenders = pd.merge([DA[DA['Injury'] > -4],DN[DN['Hull'] > 0]], sort=False)
+                    dead_o = pd.concat([AA[AA['Injury'] <= -4], AN[AN['Hull'] <= 0]])
+                    dead_d = pd.concat([DA[DA['Injury'] <= -4], DN[DN['Hull'] <= 0]])
+                    cas = pd.concat([dead_o, dead_d])
+                    attackers = pd.concat([AA[AA['Injury'] > -4],AN[AN['Hull'] > 0]], sort=False)
+                    defenders = pd.concat([DA[DA['Injury'] > -4],DN[DN['Hull'] > 0]], sort=False)
                     
                     # remove cas from game..
                     for jj, row in cas.iterrows():
@@ -6057,7 +6057,7 @@ class Regency(object):
                 temp2 = dead_o[dead_o['AN']=='N'][['Name','Ship']]
                 if temp.shape[0]>0:
                     message = message + '\n' + temp2.to_string(index=False)
-                if temp.shape[0]+temp2.shape[0]==0:
+                if temp2.shape[0]+temp2.shape[0]==0:
                     message = message + '[None]'
                 message = message + '\n['+defender+']\n'
                 temp = dead_d[dead_d['AN']=='A'].sort_values('CR', ascending=False)[['Unit','Count']].copy().groupby('Unit').sum().reset_index()
@@ -6085,7 +6085,7 @@ class Regency(object):
                     # losers will retreat
                     prov_find = self.Provences[self.Provences['Regent']==loser]
                     prov_find = prov_find.sort_values('Capital', ascending=False)
-                    if np.sum(attackers['AN'] == 'N')>=1;
+                    if np.sum(attackers['AN'] == 'N')>=1:
                         prov_find = prov_find[prov_find['Waterway']==True]
                         attackers['Provence'] = prov_find['Provence'].values[0]
                     elif prov_find.shape[0]>0:
@@ -6113,7 +6113,7 @@ class Regency(object):
                     # losers will retreat, but home regent's forces will hole up in the castle
                     prov_find = self.Provences[self.Provences['Regent']==loser]
                     prov_find = prov_find.sort_values('Capital', ascending=False)
-                    if np.sum(defenders['AN'] == 'N')>=1;
+                    if np.sum(defenders['AN'] == 'N')>=1:
                         prov_find = prov_find[prov_find['Waterway']==True]
                         defenders['Provence'] = prov_find['Provence'].values[0]
                     elif prov_find.shape[0]>0:
@@ -6129,8 +6129,8 @@ class Regency(object):
                             print('not retreating')
                     D0 = defenders[defenders['Garrisoned']==1]
                     defenders = defenders[defenders['Garrisoned']==0]
-                    D1 = defenders[defenders['Regent']==['Home Regent']]
-                    D2 = defenders[defenders['Regent']!=['Home Regent']]
+                    D1 = defenders[defenders['Regent']==defenders['Home Regent']]
+                    D2 = defenders[defenders['Regent']!=defenders['Home Regent']]
                     if Castle < D0.shape[0]:
                         for n in range(D0.shape[0]-Castle):
                             D0['Garrisoned'].values[n] = 0
@@ -6143,8 +6143,8 @@ class Regency(object):
                     D0['Provence']=Provence
                     defenders = pd.concat([D0, D1, D2, D4])
                 
-                # update troops by removing/adding and propping injury
-                for i, row in pd.concat([attackers, defenders], sort=False).iterrows();
+                # update troops by removing/adding and propping Injury
+                for i, row in pd.concat([attackers, defenders], sort=False).iterrows():
                     if row['AN'] == 'N':
                         self.remove_ship(row['Regent'], Provence, row['Ship'], Name=row['Name'])
                         self.add_ship(row['Regent'], row['Provence'], row['Ship'], row['Name'], row['Seaworthiness'], row['Hull'])
@@ -6184,7 +6184,7 @@ class Regency(object):
                 As pointed out under the section for Seasons, an occupying force can collect Severe Taxation 
                 on occupied provinces during the taxation phase. This act permanently reduces the level of the 
                 province by one. Occupying forces act as a temporary, overriding Law holding of a level equal 
-                to the number of occupying units; this special form of Law can exceed the level of the province.
+                to the number of occupying units: this special form of Law can exceed the level of the province.
                 
                 [Only If we razed/vandalized everything else]
                 '''
