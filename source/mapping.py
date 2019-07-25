@@ -144,6 +144,7 @@ class Mapping(object):
         
         # make sure we have all provences for caravans
         Game = self.Game
+        '''
         if caravans == True:  # this is for caravan routes, disabled but kept
             temp = pd.merge(pd.DataFrame(self.node_list, columns=['Provence']), Game.Geography[Game.Geography['Caravan']>=1]
                             , on='Provence', how='left').fillna(0)
@@ -154,7 +155,7 @@ class Mapping(object):
                     lst = lst + self.travel_cost(row['Provence'], row['Neighbor'])
                 lst = list(set(lst))
                 self.node_list = list(set(self.node_list + lst))
-                
+        '''      
             
         node_list = self.node_list
         G = self.G

@@ -234,12 +234,12 @@ class DQNAgent(object):
             provences_i_care_about = [capital, high_pop, low_pop]
             
             if over != None:  # Override!
-                if over[1] == 'capital':
-                    capital = over[2]
-                if over[1] == 'high_pop':
+                if over[1] != None:
+                    capital = over[1]
+                if over[2] != None:
                     high_pop = over[2]
-                if over[1] == 'low_pop':
-                    low_pop = over[2]
+                if over[3] != None:
+                    low_pop = over[3]
                 provences_i_care_about = [capital, high_pop, low_pop]
                 
             for i, prov in enumerate(provences_i_care_about):
@@ -300,12 +300,12 @@ class DQNAgent(object):
         
         # Override!
         if over != None:
-            if over[1] == 'enemy':
-                enemy = over[2]
-            if over[1] == 'friend':
-                friend = over[2]
-            if over[1] == 'rando':
-                rando = over[2]
+            if over[4] != None:
+                enemy = over[4]
+            if over[5] != None:
+                friend = over[5]
+            if over[6] != None:
+                rando = over[6]
             regents_i_care_about = [enemy, friend, rando]
             
         
@@ -596,8 +596,8 @@ class DQNAgent(object):
         if temp.shape[0] > 0:
              enemy_capital = temp.iloc[0]['Provence']
         if over != None:
-            if over[1] == 'enemy_capital':
-                enemy_capital = over[2]
+            if over[7] != None:
+                enemy_capital = over[7]
         if Game.Provences[Game.Provences['Regent']==friend].shape[0]>0:
             state[97] = 1  # friend_has_provences
         if Game.Provences[Game.Provences['Regent']==enemy].shape[0]>0:

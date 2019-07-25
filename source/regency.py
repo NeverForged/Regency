@@ -43,6 +43,7 @@ class Regency(object):
         self.game_year = 1524
         self.jupyter = jupyter
         self.random_override = {}
+        self.override = {}
         self.IntDC = IntDC
         self.errors = []
         self.failed_actions = pd.DataFrame()
@@ -402,17 +403,6 @@ class Regency(object):
             print()
             print()
         
-    def add_to_override(Regent, Action):
-        try:
-            self.Seasons[self.Season][self.Action]
-        except:
-            self.Seasons[self.Season][self.Action] = {}
-        try:
-            self.Seasons[self.Season][self.Action]['Override']   
-        except:
-            self.Seasons[self.Season][self.Action]['Override'] = {}
-        self.Seasons[self.Season][self.Action]['Override'][Regent] = Action
-        
     #  World Loading
     def load_world(self, world):
         '''
@@ -454,7 +444,10 @@ class Regency(object):
             else:
                 move =  to_categorical(np.argmax(prediction[0]), num_classes=N)
         return move
-        
+    
+    def set_override(self, Regent, action, capital=None, high_pop=None, low_pop=None, enemy=None, friend=None, rando=None, enemy_capital=None):
+        self.override[Regent] = [action, capital, high_pop, low_pop, enemy, friend, rando, enemy_capital]
+    
     # World Building
     def new_world(self, world):
         # Holdings
@@ -982,35 +975,16 @@ class Regency(object):
         
         RiverChasm -> this is for bridges, determines cost of getting a road between the two
         '''
-        df = self.Geography
-        temp = df[df['Provence'] == Provence].copy()
-        temp = temp.index[temp['Neighbor']==Neighbor].tolist()
-
-        index = self.get_my_index(df, temp)
-
-        # only add what's being added
-        if len(temp) > 0:
-            temp_ = df[df['Provence'] == Provence].copy()
-            temp_ = temp_[temp_['Neighbor']==Neighbor]
-            Border= Border + temp_['Border'].values[0]
-            Road = Road + temp_['Road'].values[0]
-            Caravan = Caravan + temp_['Road'].values[0]
-            Shipping = Shipping + temp_['Shipping'].values[0]
-            RiverChasm = RiverChasm + temp_['Shipping'].values[0]
-        # bi-directional
-
-        df.loc[index] = [Provence, Neighbor, Border, Road, Caravan, Shipping, RiverChasm]
-        temp = df[df['Provence'] == Neighbor].copy()
-        temp = temp.index[temp['Neighbor']==Provence].tolist()
-        index = self.get_my_index(df, temp)
-
-        df.loc[index] = [Neighbor, Provence, Border, Road, Caravan, Shipping, RiverChasm]
-        
+        cols = ['Provence', 'Neighbor', 'Border', 'Road', 'Caravan', 'Shipping', 'RiverChasm']
+        self.Geography = self.Geography.append(pd.DataFrame([[Provence, Neighbor, Border, Road, Caravan, Shipping, RiverChasm]], columns=cols))
+        self.Geography = self.Geography.append(pd.DataFrame([[Neighbor, Provence, Border, Road, Caravan, Shipping, RiverChasm]], columns=cols))
+        self.Geography = self.Geography.groupby(['Provence', 'Neighbor']).sum().reset_index()
+        self.Geography = self.Geography[cols]
+       
         # fix to zeroes and ones...
         for col in ['Border', 'Road', 'Caravan', 'Shipping']:
-            df[col] = (1*(df[col]>=1)).astype(int)
+            self.Geography[col] = (1*(self.Geography[col]>=1)).astype(int)
 
-        self.Geography = df 
         
     def change_geography(self, Provence, Neighbor, Border=None, Road=None, Caravan=None, Shipping=None, RiverChasm=None, repeat=True):
         temp = self.Geography[self.Geography['Provence']==Provence]
@@ -1892,10 +1866,6 @@ class Regency(object):
         
         Season = pd.merge(self.Seasons[self.Season]['Season'], temp[['Regent', 'Initiative']], on='Regent', how='left')
         self.Seasons[self.Season]['Season'] = Season.sort_values('Initiative', ascending=False)
-        self.Seasons[self.Season]['Override']={}
-        self.Seasons[self.Season]['Override'][1]={}
-        self.Seasons[self.Season]['Override'][2]={}
-        self.Seasons[self.Season]['Override'][3]={}
         self.Seasons[self.Season]['Actions'] = {}
         cols = ['Regent', 'Actor', 'Action Type', 'Action', 'Decision', 'Target Regent', 'Provence', 'Target Provence', 'Target Holding', 'Success?', 'Base Reward', 'State', 'Invalid', 'Message', 'Next State']
         self.Seasons[self.Season]['Actions'][1] = pd.DataFrame(columns=cols)
@@ -2393,7 +2363,7 @@ class Regency(object):
                         print('Player...')
                     else:  # NPC!
                         try:
-                            over = self.Seasons[self.Season]['Override'][self.Action][Regent]
+                            over = self.override[Regent]
                         except:
                             over = None
                         state, capital, high_pop, low_pop, friend, enemy, rando, enemy_capital = self.agent.get_action_state(row['Regent'], self, over)  # allow player actions to inform Agent
@@ -2404,11 +2374,6 @@ class Regency(object):
                             if tries == 0:
                                 decision = self.make_decision('', self.agent.action_choices, 'Action', state, row['Regent'], over)
                             else:
-                                try:
-                                    check = self.Seasons[self.Season]['Override'][self.Action+1][Regent]
-                                except:
-                                    if self.Action < 3:
-                                        self.Seasons[self.Season]['Override'][self.Action+1][Regent] = over
                                 decision = self.make_decision('', self.agent.action_choices, 'Action', state, row['Regent'],None)
                            
                             # translate into action...
@@ -2424,7 +2389,7 @@ class Regency(object):
                             else:  # update action vector
                                 self.Seasons[self.Season]['Actions'][self.Action].loc[index] = [Regent, Actor, Action_Type, action, Decision, Target_Regent, Provence, Target_Provence, Target_Holding, Success, reward, State, invalid, Message, self.agent.get_action_state(row['Regent'], self, None)[0]]
                                 if over != None and tries == 0:
-                                    del self.Seasons[self.Season][self.Action]['Override'][Regent]
+                                    del self.override[Regent]
             # War Move & clean up
             print('Time to Finish the Round')
             self.war_move()
@@ -2451,8 +2416,8 @@ class Regency(object):
         self.action = decision
         self.state = state
         # decision[0] == 1
-        if decision[0] == 1:  # build_road_from_capital_to_high_pop
-            print(0,Regent,state[23],state[94])
+        # build_road_from_capital_to_high_pop
+        if decision[0] == 1:  # 0, capital, high_pop
             if state[23]==0 or state[94]==1:
                 return [Regent, actor, Type, 'build_road', decision, '', '', '', '', False, -10, state, True, '']
             else:
@@ -2470,54 +2435,48 @@ class Regency(object):
                 temp = temp.sort_values('Roll')                
                 success, reward, message = self.bonus_action_build(Regent, temp.iloc[0]['Provence'], temp.iloc[0]['Neighbor'])
                 return [Regent, actor, Type, 'build_road', decision, '', temp.iloc[0]['Provence'], temp.iloc[0]['Neighbor'], '', success, reward, state, invalid, message]
-        # decision[1] == 1
-        elif decision[1] == 1:  #decree_general
+        #decree_general
+        elif decision[1] == 1:  # 1
             if state[94]==1 or state[4] + state[5] + state[6] == 0:  # Dormant Court, not a valid action
-                invalid = True
-                return [Regent, actor, Type, 'decree_general', decision, '', '', '', '', False, -10, state, invalid, '']
+                return [Regent, actor, Type, 'decree_general', decision, '', '', '', '', False, -10, state, True, '']
             else:
-                
                 court = 'Average'
                 if state[4] == 1:
                     court = 'Bare'
                 elif state[6] == 1:
                     court = 'Rich'
-                success, reward, message = self.bonus_action_decree(Regent, actor, 'General')
+                success, reward, message = self.bonus_action_decree(Regent, decType='General', court=court)
                 message = message.replace('!Regent', actor)
                 return [Regent, actor, Type, 'decree_general', decision, '', '', '', '', success, reward, state, invalid, message]
-        # decision[2] == 1
-        elif decision[2] == 1:  #decree_assest_seizure  
+        #decree_assest_seizure  
+        elif decision[2] == 1:  # 2  
             if state[4] + state[5] + state[6] == 0 or state[94] == 1:  # Dormant Court, not a valid action
-                invalid = True
-                return [Regent, actor, Type, 'decree_asset_seizure', decision, '', '', '', '', False, -10, state, invalid, '']
+                return [Regent, actor, Type, 'decree_asset_seizure', decision, '', '', '', '', False, -1, state, True, '']
             else:
                 court = 'Average'
                 if state[4] == 1:
                     court = 'Bare'
                 elif state[6] == 1:
                     court = 'Rich'
-                success, reward, message = self.bonus_action_decree(Regent, actor, 'Asset Seizure')
+                success, reward, message = self.bonus_action_decree(Regent, court=court, decType='Asset Seizure')
                 message = message.replace('!Regent', actor)
                 return [Regent, actor, Type, 'decree_asset_seizure', decision, '', '', '', '', success, reward, state, invalid, message]
-        # decision[3] == 1
+        # disband_army  
         elif decision[3] == 1:  #disband_army
+            print(3, Regent, state[44])
             if state[44] == 0:
                 invalid = True
-                return [Regent, actor, Type, 'disband_army', decision, '', '', '', '', False, -10, state, invalid, '']
+                return [Regent, actor, Type, 'disband_army', decision, '', '', '', '', False, -1, state, invalid, '']
             else:
-                try:
-                    temp = self.Troops[self.Troops['Regent'] == Regent].copy()
-                    temp['target'] = temp['CR'] - temp['Cost']
-                    temp = temp.sort_values('target')
-                    row = temp.iloc[0]
-                    self.bonus_action_disband(Regent, [row['Type']], [row['Provence']])
-                    reward = 0
-                    if state[87] == 1:  #Aggressive
-                        reward = -3
-                    return [Regent, actor, Type, 'disband_army', decision, '', row['Provence'], '', '', True, reward, state, invalid, '{} disbanded a unit of {} stationed in {}'.format(actor, row['Type'], row['Provence'])]
-                except:
-                    print(Regent, self.Troops[self.Troops['Regent'] == Regent].copy())
-                    return [Regent, actor, Type, 'disband_army', decision, '', '', '', '', False, -10, state, True, '']
+                temp = self.Troops[self.Troops['Regent'] == Regent].copy()
+                temp['target'] = temp['CR'] - temp['Cost'] + temp['Injury']
+                temp = temp.sort_values('target')
+                self.bonus_action_disband(Regent, [temp['Type'].values[0]], [temp['Provence'].values[0]])
+                reward = 0
+                if state[87] == 1:  #Aggressive
+                    reward = -3
+                return [Regent, actor, Type, 'disband_army', decision, '', row['Provence'], '', '', True, reward, state, invalid, '{} disbanded a unit of {} stationed in {}'.format(actor, temp['Type'].values[0], temp['Provence'].values[0])]
+                
         # decision[4] == 1
         elif decision[4] == 1:  #disband_levees
             if state[44] == 0 or state[45] == 0:
@@ -3640,7 +3599,9 @@ class Regency(object):
                 df[df['Details'] == '({}, {})'.format(Provence, Road)]
                 if df.shape[0] > 0:
                     progress = df.iloc[0]['Gold Bars Left'] - np.random.randint(1,6,1)
-                    self.Projects.loc[df.index.tolist()[0]] = [Regent, 'Road', '({}, {})'.format(Provence, Road), progress]
+                    cols = ['Regent','Project Type','Details','Gold Bars Left']
+                    self.Projects = self.Projects.append(pd.DataFrame([[Regent, 'Road',(Provence, Road), progress]],columns=cols)).reset_index(drop=True)
+                    self.Projects = self.Projects[cols]
                 else:
                     try:
                         self.Projects.loc[max(self.Projects.index.tolist())+1] = [Regent, 'Road', '({}, {})'.format(Provence, Road), progress]
@@ -3707,7 +3668,6 @@ class Regency(object):
         A minor event is dealt with by placating the petitioning party through offerings and compensation.
         Furthermore, the condition of the regent’s court may cause this check to be made at advantage or disadvantage, or not at all. See the section on Court Expenses for more details.
         
-        
         decree_general
         decree_asset_seizure
         '''
@@ -3716,6 +3676,7 @@ class Regency(object):
         skill = 'Persuasion'
         adj = False
         dis = False
+        reward = 0
         if court == 'Bare':
             dis = True
         elif court == 'Rich':
@@ -3726,26 +3687,25 @@ class Regency(object):
         else:
             success, crit = self.make_roll(Regent, dc, skill, adj, dis)
         if success:
-            if decType != 'Asset Seizure':
+            if decType == 'Asset Seizure':
+                roll = np.random.randint(1,6,1)[0]
+                message = '!Regent applies a tax or asset seizure, and gains {} gold bars.'.format(roll)
+                cost = cost - roll
+            else:
                 # regular decree
                 lst = ['!Regent had A roustabout or rumormonger arrested.'
                         , "A festival is declared throughout !Regent's domain."
                         , '!Regent offered a bounty for local monsters, which may draw adventurers to their territory.'
                         , '!Regent passed a minor act of legislation regarding changes to the law, acceptable behaviors, or cultural integration.'
-                        , '!Regent dealt with a minor even by placating the petitioning party through offerings and compensation.']
-                message = lst[int(np.random.randint(1,5,1))]
-                reward = 0
+                        , '!Regent dealt with a minor event by placating the petitioning party through offerings and compensation.']
+                message = lst[int(np.random.randint(0,4,1)[0])]
+                reward = 3
                 try:
                     if self.random_override[Regent] == 'Matter of Justice':
                         del self.random_override[Regent]
-                        reward = 5
+                        reward = reward+2
                 except:
-                    reward = 0
-            else:
-                roll = np.random.randint(1,6,1)
-                message = '!Regent applies a tax or asset seizure, and gains {} gold bars.'.format(roll)
-                cost = cost - roll
-            reward = 3
+                    reward = reward 
         else:
             message = '!Regent tried to make a decree, but failed.'
             reward = 0
@@ -6326,7 +6286,9 @@ class Regency(object):
         
         # Now, for the Building projects and other Projects..
         if self.Action >= 3:  # only subtract if season over
+            print(self.Projects)
             self.Projects['Gold Bars Left'] = self.Projects['Gold Bars Left'] - np.random.randint(1,6,self.Projects.shape[0])
+            print(self.Projects)
         temp = self.Projects[self.Projects['Gold Bars Left']<=0].copy()
         self.Projects_Finished = temp
         self.Projects = self.Projects[self.Projects['Gold Bars Left']>=1]
@@ -6335,6 +6297,7 @@ class Regency(object):
                 castle = self.Provences[self.Provences['Provence']==row['Details'][0]].iloc[0]['Castle']
                 self.change_provence(row['Details'][0], Castle = castle + row['Details'][1])
             elif row['Project Type']=='Road':  # add the road
+                self.row = row['Details']
                 self.add_geo(row['Details'][0], row['Details'][1], Road=1)
             elif row['Project Type'] == 'Undead Troops':  # disband the troops
                 tfinder = self.Troops[self.Troops['Regent']==row['Regent']].copy()
