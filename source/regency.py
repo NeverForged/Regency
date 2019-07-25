@@ -738,6 +738,7 @@ class Regency(object):
             if Magic > sp:
                 Magic = sp
             # change Holding Levels
+            old_check = 9000
             for i, a in enumerate(['Law', 'Guild', 'Temple', 'Source']):
                 against = [Population, Population, Population, Magic][i]
                 check = against + 1
@@ -746,13 +747,17 @@ class Regency(object):
                     temp = temp[temp['Type']==a].copy()
                     temp = temp[temp['Level']>0].copy()  # no point adjusting 0-level holdings  
                     check = np.sum(temp['Level'])
+                    if check == old_check:
+                        print(temp)
                     '''
                     If a province's ratings change in such a way as to make the current holding levels in the province illegal, then the holding levels must be immediately adjusted. The affected regent should be determined randomly in proportion to the number of holdings held.
                     '''
                     if check > against:      
                         temp['Roll'] = np.random.randint(1,check+temp.shape[0],temp.shape[0]) + temp['Level']
-                        temp = temp.sort_values(['Contested', 'Roll'], ascending=False).copy().reset_index(drop=True)
-                        self.change_holding(Provence, temp['Regent'].values[0], a, Level=temp['Level'].values[0]-1)
+                        temp = temp.sort_values(['Contested', 'Roll'], ascending=False)
+                        if temp.shape[0]>0:
+                            self.change_holding(Provence, temp['Regent'].values[0], a, Level=temp['Level'].values[0]-1)
+                        old_check = check
         
         if Magic <= 0:
             Magic = 0
@@ -1892,7 +1897,12 @@ class Regency(object):
         self.Seasons[self.Season]['Override'][2]={}
         self.Seasons[self.Season]['Override'][3]={}
         self.Seasons[self.Season]['Actions'] = {}
-    
+        cols = ['Regent', 'Actor', 'Action Type', 'Action', 'Decision', 'Target Regent', 'Provence', 'Target Provence', 'Target Holding', 'Success?', 'Base Reward', 'State', 'Invalid', 'Message', 'Next State']
+        self.Seasons[self.Season]['Actions'][1] = pd.DataFrame(columns=cols)
+        self.Seasons[self.Season]['Actions'][2] = pd.DataFrame(columns=cols)
+        self.Seasons[self.Season]['Actions'][3] = pd.DataFrame(columns=cols)
+        self.Action = 1
+        self.Initiative = None
     
     # 3. COLLECT REGENCY POINTS
     def collect_regency_points(self):
@@ -2315,7 +2325,7 @@ class Regency(object):
             return df[['Regent', 'Cost']]
         
     # 6, 7, and 8 TAKING DOMAIN ACTIONS
-    def take_domain_actions(self, Action):
+    def take_domain_actions(self):
         '''
         During each season, the regent takes a total of three domain 
         actions. Each of these represents roughly a month of time 
@@ -2335,18 +2345,18 @@ class Regency(object):
         over = self.Seasons[self.Season][self.Action]['Override'][Regent]
         
         '''
-        self.Action=Action
-        
-        
         if self.Action < 4:
             # Make A DataFrame
-            cols = ['Regent', 'Actor', 'Action Type', 'Action', 'Decision', 'Target Regent', 'Provence', 'Target Provence', 'Target Holding', 'Success?', 'Base Reward', 'State', 'Invalid', 'Message', 'Next State']
-            self.Seasons[self.Season]['Actions'][self.Action] = pd.DataFrame(columns=cols)
-            for I in reversed(list(set(self.Seasons[self.Season]['Season']['Initiative']))):
+           
+            if self.Initiative == None:
+                self.Initiative = np.max(self.Seasons[self.Season]['Season']['Initiative']) + 1
+            
+            while self.Initiative >= np.min(self.Seasons[self.Season]['Season']['Initiative']):
+                self.Initiative = self.Initiative - 1
                 # grab the regents that are acting this round
                 # self.clear_screen()
-                print('Season {} - Action {} - Initiative {:2d}'.format(self.Season, self.Action, I), end='\r')
-                df = self.Seasons[self.Season]['Season'][self.Seasons[self.Season]['Season']['Initiative'] == I].copy()
+                print('Season {} - Action {} - Initiative {:2d}'.format(self.Season, self.Action, self.Initiative), end='\r')
+                df = self.Seasons[self.Season]['Season'][self.Seasons[self.Season]['Season']['Initiative'] == self.Initiative].copy()
                 for i, row in df.iterrows():  # each regent
                     Regent = row['Regent']
                     # bonus first
@@ -2396,8 +2406,9 @@ class Regency(object):
                             else:
                                 try:
                                     check = self.Seasons[self.Season]['Override'][self.Action+1][Regent]
-                                except: 
-                                    self.Seasons[self.Season]['Override'][self.Action+1][Regent] = over
+                                except:
+                                    if self.Action < 3:
+                                        self.Seasons[self.Season]['Override'][self.Action+1][Regent] = over
                                 decision = self.make_decision('', self.agent.action_choices, 'Action', state, row['Regent'],None)
                            
                             # translate into action...
@@ -2426,8 +2437,9 @@ class Regency(object):
                     self.agent.remember(staterow['State'], staterow['Decision'], staterow['Base Reward'], staterow['Next State'], 'Action', False)
                 # train
                 self.agent.replay_new('Action')
-            # last bit in function while loop
-            # self.Action = self.Action+1
+            if self.Initiative <= np.min(self.Seasons[self.Season]['Season']['Initiative']):
+                self.Initiative = None
+                self.Action += 1
            
     def take_action(self, decision, Regent, actor, Type, state, capital, high_pop, low_pop, friend, enemy, rando, enemy_capital):
         '''
@@ -2439,22 +2451,25 @@ class Regency(object):
         self.action = decision
         self.state = state
         # decision[0] == 1
-        if decision[0] == 1:  # build_road 
-            # need provences
-            temp = pd.merge(self.Provences[['Provence']][self.Provences['Regent'] == Regent], self.Geography, on='Provence', how='left')
-            temp = temp[temp['Border'] == 1]
-            temp = temp[temp['Road'] == 0]
-            temp['Roll'] = np.random.randint(1,100,temp.shape[0]) + 10*temp['RiverChasm']
-            temp = temp.sort_values('Roll')
-            success, reward = False, 0
-            # this can only be done if you have a provence
-            if state[23] == 1 and state[94] == 1:
-                
+        if decision[0] == 1:  # build_road_from_capital_to_high_pop
+            print(0,Regent,state[23],state[94])
+            if state[23]==0 or state[94]==1:
+                return [Regent, actor, Type, 'build_road', decision, '', '', '', '', False, -10, state, True, '']
+            else:
+                # builds a road from capital to high_pop... or any provence to any provence 
+                temp = pd.merge(self.Provences[['Provence']][self.Provences['Regent'] == Regent], self.Geography, on='Provence', how='left')
+                temp = temp[temp['Border'] == 1]
+                temp = temp[temp['Road'] == 0]
+                # will build from capital if valid...
+                if temp[temp['Provence']==capital].shape[0] > 0:
+                    temp = temp[temp['Provence']==capital]
+                # will build a random road from capital if high-pop no valid
+                if temp[temp['Neighbor']==high_pop].shape[0]>0:
+                    temp[temp['Neighbor']==high_pop]
+                temp['Roll'] = np.random.randint(1,100,temp.shape[0]) + 10*temp['RiverChasm']
+                temp = temp.sort_values('Roll')                
                 success, reward, message = self.bonus_action_build(Regent, temp.iloc[0]['Provence'], temp.iloc[0]['Neighbor'])
                 return [Regent, actor, Type, 'build_road', decision, '', temp.iloc[0]['Provence'], temp.iloc[0]['Neighbor'], '', success, reward, state, invalid, message]
-            else:
-                invalid = True
-                return [Regent, actor, Type, 'build_road', decision, '', '', '', '', success, -100, state, invalid, '']
         # decision[1] == 1
         elif decision[1] == 1:  #decree_general
             if state[94]==1 or state[4] + state[5] + state[6] == 0:  # Dormant Court, not a valid action
@@ -3159,8 +3174,9 @@ class Regency(object):
                 return [Regent, actor, Type, 'adventuring', decision, '', '', '', '',  success, reward, state, False, message]
         # decision[41] == 1:
         elif decision[41] == 1:  # fortify_capital
+            print(41,Regent,state[3],state[94],state[95],state[23])
             if state[3]==1 or state[94] == 1 or state[95] == 1 or state[23]==0:
-                return [Regent, actor, Type, 'fortify_capital', decision, '', '', '', '',  False, -10, state, True, '']
+                return [Regent, actor, Type, 'fortify_capital', decision, '', '', '', '',  False, -1, state, True, '']
             else:
                 level = (1-state[26])*np.random.randint(0,2,1)[0] + 1
                 success, reward, message = self.domain_action_fortify(self, Regent, capital, level)
@@ -3614,7 +3630,7 @@ class Regency(object):
                 crit =  False
             else:
                 self.change_regent(Regent, Gold_Bars = self.Regents[self.Regents['Regent']==Regent]['Gold Bars'].values[0] - cost)
-                success, crit = self.make_roll(Regent, dc, 'Persuasion', Player_gbid=player_gbid)
+                success, crit = self.make_roll(Regent, dc, 'Persuasion')
             if success:
                 progress = cost
                 if crit:
@@ -6307,7 +6323,6 @@ class Regency(object):
         '''
         
         # all of those were done where they happen
-        
         
         # Now, for the Building projects and other Projects..
         if self.Action >= 3:  # only subtract if season over
