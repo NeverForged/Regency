@@ -2475,7 +2475,7 @@ class Regency(object):
                 reward = 0
                 if state[87] == 1:  #Aggressive
                     reward = -3
-                return [Regent, actor, Type, 'disband_army', decision, '', row['Provence'], '', '', True, reward, state, invalid, '{} disbanded a unit of {} stationed in {}'.format(actor, temp['Type'].values[0], temp['Provence'].values[0])]
+                return [Regent, actor, Type, 'disband_army', decision, '', temp['Provence'].values[0], '', '', True, reward, state, invalid, '{} disbanded a unit of {} stationed in {}'.format(actor, temp['Type'].values[0], temp['Provence'].values[0])]
                 
         # decision[4] == 1
         elif decision[4] == 1:  #disband_levees
