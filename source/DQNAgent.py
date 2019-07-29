@@ -26,7 +26,7 @@ class DQNAgent(object):
         self.agent_predict = 0
         self.learning_rate = 0.0005
         
-        self.action_size = 105
+        self.action_size = 106
         self.action_choices = 72
         
         # different models for different decisions
@@ -223,7 +223,6 @@ class DQNAgent(object):
             try:
                 capital = my_provences[my_provences['Capital']==True].sort_values('Population', ascending=False).iloc[0]['Provence'] 
             except:
-                print('Forgot to mark a capital')
                 capital = my_provences[my_provences['Capital']==False].sort_values('Population', ascending=False).iloc[0]['Provence']
             try:
                 high_pop = my_provences[my_provences['Capital']==False].sort_values('Population', ascending=False).iloc[0]['Provence']
@@ -371,7 +370,7 @@ class DQNAgent(object):
         my_troops = Game.Troops[Game.Troops['Regent'] == Regent]
         if my_troops.shape[0] > 0:
             state[44] = 1  # i_have_troops
-            if my_troops[my_troops['Type'].str.lower().str.contains('levees')].shape[0] > 0:
+            if my_troops[my_troops['Type'].str.lower().str.contains('levies')].shape[0] > 0:
                 state[45] = 1  # i_have_levees
             if my_troops[my_troops['Type'].str.lower().str.contains('mercenary')].shape[0] > 0:
                 state[46] = 1  # i_have_mercenaries
@@ -619,6 +618,9 @@ class DQNAgent(object):
             state[103] = 1 # rando_has_divine_magic
         if Game.Regents[Game.Regents['Regent']==rando]['Arcane'].values[0] == True:
             state[104] = 1 # rando_has_arcane_magic
+            
+        if Game.Provences[Game.Provences['Regent']==rando].shape[0]>0:
+            state[105] = 1  # rando_has_provences
         return np.asarray(state), capital, high_pop, low_pop, friend, enemy, rando, enemy_capital
         
         
