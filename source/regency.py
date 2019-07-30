@@ -4716,7 +4716,7 @@ class Regency(object):
                 reward = 5
             if Type == 'troop_permission':  # troop_permission.
                 self.add_relationship(Regent, Target, Vassalage=1)
-                self.Projects.append(pd.DataFrame([[Regent, 'Troop Permissions', Target, 1]], columns=self.Projects.keys()), ignore_index=True)
+                self.Projects = self.Projects.append(pd.DataFrame([[Regent, 'Troop Permissions', Target, 1]], columns=self.Projects.keys()), ignore_index=True)
             if Type == 'force_tribute':  # force_tribute
                 check = self.Relationships[self.Relationships['Regent'] == Regent]
                 check = check[check['Other']==Target]
@@ -6362,7 +6362,7 @@ class Regency(object):
             elif row['Project Type'] == 'Realm Magic Stronghold':  # destroy the castle
                 castle = self.Provences[self.Provences['Provence']==row['Details'][0]].iloc[0]['Castle']
                 self.change_provence(row['Details'][0], Castle=castle - row['Details'][1] )
-            elif row['Project Type'] == 'Troop Permission':
+            elif row['Project Type'] == 'Troop Permissions':
                 self.add_relationship(row['Regent'], row['Details'], Vassalage=-1)
             elif row['Project Type'] == 'Build Ship':
                 self.add_ship(row['Regent'], row['Details'][1], row['Details'][0], row['Details'][2])
