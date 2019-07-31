@@ -446,7 +446,7 @@ class Regency(object):
                 move =  to_categorical(np.argmax(prediction[0]), num_classes=N)
         return move
     
-    def set_override(self, Regent, action, bonus=False, capital=None, high_pop=None, low_pop=None, enemy=None, friend=None, rando=None, enemy_capital=None, troops=list(), provences=list(), Number=1, Name=None, Target=None, Type=None):
+    def set_override(self, Regent, action, bonus=False, capital=None, high_pop=None, low_pop=None, enemy=None, friend=None, rando=None, enemy_capital=None, troops=list(), provences=list(), Number=None, Name=None, Target=None, Type=None):
         if bonus == True:
             self.bonus_override[Regent] = [action, capital, high_pop, low_pop, enemy, friend, rando, enemy_capital, troops, provences, Number, Name, Target, Type]
         else:
@@ -2442,7 +2442,7 @@ class Regency(object):
         except:
             troops = []
             provences = []
-            Number = 1
+            Number = None
             Name = None
             Target = None
             target_type=None
@@ -2598,7 +2598,7 @@ class Regency(object):
                 if state[92] == 0 and state[90] == 1:  # xenophobic penalty
                     reward = reward - 5
                 return [Regent, actor, Type, 'agitiate_for_enemy', decision, enemy, '', ', '.join(targets), '', success, reward, state, invalid, message.replace('!Regent!',actor)]
-        # gitate_for_rando
+        # agitate_for_rando
         elif decision[8] == 1:  #8 rando
             if state[35] == 0 and state[3] == 1 or state[34]+state[35]+state[36]+state[37] == 0 or state[94]==1 or state[105]==0:
                 invalid = True
@@ -2620,7 +2620,7 @@ class Regency(object):
                 if state[92] == 0 and state[90] == 1:  # xenophobic penalty
                     reward = reward - 5
                 return [Regent, actor, Type, 'agitiate_for_rando', decision, rando, '', ', '.join(targets), '', success, reward, state, invalid, message.replace('!Regent!',actor)] 
-        # gitate_against_rando
+        # agitate_against_rando
         elif decision[9] == 1:  #9, rando
             if state[35] == 0 and state[3] == 1 or state[34]+state[35]+state[36]+state[37] == 0 or state[94]==1 or state[105]==0:
                 invalid = True
@@ -2791,17 +2791,21 @@ class Regency(object):
                 success, reward, message = self.domain_action_espionage(Regent, enemy, Provence, 'Investigate')
                 return [Regent, actor, Type, 'espionage_trace_espionage', decision, enemy, '', Provence, '', success, reward, state, invalid, message]
         # bonus_action_grant_rando 
-        elif decision[17] == 1:  #17, rando
+        elif decision[17] == 1:  #17, rando, [Number]
             if state[94] == 1:
                 return [Regent, actor, Type, 'grant', decision, rando, '', '', '',  False, -1, state, True, '']
             else:  # we have the money to do this
+                if Number == None:
+                    Number = 1 + state[7] + state[8] + state[9] + state[10] + 3*state[11]
                 success, reward, message = self.bonus_action_grant(Regent, rando, Number)
                 return [Regent, actor, Type, 'grant', decision, rando, '', '', '', success, reward, state, False, message]
         # bonus_action_grant_friend
-        elif decision[18] == 1:  # 18, friend
+        elif decision[18] == 1:  # 18, friend, [Number]
             if state[94]==1:
                 return [Regent, actor, Type, 'grant', decision, friend, '', '', '',  False, -1, state, True, '']
             else:  # we have the money to do this
+                if Number == None:
+                    Number = 1 + state[7] + state[8] + state[9] + state[10] + 3*state[11]
                 success, reward, message = self.bonus_action_grant(Regent, friend, Number)
                 return [Regent, actor, Type, 'grant', decision, friend, '', '', '', success, reward, state, False, message]
         # bonus_action_lieutenant
@@ -3212,34 +3216,45 @@ class Regency(object):
                 reward = reward + state[94]*5  # good idea if broke
                 return [Regent, actor, Type, 'adventuring', decision, '', '', '', '',  success, reward, state, False, message]
         # decision[41] == 1:
-        elif decision[41] == 1:  # fortify_capital
-            print(41,Regent,state[3],state[94],state[95],state[23])
+        elif decision[41] == 1:  # 41, capital, [Name, Number]
             if state[3]==1 or state[94] == 1 or state[95] == 1 or state[23]==0:
                 return [Regent, actor, Type, 'fortify_capital', decision, '', '', '', '',  False, -1, state, True, '']
             else:
-                level = (1-state[26])*np.random.randint(0,2,1)[0] + 1
-                success, reward, message = self.domain_action_fortify(self, Regent, capital, level)
-                print(success, reward, message)
-                reward = reward + 7*(1-state[26])
+                if Number == None:
+                    if state[26] == 0:
+                        Number = 1 + np.random.randint(0,self.Provences[self.Provences['Provence']==capital]['Population'].values[0],1)[0] + state[7]+state[8]+state[9]+state[10]+2*state[11]
+                    else:
+                        Number = 1 + state[7]+state[8]+state[9]+state[10]+2*state[11]
+                success, reward, message = self.domain_action_fortify(Regent, capital, Number, Name)
+                reward = reward + Number*(1-state[26])
                 return [Regent, actor, Type, 'fortify_capital', decision, '', capital, '', '',  success, reward, state, False, message]
-        # decision[42] == 1:
-        elif decision[42] == 1:  # fortify_high_pop
+        # fortify_high_pop
+        elif decision[42] == 1:  # 42, high_pop, [Name, Number]
             if state[3]==1 or state[94] == 1 or state[95] == 1 or state[23]==0:
-                return [Regent, actor, Type, 'fortify_high_pop', decision, '', '', '', '',  False, -10, state, True, '']
-            else:
-                level = (1-state[27])*np.random.randint(0,2,1)[0] + 1
-                success, reward, message = self.domain_action_fortify(self, Regent, high_pop, level)
-                reward = reward + 5*(1-state[27])
-                return [Regent, actor, Type, 'fortify_high_pop', decision, '', high_pop, '', '',  success, reward, state, False, message]
-        # decision[43] == 1:
-        elif decision[43] == 1:  # fortify_low_pop
+                return [Regent, actor, Type, 'fortify_high_pop', decision, '', '', '', '',  False, -1, state, True, '']
+			else:
+				if Number == None:
+					if state[27] == 0:
+						Number = Number = 1 + np.random.randint(0,self.Provences[self.Provences['Provence']==high_pop]['Population'].values[0],1)[0] + state[8]
+                        Number = 1 + np.random.randint(0,self.Provences[self.Provences['Provence']==high_pop]['Population'].values[0],1)[0]
+					else:
+                        Number = 1 + state[7]
+            success, reward, message = self.domain_action_fortify(Regent, high_pop, Number, Name)
+            reward = reward + int(Number*(1-state[27])/2)
+            return [Regent, actor, Type, 'fortify_high_pop', decision, '', high_pop, '', '',  success, reward, state, False, message]
+        # fortify_low_pop
+        elif decision[43] == 1:  # 43, low_pop, [Number, Name]
             if state[3]==1 or state[94] == 1 or state[95] == 1 or state[23]==0:
-                return [Regent, actor, Type, 'fortify_low_pop', decision, '', '', '', '',  False, -10, state, True, '']
+                return [Regent, actor, Type, 'fortify_low_pop', decision, '', '', '', '',  False, -1, state, True, '']
             else:
-                level = (1-state[28])*np.random.randint(0,2,1)[0] + 1
-                success, reward, message = self.domain_action_fortify(self, Regent, capital, level)
-                reward = reward + 2*(1-state[28])
-                return [Regent, actor, Type, 'fortify_low_pop', decision, '', low_pop, '', '',  success, reward, state, False, message]        
+				if Number == None:
+					if state[28] == 0:
+                        Number = 1 + np.random.randint(0,self.Provences[self.Provences['Provence']==low_pop]['Population'].values[0],1)[0]
+					else:
+                        Number = 1 + state[8]
+            success, reward, message = self.domain_action_fortify(Regent, low_pop, Number, Name)
+            reward = reward + int(Number*(1-state[28])/3)
+            return [Regent, actor, Type, 'fortify_low_pop', decision, '', low_pop, '', '',  success, reward, state, False, message]        
         # investure_invest_friend
         elif decision[44] == 1: 
             if state[3]==1 or state[95]==1:
@@ -4926,11 +4941,10 @@ class Regency(object):
         temp['New Castle Name'] = temp['New Castle Name'].str.replace("'S","'s")
         temp = pd.merge(temp, self.Provences[self.Provences['Provence'] == Provence].copy(), on='Regent', how='left').fillna(-1)
         message = 'Failed to Build a Castle'
-        if temp.shape[0] > 0:
-            self.change_regent(Regent, Regency_Points= temp.iloc[0]['Regency Points']-1)
         success = False
         reward = 0
         if temp.shape[0]>0:
+            self.change_regent(Regent, Regency_Points= temp.iloc[0]['Regency Points']-1)
             if temp.iloc[0]['Population']>=0:  # valid action
                 success, crit = self.make_roll(Regent, 5, 'Persuasion')
                 if success == True:
@@ -4954,7 +4968,6 @@ class Regency(object):
                         cost = cost + 3*additional
                     if cost <= temp.iloc[0]['Gold Bars']:
                         # make the castle
-                        success = True
                         reward = 5+level
                         message = '{} started construction on {}, a level {} castle in {}'.format(temp.iloc[0]['Full Name'],temp.iloc[0]['Castle Name'], level, Provence)
                         # charge 'em
