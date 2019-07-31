@@ -294,6 +294,7 @@ class DQNAgent(object):
         regents = regents[regents['Regent'] != friend].copy()
         regents = pd.merge(regents, Game.Relationships[['Regent','Trade Permission']], on='Regent', how='left')
         regents['roll'] = np.random.randint(1,100,regents.shape[0]) - 50*regents['Trade Permission']  # more likely to try and finish the deal
+        regents = regents[regents['Regent'] != Regent]
         rando = regents.sort_values('roll').reset_index().iloc[0]['Regent']
         regents_i_care_about = [enemy, friend, rando]
         
@@ -387,7 +388,7 @@ class DQNAgent(object):
             temp = pd.merge(temp[['Provence','Neighbor']], Game.Geography[['Provence', 'Neighbor', 'Border']], on=['Provence','Neighbor'], how='left')
             G = nx.from_pandas_edgelist(temp, 'Provence', 'Neighbor', ['Border'])
             num = len(list(nx.connected_components(G)))
-            if G >= 2:
+            if num >= 2:
                 state[49] = 1  # i_have_disconnected_ley_lines
         '''
                 was_victim_of_espionage

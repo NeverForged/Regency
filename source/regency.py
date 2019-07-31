@@ -3042,7 +3042,6 @@ class Regency(object):
                 return [Regent, actor, Type, 'contest_holding', decision, enemy, Target, '', target_type,  success, reward, state, False, message]
         # contest_provence
         elif decision[27] == 1:  # 27, enemy, [Target]
-            print(27, Regent, enemy, Target, state[3], state[77], state[95])
             if state[3] == 1 or state[77] == 0 or state[95] == 1:
                 return [Regent, actor, Type, 'contest_provence', decision, '', '', '', '',  False, -1, state, True, '']
             else:
@@ -3110,7 +3109,10 @@ class Regency(object):
                     temp_check = pd.merge(temp_check, df[['Provence','Check']], on='Provence', how='left').fillna(0)
                     temp_check = temp_check[temp_check['Check']==0]
                     # More likely to set up shop in rival area
-                    Target = temp_check.iloc[0]['Provence']
+                    if temp.shape[0]>0:
+                        Target = temp_check.iloc[0]['Provence']
+                    else:
+                        return [Regent, actor, Type, 'create_' + hType.lower() + '_holding', decision, '', '', '', '',  False, -1, state, True, '']
                 # make sure I'm not being redundent
                 if self.Holdings[self.Holdings['Regent']==Regent][self.Holdings['Provence']==Target][self.Holdings['Type']==hType].shape[0] > 0:
                     return [Regent, actor, Type, 'create_' + hType.lower() + '_holding', decision, '', '', '', '',  False, -1, state, True, '']
@@ -3145,7 +3147,7 @@ class Regency(object):
             else:
                 success, reward, message = self.domain_action_diplomacy(Regent, rando, Type='trade_agreement')
                 return [Regent, actor, Type, 'diplomacy_trade_agreement', decision, rando, '', '', '',  success, reward, state, False, message]
-        # diplomacy_troop_permission == 1:
+        # diplomacy_troop_permission
         elif decision[35] == 1: # 35, friend
             print(35, Regent, friend, state[3], state[94], state[95], state[2], state[58], state[57])
             if state[3]==1 or state[94]==1 or state[95]==1 or state[2] == 1 or state[58]==1 or state[57]==1:  # pointless on third turn
@@ -3153,35 +3155,36 @@ class Regency(object):
             else:
                 success, reward, message = self.domain_action_diplomacy(Regent, friend, Type='troop_permission')
                 return [Regent, actor, Type, 'diplomacy_troop_permission', decision, friend, '', '', '',  success, reward, state, False, message]
-        # decision[36] == 1:
-        elif decision[36] == 1: #diplomacy_force_tribute
+        # diplomacy_force_tribute
+        elif decision[36] == 1: # 36, enemy
             if state[3]==1 or state[94]==1 or state[95]==1:  
-                return [Regent, actor, Type, 'diplomacy_force_tribute', decision, '', '', '', '',  False, -10, state, True, '']
+                return [Regent, actor, Type, 'diplomacy_force_tribute', decision, '', '', '', '',  False, -1, state, True, '']
             else:
                 success, reward, message = self.domain_action_diplomacy(Regent, enemy, Type='force_tribute')
                 return [Regent, actor, Type, 'diplomacy_force_tribute', decision, enemy, '', '', '',  success, reward, state, False, message]
-        # decision[37] == 1:
-        elif decision[37] == 1: #diplomacy_respond_to_brigandage
-            if state[3]==1 or state[94]==1 or state[95]==1:  
-                return [Regent, actor, Type, 'diplomacy_respond_to_brigandage', decision, '', '', '', '',  False, -10, state, True, '']
+        # diplomacy_respond_to_brigandage
+        elif decision[37] == 1: #37
+            if state[3]==1 or state[94]==1 or state[95]==1 or state[24]==0:  # pointless if no brigands
+                return [Regent, actor, Type, 'diplomacy_respond_to_brigandage', decision, '', '', '', '',  False, -1, state, True, '']
             else:
                 success, reward, message = self.domain_action_diplomacy(Regent, None, Type='deal_with_brigands')
-                reward = reward + state[24]*10
+                reward = reward + state[24]*3
                 return [Regent, actor, Type, 'diplomacy_respond_to_brigandage', decision, '', '', '', '',  success, reward, state, False, message]
-        # decision[38] == 1:
-        elif decision[38] == 1: #diplomacy_respond_to_unrest
+        # diplomacy_respond_to_unrest
+        elif decision[38] == 1: #  38
             if state[3]==1 or state[94]==1 or state[95]==1 or state[84]==0:  
-                return [Regent, actor, Type, 'diplomacy_respond_to_unrest', decision, '', '', '', '',  False, -10, state, True, '']
+                return [Regent, actor, Type, 'diplomacy_respond_to_unrest', decision, '', '', '', '',  False, -1, state, True, '']
             else:
                 success, reward, message = self.domain_action_diplomacy(Regent, Regent+'_rebel', Type='handle_unrest')
-                reward = reward + state[24]*10
+                reward = reward + state[24]*3
                 return [Regent, actor, Type, 'diplomacy_respond_to_unrest', decision, '', '', '', '',  success, reward, state, False, message]
-        # decision[39] == 1:
-        elif decision[39] == 1: #forge_ley_lines
+        # forge_ley_lines
+        elif decision[39] == 1: # 39, [provences]
+            print(39, Regent)
             if state[3]==1 or state[94]==1 or state[95]==1 or state[37]==0 or state[100]==0:  
-                return [Regent, actor, Type, 'forge_ley_lines', decision, '', '', '', '',  False, -10, state, True, '']
+                return [Regent, actor, Type, 'forge_ley_lines', decision, '', '', '', '',  False, -1, state, True, '']
             else:
-                try:
+                if len(provences) == 0:
                     temp = self.Holdings[self.Holdings['Regent']==Regent].copy()
                     temp = temp[temp['Type']=='Source']
                     temp['Other'] = temp['Provence']
@@ -3191,26 +3194,22 @@ class Regency(object):
                     temp = temp[temp['Regent']==0]
                     temp['Roll'] = np.random.randint(1,10,temp.shape[0])+temp['Level']
                     temp=temp.sort_values('Roll', ascending=False)
-                    if temp.shape[0] == 0:
-                        success, reward, message = self.domain_action_forge_ley_line(Regent, temp.iloc[0]['Provence'], temp.iloc[0]['Other'])
+                    if temp.shape[0] > 0:
+                       provences = []
+                       provences.append(temp.iloc[0]['Provence'])
+                       provences.append(temp.iloc[0]['Other'])
+                       print(provences)
                     else:
-                        return [Regent, actor, Type, 'forge_ley_lines', decision, '', temp.iloc[0]['Provence'], temp.iloc[0]['Other'], '',  False, 0, state, True, '']
-                    return [Regent, actor, Type, 'forge_ley_lines', decision, '', temp.iloc[0]['Provence'], temp.iloc[0]['Other'], '',  success, reward, state, False, message]
-                except:
-                    dct = {}
-                    dct['temp'] = temp
-                    dct['decision'] = decision
-                    dct['state'] = state
-                    dct['Regent'] = Regent
-                    self.errors.append(dct)
-                    return [Regent, actor, Type, 'forge_ley_lines', decision, '', '', '', '',  False, 0, state, True, '']
-        # decision[40] == 1:
-        elif decision[40] == 1: # adventuring
+                        return [Regent, actor, Type, 'forge_ley_lines', decision, '', '', '', '',  False, 0, state, True, '']
+                success, reward, message = self.domain_action_forge_ley_line(Regent, provences[0], provences[1])
+                return [Regent, actor, Type, 'forge_ley_lines', decision, '', provences[0], provences[1], '',  success, reward, state, False, message]
+        # adventuring
+        elif decision[40] == 1: # 40
             if state[3]==1:
-                return [Regent, actor, Type, 'adventuring', decision, '', '', '', '',  False, -10, state, True, '']
+                return [Regent, actor, Type, 'adventuring', decision, '', '', '', '',  False, -1, state, True, '']
             else:
                 success, reward, message = self.domain_action_adventure(Regent)
-                reward = reward + state[94]*10  # good idea if broke
+                reward = reward + state[94]*5  # good idea if broke
                 return [Regent, actor, Type, 'adventuring', decision, '', '', '', '',  success, reward, state, False, message]
         # decision[41] == 1:
         elif decision[41] == 1:  # fortify_capital
@@ -3220,6 +3219,7 @@ class Regency(object):
             else:
                 level = (1-state[26])*np.random.randint(0,2,1)[0] + 1
                 success, reward, message = self.domain_action_fortify(self, Regent, capital, level)
+                print(success, reward, message)
                 reward = reward + 7*(1-state[26])
                 return [Regent, actor, Type, 'fortify_capital', decision, '', capital, '', '',  success, reward, state, False, message]
         # decision[42] == 1:
@@ -4833,7 +4833,7 @@ class Regency(object):
                     pair = (p,t)
         cost = shortest
         dc = 5*shortest
-        temp = self.Regents[self.regents['Regent']==Regent]
+        temp = self.Regents[self.Regents['Regent']==Regent]
         message = '{} failed to make a ley line from {} to {}'.format(temp.iloc[0]['Full Name'], Provence, Target)
         if temp.iloc[0]['Gold Bars'] < cost or temp.iloc[0]['Regency Points'] < cost:
             success = False
