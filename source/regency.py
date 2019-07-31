@@ -446,11 +446,11 @@ class Regency(object):
                 move =  to_categorical(np.argmax(prediction[0]), num_classes=N)
         return move
     
-    def set_override(self, Regent, action, bonus=False, capital=None, high_pop=None, low_pop=None, enemy=None, friend=None, rando=None, enemy_capital=None, troops=list(), provences=list(), Number=None, Name=None, Target=None, Type=None):
+    def set_override(self, Regent, action, bonus=False, capital=None, high_pop=None, low_pop=None, enemy=None, friend=None, rando=None, enemy_capital=None, troops=list(), provences=list(), Number=None, Name=None, Target=None, Type=None, holdings=list()):
         if bonus == True:
-            self.bonus_override[Regent] = [action, capital, high_pop, low_pop, enemy, friend, rando, enemy_capital, troops, provences, Number, Name, Target, Type]
+            self.bonus_override[Regent] = [action, capital, high_pop, low_pop, enemy, friend, rando, enemy_capital, troops, provences, Number, Name, Target, Type, holdings]
         else:
-            self.override[Regent] = [action, capital, high_pop, low_pop, enemy, friend, rando, enemy_capital, troops, provences, Number, Name, Target, Type]
+            self.override[Regent] = [action, capital, high_pop, low_pop, enemy, friend, rando, enemy_capital, troops, provences, Number, Name, Target, Type, holdings]
     
     # World Building
     def new_world(self, world):
@@ -745,7 +745,7 @@ class Regency(object):
                             temp['Roll'] = np.random.randint(1,check+temp.shape[0],temp.shape[0]) + temp['Level']
                             temp = temp.sort_values(['Contested', 'Roll'], ascending=False)
                             self.change_holding(Provence, temp['Regent'].values[0], a, Level=temp['Level'].values[0]-1)
-                            old_check = check.copy()
+                            old_check = check
             
             if Magic <= 0:
                 Magic = 0
@@ -1080,7 +1080,7 @@ class Regency(object):
         if Seaworthiness == None:
             temp['Seaworthiness'].values[0]
         self.Navy = self.Navy.append(pd.DataFrame([[Regent, Provence, Ship, temp['Hull'].values[0], temp['Troop Capacity'].values[0], temp['Seaworthiness'].values[0], Name]],
-                                        columns=['Regent', 'Provence','Ship','Hull','Troop Capacity', 'Seaworthiness', 'Name']))
+                                        columns=['Regent', 'Provence','Ship','Hull','Troop Capacity', 'Seaworthiness', 'Name'])).reset_index(drop=True)[['Regent', 'Provence','Ship','Hull','Troop Capacity', 'Seaworthiness', 'Name']]
         
     
     def remove_ship(self, Regent, Provence, Ship, Name=None):
@@ -2430,6 +2430,7 @@ class Regency(object):
                 Name = self.override[Regent][11]
                 Target = self.override[Regent][12]
                 target_type = self.override[Regent][13]
+                holdings = self.override[Regent][14]
                 del self.override[Regent]
             else:
                 troops = self.bonus_override[Regent][8]
@@ -2438,6 +2439,7 @@ class Regency(object):
                 Name = self.bonus_override[Regent][11]
                 Target = self.bonus_override[Regent][12]
                 target_type = self.bonus_override[Regent][13]
+                holdings = self.bonus_override[Regent][14]
                 del self.bonus_override[Regent]
         except:
             troops = []
@@ -2445,7 +2447,8 @@ class Regency(object):
             Number = None
             Name = None
             Target = None
-            target_type=None
+            target_type = None
+            holdings = []
         # decision[0] == 1
         # build_road_from_capital_to_high_pop
         if decision[0] == 1:  # 0, capital, high_pop
@@ -3153,7 +3156,6 @@ class Regency(object):
                 return [Regent, actor, Type, 'diplomacy_trade_agreement', decision, rando, '', '', '',  success, reward, state, False, message]
         # diplomacy_troop_permission
         elif decision[35] == 1: # 35, friend
-            print(35, Regent, friend, state[3], state[94], state[95], state[2], state[58], state[57])
             if state[3]==1 or state[94]==1 or state[95]==1 or state[2] == 1 or state[58]==1 or state[57]==1:  # pointless on third turn
                 return [Regent, actor, Type, 'diplomacy_troop_permission', decision, '', '', '', '',  False, -1, state, True, '']
             else:
@@ -3184,7 +3186,6 @@ class Regency(object):
                 return [Regent, actor, Type, 'diplomacy_respond_to_unrest', decision, '', '', '', '',  success, reward, state, False, message]
         # forge_ley_lines
         elif decision[39] == 1: # 39, [provences]
-            print(39, Regent)
             if state[3]==1 or state[94]==1 or state[95]==1 or state[37]==0 or state[100]==0:  
                 return [Regent, actor, Type, 'forge_ley_lines', decision, '', '', '', '',  False, -1, state, True, '']
             else:
@@ -3232,12 +3233,12 @@ class Regency(object):
         elif decision[42] == 1:  # 42, high_pop, [Name, Number]
             if state[3]==1 or state[94] == 1 or state[95] == 1 or state[23]==0:
                 return [Regent, actor, Type, 'fortify_high_pop', decision, '', '', '', '',  False, -1, state, True, '']
-			else:
-				if Number == None:
-					if state[27] == 0:
-						Number = Number = 1 + np.random.randint(0,self.Provences[self.Provences['Provence']==high_pop]['Population'].values[0],1)[0] + state[8]
+            else:
+                if Number == None:
+                    if state[27] == 0:
+                        Number = Number = 1 + np.random.randint(0,self.Provences[self.Provences['Provence']==high_pop]['Population'].values[0],1)[0] + state[8]
                         Number = 1 + np.random.randint(0,self.Provences[self.Provences['Provence']==high_pop]['Population'].values[0],1)[0]
-					else:
+                    else:
                         Number = 1 + state[7]
             success, reward, message = self.domain_action_fortify(Regent, high_pop, Number, Name)
             reward = reward + int(Number*(1-state[27])/2)
@@ -3247,46 +3248,49 @@ class Regency(object):
             if state[3]==1 or state[94] == 1 or state[95] == 1 or state[23]==0:
                 return [Regent, actor, Type, 'fortify_low_pop', decision, '', '', '', '',  False, -1, state, True, '']
             else:
-				if Number == None:
-					if state[28] == 0:
+                if Number == None:
+                    if state[28] == 0:
                         Number = 1 + np.random.randint(0,self.Provences[self.Provences['Provence']==low_pop]['Population'].values[0],1)[0]
-					else:
+                    else:
                         Number = 1 + state[8]
             success, reward, message = self.domain_action_fortify(Regent, low_pop, Number, Name)
             reward = reward + int(Number*(1-state[28])/3)
             return [Regent, actor, Type, 'fortify_low_pop', decision, '', low_pop, '', '',  success, reward, state, False, message]        
         # investure_invest_friend
-        elif decision[44] == 1: 
+        elif decision[44] == 1: #44, friend, [provences, holdings as (provence, type)]
             if state[3]==1 or state[95]==1:
-                return [Regent, actor, Type, 'investure_invest_friend', decision, friend, '', '', '',  False, -10, state, True, '']
+                return [Regent, actor, Type, 'investure_invest_friend', decision, friend, '', '', '',  False, -1, state, True, '']
             else:
-                success, reward, message = self.domain_action_investiture(Regent, Target=friend, Invest=True)
+                success, reward, message = self.domain_action_investiture(Regent, Target=friend, Invest=True, provences=provences, holdings=holdings)
                 reward = reward - 20 + 15*state[18] + 10*state[58] + 5*state[57]  # bad idea, unless giving away a legacy
                 return [Regent, actor, Type, 'investure_invest_friend', decision, friend, '', '', '',  success, reward, state, False, message]
         # investure_divest_enemy
-        elif decision[45] == 1: 
+        elif decision[45] == 1:  # 45, enemy, [provences, holdings as (provence, type)]
             if state[3]==1 or state[95]==1:
                 return [Regent, actor, Type, 'investure_divest_enemy', decision, friend, '', '', '',  False, -10, state, True, '']
             else:
-                success, reward, message = self.domain_action_investiture(Regent, Target=enemy, Divest=True)
+                success, reward, message = self.domain_action_investiture(Regent, Target=enemy, Divest=True, provences=provences, holdings=holdings)
                 reward = reward + state[87]*5
-                return [Regent, actor, Type, 'investure_divest_enemy', decision, friend, '', '', '',  success, reward, state, False, message]
+                return [Regent, actor, Type, 'investure_divest_enemy', decision, enemy, '', '', '',  success, reward, state, False, message]
         # investiture_become_vassal_friend
-        elif decision[46] == 1: 
+        elif decision[46] == 1:  # 46, friend
+            print(46, Regent, state[3], state[95], state[57], state[58], state[97])
             if state[3]==1 or state[95]==1 or state[57]==1 or state[58]==1 or state[97]==0:
                 return [Regent, actor, Type, 'investiture_become_vassal_friend', decision, friend, '', '', '',  False, -10, state, True, '']
             else:
                 success, reward, message = self.domain_action_investiture(Regent, Target=friend, Vassal=True)
-                reward = reward + state[51]*5 + state[52]*5
+                reward = reward + state[51]*2 + state[52]*2 + state[53]*2 -10
                 return [Regent, actor, Type, 'investiture_become_vassal_friend', decision, friend, '', '', '',  success, reward, state, False, message]
         # investiture_claim_provence
-        elif decision[47] == 1: 
+        elif decision[47] == 1:  # 47
+            print(47, Regent, state[3], state[95], state[97])
             if state[3]==1 or state[95]==1 or state[96]==0:
-                return [Regent, actor, Type, 'investure_claim_provence', decision, friend, '', '', '',  False, -10, state, True, '']
+                return [Regent, actor, Type, 'investure_claim_provence', decision, '', '', '', '',  False, -1, state, True, '']
             else:
-                Provence = pd.merge(self.Troops[self.Troops['Regent']=='Regent'], self.Provences[self.Provences['Regent']==''], on='Provence',how='inner')['Provence'].values[0]
-                success, reward, message = self.domain_action_investiture(Regent, Provence, Claim=True)
-                return [Regent, actor, Type, 'investure_iclaim_provence', decision, '', Provence, '', '',  success, reward, state, False, message]
+                Provence = pd.merge(self.Troops[self.Troops['Regent']==Regent], self.Provences[self.Provences['Regent']==''], on='Provence',how='inner')['Provence'].values[0]
+                success, reward, message = self.domain_action_investiture(Regent, Target=Provence, Claim=True)
+                reward = reward + 10*state[97]
+                return [Regent, actor, Type, 'investure_claim_provence', decision, '', Provence, '', '',  success, reward, state, False, message]
         # rule_holdings
         elif decision[48] == 1: 
             if state[3]==1 or state[95]==1 or state[94]==1 or state[42]==0:
@@ -4978,7 +4982,7 @@ class Regency(object):
                         self.change_provence(Provence, Castle_Name = temp.iloc[0]['Castle Name'])
         return success, reward, message
        
-    def domain_action_investiture(self, Regent, Target, Invest=False, Divest=False, Vassal=False, Claim=False):
+    def domain_action_investiture(self, Regent, Target, provences=[], holdings=[], Invest=False, Divest=False, Vassal=False, Claim=False):
         '''
         Type: Action
         Base Cost: Varies
@@ -5034,103 +5038,114 @@ class Regency(object):
         investiture_take_provence
         '''
         
-        if Invest == True:
+        if Invest == True or Divest == True:
             # cost
-            Provences = self.Provences[self.Provences['Regent']==Regent].copy()
-            Holdings = self.Holdings[self.Holdings['Regent']==Regent].copy()
-            cost = 0
-            if Provences.shape[0] > 0:
-                cost = cost + np.sum(Provences['Population']) + np.sum(Provences['Castle'])
-            if Holdings.shape[0] > 0:
-                cost = cost + np.sum(Holdings['Level'])
+            Provences = pd.DataFrame()
+            Holdings = pd.DataFrame()
+            who = Regent
+            towho = Target
+            if Divest==True:
+                who=Target
+                towho=Regent
+            if len(provences) + len(holdings) == 0:
+                Provences = self.Provences[self.Provences['Regent']==who].copy()
+                Holdings = self.Holdings[self.Holdings['Regent']==who].copy()
+            if len(provences) > 0:
+                Provences = pd.concat([self.Provences[self.Provences['Regent']==who][self.Provences['Provence']==a] for a in provences])
+            if len(holdings) > 0:
+                Holdings = pd.concat([self.Holdings[self.Holdings['Regent']==who][self.Holdings['Provence']==a[0]][self.Holdings['Type']==a[1]] for a in holdings])
+            if Divest==True:  # only contested
+                if Provences.shape[0]>0:
+                    Provences = Provences[Provences['Contested']==True]
+                if Holdings.shape[0]>0:
+                    Holdings = Holdings[Holdings['Contested']==1]
             # check if they have the points...
-            if self.Regents[self.Regents['Regent']==Regent]['Regency Points'].values[0] >= cost:
-                self.Provences['Regent'] = self.Provences['Regent'].str.replace(Regent, Target)
-                # careful with holdings..
-                for i, a in enumerate(['Law', 'Guild', 'Temple', 'Source']):
-                    Holdings1 = self.Holdings[self.Holdings['Type'] != a]
-                    Holdings2 = self.Holdings[self.Holdings['Type'] == a]
-                    if i <=1 or (i==2 and self.Regents[self.Regents['Regent']==Target]['Divine'].values[0]==True) or (i==3 and self.Regents[self.Regents['Regent']==Target]['Arcane'].values[0]==True):
-                       Holdings2['Regent'] = Holdings2['Regent'].str.replace(Regent, Target)
-                    self.Holdings = pd.concat([Holdings1[['Provence', 'Regent', 'Type', 'Level', 'Contested']], Holdings2[['Provence', 'Regent', 'Type', 'Level', 'Contested']]], sort=False)
-                self.Troops['Regent'] = self.Troops['Regent'].str.replace(Regent, Target)
-                self.Projects['Regent'] = self.Projects['Regent'].str.replace(Regent, Target)
-                self.Regents[self.Regents['Regent']==Target]['Full Name'].values[0]
-                self.change_regent(Regent, Regency_Points= self.Regents[self.Regents['Regent']==Regent]['Regency Points'].values[0]-cost)
-                return True, 0, '{} invested {} with all their Regency'.format(self.Regents[self.Regents['Regent']==Regent]['Full Name'].values[0], self.Regents[self.Regents['Regent']==Target]['Full Name'].values[0])
-                
-            else:
-                return False, 0, '{} failed to invest {} with all their Regency'.format(self.Regents[self.Regents['Regent']==Regent]['Full Name'].values[0], self.Regents[self.Regents['Regent']==Target]['Full Name'].values[0])
-        elif Divest == True:
-            # only contested holdings & provences
-            Provences = self.Provences[self.Provences['Regent'] == Target].copy()
-            # with no un-neutralized castles
-            temp_ = self.Provences[self.Provences['Castle']>0][['Provence', 'Castle']]
-            allies, _ = self.allies_enemies(Regent)
-            allies.append(pd.DataFrame([[Regent]], columns=['Regent']), ignore_index=True)
-            temp = pd.merge(allies, self.Troops, on='Regent', how='left').fillna(0)
-            temp = temp[temp['CR']>0]
-            temp = temp[['Provence', 'Type']].groupby('Provence').count().reset_index()
-            temp = pd.merge(temp_, temp, on='Provence', how='left').fillna(0)
-            temp = temp[temp['Type']<temp['Castle']]  # otherwise neutralized
-            temp['Castled Up'] = 1
-            Provences = pd.merge(Provences, temp[['Provence', 'Castled Up']], on='Provence', how='left').fillna(0)
-            Provences = Provences[Provences['Contested']==True]
-            Provences = Provences[Provences['Castled Up']==0]
-            
-            # Holdings
-            Holdings = self.Holdings[self.Holdings['Regent'] == Target]
-            Holdings = Holdings[Holdings['Contested']==1]
-            
-            
-            # get the cost
-            cost = np.sum(Provences['Population']) + np.sum(Provences['Castle']) + np.sum(Holdings['Level'])
-            success = False
-            message = '{} Failed to divest {} of their contested assets'.format(self.Regents[self.Regents['Regent']==Regent]['Full Name'].values[0], self.Regents[self.Regents['Regent']==Target]['Full Name'].values[0])
-            if self.Regents[self.Regents['Regent']==Regent]['Regency Points'].values[0] >= cost and Provences.shape[0] + Holdings.shape[0] > 0:
-                dc = 10 + self.Regents[self.Regents['Regent']==Target]['Regency Bonus'].values[0]
-                dc = self.set_difficulty(dc, Regent, Target, hostile=True)
-                self.change_regent(Regent, Regency_Points= self.Regents[self.Regents['Regent']==Regent]['Regency Points'].values[0]-cost)
+            Regency = self.Regents[self.Regents['Regent']==Regent]['Regency Points'].values[0]
+            success = True
+            if Divest == True:
+                dc = self.set_difficulty(10+self.Regents[self.Regents['Regent']==Target]['Regency Bonus'].values[0], Regent, Target, hostile=True)
                 success, crit = self.make_roll(Regent, dc, 'Regency Bonus')
-                if success == True:
-                    message = '{} divested {} of '.format(self.Regents[self.Regents['Regent']==Regent]['Full Name'].values[0], self.Regents[self.Regents['Regent']==Target]['Full Name'].values[0])
-                    for Provence in Provences['Provence']:
-                        self.change_provence(Provence, Regent=Regent)
-                        message = message + ' the provence of {}'.format(Provence)
+            if Regency > 0 and Provences.shape[0]+Holdings.shape[0] > 0:
+                # Provences
+                invested = []
+                if Provences.shape[0]>0:  # this un-contests the holdings
+                    for i, row in Provences.iterrows():
+                        if Regency > row['Population']+row['Castle']:
+                            Regency = Regency - row['Population'] - row['Castle']
+                            self.change_provence(row['Provence'], Regent=towho, Contested=False)
+                            invested.append(row['Provence'])
+                            if Divest==False:
+                                # give them the troops that come with
+                                if (self.Troops[self.Troops['Provence'] == row['Provence']][self.Troops['Regent'] == who]).shape[0] > 0:
+                                    troops1 = self.Troops[self.Troops['Provence'] == row['Provence']][self.Troops['Regent'] == who]
+                                    troops2 = self.Troops[self.Troops['Regent'] != who]
+                                    troops3 = self.Troops[self.Troops['Regent'] == who][self.Troops['Provence'] != row['Provence']]
+                                    troops1['Regent'] = towho
+                                    self.Troops = pd.concat([troops1, troops2, troops3], sort=True)
+                                # and the boats...
+                                if (self.Navy[self.Navy['Provence'] == row['Provence']][self.Navy['Regent'] == who]).shape[0]>0:
+                                    boats1 = self.Navy[self.Navy['Provence'] == row['Provence']][self.Navy['Regent'] == who]
+                                    boats2 = self.Navy[self.Navy['Regent'] != who]
+                                    boats3 = self.Navy[self.Navy['Regent'] == who][self.Navy['Provence'] != row['Provence']]
+                                    boats1['Regent'] = towho
+                                    self.Navy = pd.concat([boats1, boats2, boats3], sort=True)
+                # Holdings... remeber that only magic people can have magic holdings
+                if Holdings.shape[0]>0:
                     for i, row in Holdings.iterrows():
-                        self.change_holding(row['Provence'], Target, row['Type'], new_Regent=Regent)
-                        message = message + ' a {} holding in {}'.format(row['Type'], row['Provence'])
-            return success, cost*success, message
+                        if Regency > row['Level']:
+                            if row['Type']=='Temple' and self.Regents[self.Regents['Regent']==towho]['Divine'].values[0] == True:
+                                self.change_holding(row['Provence'], row['Regent'], row['Type'], Contested=0, new_Regent = towho)
+                                invested.append('A {} Holding in {}'.format(row['Type'], row['Provence']))
+                                Regency = Regency - row['Level']
+                            elif row['Type']=='Source' and self.Regents[self.Regents['Regent']==towho]['Arcane'].values[0] == True:
+                                self.change_holding(row['Provence'], row['Regent'], row['Type'], Contested=0, new_Regent = towho)
+                                invested.append('A {} Holding in {}'.format(row['Type'], row['Provence']))
+                                Regency = Regency - row['Level']
+                            elif row['Type'] == 'Law' or row['Type'] == 'Guild':
+                                self.change_holding(row['Provence'], row['Regent'], row['Type'], Contested=0, new_Regent = towho)
+                                invested.append('A {} Holding in {}'.format(row['Type'], row['Provence']))
+                                Regency = Regency - row['Level']
+                if len(invested) > 0:
+                    self.change_regent(Regent, Regency_Points = Regency)
+                    A = 'Invested'
+                    B = 'with'
+                    if Divest==True:
+                        A = 'Divested'
+                        B = 'of'
+                    return True, (5+len(invested))*self.Regents[self.Regents['Regent']==Regent]['Alive'].values[0] - 10, '{} {} {} {} {}'.format(self.Regents[self.Regents['Regent']==Regent]['Full Name'].values[0], A, self.Regents[self.Regents['Regent']==Target]['Full Name'].values[0], B, ', '.join(invested))
+            
+            A = 'Invest'
+            if Divest==True:
+                A = 'Divest'
+            return False, 0, '{} failed to {} {}.'.format(self.Regents[self.Regents['Regent']==Regent]['Full Name'].values[0], A, self.Regents[self.Regents['Regent']==Target]['Full Name'].values[0])
         elif Vassal == True:
-            temp = self.Relationships[self.Relationships['Regent']==Regent].copy()
-            temp = temp[temp['Other'] == Target]
-            vas = 0
-            if temp.shape[0] > 0:
-                vas = vas - np.sum(temp['Vassalage'])
-            self.add_relationship(Regent, Target, Vassalage=self.Regents[self.Regents['Regent']==Regent]['Regency Bonus'].values[0]+vas)
-            # clear any alliance vassalage debris
-            temp = self.Relationships[self.Relationships['Regent']==Target].copy()
-            temp = temp[temp['Other'] == Regent]
-            vas = 0
-            if temp.shape[0] > 0:
-                vas = vas - np.sum(temp['Vassalage'])
-            self.add_relationship(Target, Regent, Vassalage=vas)
-            return True, 0, "{} became {}'s Vassal".format(self.Regents[self.Regents['Regent']==Regent]['Full Name'].values[0], self.Regents[self.Regents['Regent']==Target]['Full Name'].values[0])
+            # clear all vassalage
+            temp = self.Relationships.copy()
+            temp = temp[temp['Regent']==Regent][temp['Vassalage']>0]
+            for i, row in temp.iterrows():
+                self.add_relationship(Regent, row['Other'], Vassalage=0-row['Vassalage'])
+            vas = self.Regents[self.Regents['Regent']==Regent]['Regency Bonus'].values[0]
+            if vas <=0:
+                vas = 1
+            self.add_relationship(Regent, Target, Vassalage=vas)
+            self.change_regent(Regent, Regency_Points=0-vas)
+            self.change_regent(Target, Regency_Points=0-vas)
+            return True, -3, "{} became {}'s Vassal".format(self.Regents[self.Regents['Regent']==Regent]['Full Name'].values[0], self.Regents[self.Regents['Regent']==Target]['Full Name'].values[0])
         elif Claim == True:
             dc = 10
             message = 'Failed to claim {}'.format(Target)
-            success, crit = make_roll(Regent, dc, 'Regency Bonus')
+            success, crit = self.make_roll(Regent, dc, 'Regency Bonus')
             if self.Provences[self.Provences['Provence']==Target].shape[0] == 0 and self.Provences[self.Provences['Provence']==Target]['Regent'].values[0]!='':
                 success = False
             else:
-                 self.change_regent(Regent, Regency_Points= self.Regents[self.Regents['Regent']==Regent]['Regency Points'].values[0]-self.Provences[self.Provences['Provence']==Target]['Population'])
-            if success == True:
-                self.change_provence(Target, Regent=Regent)
-                message = 'Claimed {}'.format(target)
+                success = True
+                self.change_regent(Regent, Regency_Points= self.Regents[self.Regents['Regent']==Regent]['Regency Points'].values[0]-self.Provences[self.Provences['Provence']==Target]['Population'].values[0])
+                self.change_provence(Target, Regent=Regent, Contested=False)
+                message = '{} claimed and Invested {}'.format(self.Regents[self.Regents['Regent']==Regent]['Full Name'].values[0], Target)
             return success, self.Provences[self.Provences['Provence']==Target]['Population'], message
-        return False, 0, 'Error'   
+        return False, 0, 'Error {}'.format(Regent)   
         
-    def domain_action_rule(self, Regent, Holdings=True, Provence=''):
+    def domain_action_rule(self, Regent, Holding=True, Provence='', holdings=[]):
         '''
         Rule
         Type: Action
@@ -5191,43 +5206,49 @@ class Regency(object):
         if RP < 0:
             RP = 0
         reward = 0
-        if Holdings==True and rrow['Player']==False:  # give players a choice later
-            temp = self.Holdings[['Provence', 'Type', 'Level']].copy().groupby(['Provence', 'Type']).sum().reset_index()
-            temp = pd.merge(self.Provences[['Provence', 'Population', 'Magic']], temp, on='Provence', how='left').fillna(0)
-            temp_ = temp[temp['Type'] != 'Source']
-            temp__ = temp[temp['Type']=='Source']
-            temp__['Population'] = temp__['Magic']
-            temp = pd.concat([temp_, temp__])
-            temp = temp[['Provence', 'Type', 'Level', 'Population']]
-            temp = pd.merge(self.Holdings[self.Holdings['Regent']==Regent], temp, on=['Provence','Type']).fillna(-1)
-            temp = temp[temp['Contested'] == 0]
-            temp = temp[temp['Level_y']<temp['Population']]
-            # calculate the cost
-            temp['Cost'] = temp['Level_x']+1
-            RCost = np.sum(temp['Cost'])
-            GCost = temp.shape[0]
-            # do as many as the regent can
-            while RCost > RP or GCost > GB:
-                temp['rand'] = np.random.randint(1,100)
-                temp = temp.iloc[:-1]
-                RCost = np.sum(temp['Cost'])
-                GCost = temp.shape[0]
-            # spend it
-            self.change_regent(Regent, Gold_Bars = GB - GCost, Regency_Points = RP - RCost)
-            success = False
-            message = '{} ruled their Holdings'.format(rrow['Full Name'])
-            if temp.shape[0]>0:
-                success, crit = self.make_roll(Regent, 10, 'Persuasion')
-                if crit == True:
-                    temp['Cost'] = temp['Cost'] + 1
-                    temp_ = temp[temp['Cost']>temp['Population']]
-                    temp_['Cost'] = temp_['Population']
-                    temp = pd.concat([temp[temp['Cost']<=temp['Population']]
-                                      , temp_], sort=False)
-                temp['Increase'] = temp['Cost'] - temp['Level_x']
-                for i, row in temp.iterrows():
-                    self.change_holding(row['Provence'], Regent, row['Type'], Level= row['Increase'])
-            reward = np.sum(temp['Cost'])
+		name = self.regents[self.Regents['Regent']==Regent]['Full Name'].values[0]
+		message = '{} failed to rule anything.'.format(name)
+		if Holdings==True:
+			if len(holdings) == 0:
+				for i, row in self.Holdings[self.Holdings['Regent']==Regent].iterrows():
+					holdings.append((row['Provence'], row['Type']))
+			# check your holdings...
+			temp = pd.concat([self.Holdings[self.Holdings['Regent']==Regent][self.Holdings['Provence']==a[0]][self.Holdings['Type']==a[1]] for a in holdings], sort=True)
+			temp = temp[temp['Contested']==0]  # can't rule if contested
+			
+			# get pop by type...
+			pop = pd.merge(temp[['Provence']].drop_duplicates(), self.Holdings.copy(), on='Provence', how='left')
+			pop = pop[['Provence', 'Type', 'Level']].groupby(['Provence', 'Type']).sum().reset_index()
+			pop = pd.merge(pop, self.Provences, on='Provence', how='left')
+			pop = pop[pop['Contested']==0]  # allow ruling holdings where others are contested
+			pop1 = pop[pop['Type']!='Source']
+			pop2 = pop[pop['Type']=='Source']
+			pop1['Limit']=pop1['Population']
+			pop2['Limit']=pop2['Magic']
+			pop=pd.concat([pop1, pop2])
+			pop[pop['Level']<pop['Limit']][['Provence', 'Type', 'Level', 'Limit']]
+			
+			# get the holdings I can improve...
+			temp = pd.merge(pop[['Provence', 'Type']], temp, on=['Provence','Type'], how='left').fillna(-1)
+			temp = temp[temp['Level']>-1]
+			
+			# do it...
+			success, crit = self.make_roll(Regent, 10, 'Persuasion')
+			ruled = []
+			for i, row in temp.iterrows():
+				if GB >= 1 and RP >= row['Level']+1:
+					if crit==False and row['Raise']<=1:
+						GB = GB-1
+						RP = RP -1
+					RP = RP - row['Level']
+					Level = row['Level'] + 1
+					if crit==True and row['Raise']>=2:
+						Level = row['Level'] + 2
+					self.change_holding(row['Provence'], Regent, row['Type'], Level=Level)
+					reward = reward + Level - row['Level']
+					ruled.append('a {} Holding in {}'.format(row['Type'], row['Provence'])
+			self.change_regent(Regent, Gold_Bars = GB, Regency_Points = RP)
+			message = '{} ruled {}.'.format(name, ', '.join(ruled))	
         elif Provence !='':
             message = '{} ruled over {}'.format(rrow['Full Name'], Provence)
             value = self.Provences[self.Provences['Provence']==Provence]['Population'].values[0]

@@ -588,7 +588,7 @@ class DQNAgent(object):
             state[94] = 1  # Broke
         if Game.Regents[Game.Regents['Regent'] == Regent]['Regency Points'].fillna(0).values[0] <= 0:
             state[95] = 1  # Powerless
-        if pd.merge(Game.Troops[Game.Troops['Regent']=='Regent'], Game.Provences[Game.Provences['Regent']==''], on='Provence',how='inner').shape[0]>0:
+        if pd.merge(Game.Troops[Game.Troops['Regent']==Regent], Game.Provences[Game.Provences['Regent']==''], on='Provence',how='inner').shape[0]>0:
             state[96] = 1  # Empty Provence I occupy
         enemy_capital = None
         temp = Game.Provences[Game.Provences['Regent']==enemy]
