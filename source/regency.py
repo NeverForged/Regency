@@ -3274,7 +3274,6 @@ class Regency(object):
                 return [Regent, actor, Type, 'investure_divest_enemy', decision, enemy, '', '', '',  success, reward, state, False, message]
         # investiture_become_vassal_friend
         elif decision[46] == 1:  # 46, friend
-            print(46, Regent, state[3], state[95], state[57], state[58], state[97])
             if state[3]==1 or state[95]==1 or state[57]==1 or state[58]==1 or state[97]==0:
                 return [Regent, actor, Type, 'investiture_become_vassal_friend', decision, friend, '', '', '',  False, -10, state, True, '']
             else:
@@ -3283,7 +3282,6 @@ class Regency(object):
                 return [Regent, actor, Type, 'investiture_become_vassal_friend', decision, friend, '', '', '',  success, reward, state, False, message]
         # investiture_claim_provence
         elif decision[47] == 1:  # 47
-            print(47, Regent, state[3], state[95], state[97])
             if state[3]==1 or state[95]==1 or state[96]==0:
                 return [Regent, actor, Type, 'investure_claim_provence', decision, '', '', '', '',  False, -1, state, True, '']
             else:
@@ -3292,32 +3290,33 @@ class Regency(object):
                 reward = reward + 10*state[97]
                 return [Regent, actor, Type, 'investure_claim_provence', decision, '', Provence, '', '',  success, reward, state, False, message]
         # rule_holdings
-        elif decision[48] == 1: 
+        elif decision[48] == 1: # 48, [holdings]
+            print(48, Regent, state[3], state[95], state[94], state[42])
             if state[3]==1 or state[95]==1 or state[94]==1 or state[42]==0:
                 return [Regent, actor, Type, 'rule_holdings', decision, friend, '', '', '',  False, -10, state, True, '']
             else:
-                success, reward, message = self.domain_action_rule(Regent, Holdings=True)
+                success, reward, message = self.domain_action_rule(Regent, Holding=True, holdings=holdings)
                 return [Regent, actor, Type, 'rule_holdings', decision, '', '', '', '',  success, reward, state, False, message]
         # rule_capital
         elif decision[49] == 1: 
             if state[3]==1 or state[95]==1 or state[94]==1 or state[23]==0:
                 return [Regent, actor, Type, 'rule_holdings', decision, friend, '', '', '',  False, -10, state, True, '']
             else:
-                success, reward, message = self.domain_action_rule(Regent, Holdings=False, Provence=capital)
+                success, reward, message = self.domain_action_rule(Regent, Holding=False, Provence=capital)
                 return [Regent, actor, Type, 'rule_capital', decision, '', capital, '', '',  success, reward, state, False, message]
         # rule_high_pop
         elif decision[50] == 1: 
             if state[3]==1 or state[95]==1 or state[94]==1 or state[23]==0:
                 return [Regent, actor, Type, 'rule_high_pop', decision, friend, '', '', '',  False, -10, state, True, '']
             else:
-                success, reward, message = self.domain_action_rule(Regent, Holdings=False, Provence=high_pop)
+                success, reward, message = self.domain_action_rule(Regent, Holding=False, Provence=high_pop)
                 return [Regent, actor, Type, 'rule_high_pop', decision, '', high_pop, '', '',  success, reward, state, False, message]
         # rule_low_pop
         elif decision[51] == 1: 
             if state[3]==1 or state[95]==1 or state[94]==1 or state[23]==0:
                 return [Regent, actor, Type, 'rule_low_pop', decision, '', '', '', '',  False, -10, state, True, '']
             else:
-                success, reward, message = self.domain_action_rule(Regent, Holdings=False, Provence=low_pop)
+                success, reward, message = self.domain_action_rule(Regent, Holding=False, Provence=low_pop)
                 return [Regent, actor, Type, 'rule_low_pop', decision, '', low_pop, '', '',  success, reward, state, False, message]
         # establish_trade_route_friend
         elif decision[52] == 1: 
@@ -5206,49 +5205,50 @@ class Regency(object):
         if RP < 0:
             RP = 0
         reward = 0
-		name = self.regents[self.Regents['Regent']==Regent]['Full Name'].values[0]
-		message = '{} failed to rule anything.'.format(name)
-		if Holdings==True:
-			if len(holdings) == 0:
-				for i, row in self.Holdings[self.Holdings['Regent']==Regent].iterrows():
-					holdings.append((row['Provence'], row['Type']))
-			# check your holdings...
-			temp = pd.concat([self.Holdings[self.Holdings['Regent']==Regent][self.Holdings['Provence']==a[0]][self.Holdings['Type']==a[1]] for a in holdings], sort=True)
-			temp = temp[temp['Contested']==0]  # can't rule if contested
-			
-			# get pop by type...
-			pop = pd.merge(temp[['Provence']].drop_duplicates(), self.Holdings.copy(), on='Provence', how='left')
-			pop = pop[['Provence', 'Type', 'Level']].groupby(['Provence', 'Type']).sum().reset_index()
-			pop = pd.merge(pop, self.Provences, on='Provence', how='left')
-			pop = pop[pop['Contested']==0]  # allow ruling holdings where others are contested
-			pop1 = pop[pop['Type']!='Source']
-			pop2 = pop[pop['Type']=='Source']
-			pop1['Limit']=pop1['Population']
-			pop2['Limit']=pop2['Magic']
-			pop=pd.concat([pop1, pop2])
-			pop[pop['Level']<pop['Limit']][['Provence', 'Type', 'Level', 'Limit']]
-			
-			# get the holdings I can improve...
-			temp = pd.merge(pop[['Provence', 'Type']], temp, on=['Provence','Type'], how='left').fillna(-1)
-			temp = temp[temp['Level']>-1]
-			
-			# do it...
-			success, crit = self.make_roll(Regent, 10, 'Persuasion')
-			ruled = []
-			for i, row in temp.iterrows():
-				if GB >= 1 and RP >= row['Level']+1:
-					if crit==False and row['Raise']<=1:
-						GB = GB-1
-						RP = RP -1
-					RP = RP - row['Level']
-					Level = row['Level'] + 1
-					if crit==True and row['Raise']>=2:
-						Level = row['Level'] + 2
-					self.change_holding(row['Provence'], Regent, row['Type'], Level=Level)
-					reward = reward + Level - row['Level']
-					ruled.append('a {} Holding in {}'.format(row['Type'], row['Provence'])
-			self.change_regent(Regent, Gold_Bars = GB, Regency_Points = RP)
-			message = '{} ruled {}.'.format(name, ', '.join(ruled))	
+        name = self.Regents[self.Regents['Regent']==Regent]['Full Name'].values[0]
+        message = '{} failed to rule anything.'.format(name)
+        if Holding==True:
+            if len(holdings) == 0:
+                for i, row in self.Holdings[self.Holdings['Regent']==Regent].iterrows():
+                    holdings.append((row['Provence'], row['Type']))
+            # check your holdings...
+            temp = pd.concat([self.Holdings[self.Holdings['Regent']==Regent][self.Holdings['Provence']==a[0]][self.Holdings['Type']==a[1]] for a in holdings], sort=True)
+            temp = temp[temp['Contested']==0]  # can't rule if contested
+            
+            # get pop by type...
+            pop = pd.merge(temp[['Provence']].drop_duplicates(), self.Holdings.copy(), on='Provence', how='left')
+            pop = pop[['Provence', 'Type', 'Level']].groupby(['Provence', 'Type']).sum().reset_index()
+            pop = pd.merge(pop, self.Provences.copy(), on='Provence', how='left')
+            pop = pop[pop['Contested']==0]  # allow ruling holdings where others are contested
+            pop1 = pop[pop['Type']!='Source']
+            pop2 = pop[pop['Type']=='Source']
+            pop1['Limit']=pop1['Population']
+            pop2['Limit']=pop2['Magic']
+            pop=pd.concat([pop1, pop2])
+            pop[pop['Level']<pop['Limit']][['Provence', 'Type', 'Level', 'Limit']]
+            pop['Raise'] = pop['Limit']-pop['Level']
+            
+            # get the holdings I can improve...
+            temp = pd.merge(pop[['Provence', 'Type', 'Raise']], temp, on=['Provence','Type'], how='left').fillna(-1)
+            temp = temp[temp['Level']>-1]
+            
+            # do it...
+            success, crit = self.make_roll(Regent, 10, 'Persuasion')
+            ruled = []
+            for i, row in temp.iterrows():
+                if GB >= 1 and RP >= row['Level']+1:
+                    if crit==False and row['Raise']<=1:
+                        GB = GB-1
+                        RP = RP -1
+                    RP = RP - row['Level']
+                    Level = row['Level'] + 1
+                    if crit==True and row['Raise']>=2:
+                        Level = row['Level'] + 2
+                    self.change_holding(row['Provence'], Regent, row['Type'], Level=Level)
+                    reward = reward + Level - row['Level']
+                    ruled.append('a {} Holding in {}'.format(row['Type'], row['Provence']))
+            self.change_regent(Regent, Gold_Bars = GB, Regency_Points = RP)
+            message = '{} ruled {}.'.format(name, ', '.join(ruled)) 
         elif Provence !='':
             message = '{} ruled over {}'.format(rrow['Full Name'], Provence)
             value = self.Provences[self.Provences['Provence']==Provence]['Population'].values[0]

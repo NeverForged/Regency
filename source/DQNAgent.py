@@ -341,19 +341,28 @@ class DQNAgent(object):
             if my_holdings[my_holdings['Contested']==1].shape[0] > 0:
                 state[41] = 1  # i_have_contested_holdings
             shared_holdings = pd.merge(my_holdings[['Provence']], Game.Holdings.copy(), on='Provence', how='left')
-            temp = pd.merge(shared_holdings, Game.Provences[['Provence', 'Population', 'Magic']].copy(), on='Provence', how='left')
-            temp = temp[['Provence', 'Type', 'Level', 'Population', 'Magic']].groupby(['Provence', 'Type', 'Population', 'Magic']).sum().reset_index()
-            temp = pd.merge(my_holdings[['Provence', 'Type']], temp, on=['Provence', 'Type']).fillna(0)
-            temp_s = temp[temp['Type'] == 'Source']
-            temp = temp[temp['Type'] != 'Source' ]
-            temp = temp[temp['Provence']!=0]
+            temp = Game.Holdings[Game.Holdings['Regent']==Regent]
+            temp = temp[temp['Contested']==0]  # can't rule if contested
+            
+            # get pop by type...
+            pop = pd.merge(temp[['Provence']].drop_duplicates(), Game.Holdings.copy(), on='Provence', how='left')
+            pop = pop[['Provence', 'Type', 'Level']].groupby(['Provence', 'Type']).sum().reset_index()
+            pop = pd.merge(pop, Game.Provences, on='Provence', how='left')
+            pop = pop[pop['Contested']==0]  # allow ruling holdings where others are contested
+            pop1 = pop[pop['Type']!='Source']
+            pop2 = pop[pop['Type']=='Source']
+            pop1['Limit']=pop1['Population']
+            pop2['Limit']=pop2['Magic']
+            pop=pd.concat([pop1, pop2])
+            pop[pop['Level']<pop['Limit']][['Provence', 'Type', 'Level', 'Limit']]
+            
+            # get the holdings I can improve...
+            temp = pd.merge(pop[['Provence', 'Type']], temp, on=['Provence','Type'], how='left').fillna(-1)
+            temp = temp[temp['Level']>-1]
             
             if temp.shape[0] > 0:
-                if temp[temp['Level'] < temp['Population']].shape[0]:
-                    state[42] = 1  # my_holdings_can_increase_in_level
-            if temp_s.shape[0] > 0:
-                if temp_s[temp_s['Level'] < temp_s['Magic']].shape[0]:
-                    state[42] = 1  # my_holdings_can_increase_in_level
+                state[42] = 1  # my_holdings_can_increase_in_level
+            
            
         '''   
                 i_am_at_war
