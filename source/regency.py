@@ -3401,7 +3401,6 @@ class Regency(object):
                 return [Regent, actor, Type, 'realm_magic_blight', decision, enemy, '', ', '.join(provences), '',  success, reward, state, False, message]
         # realm_magic_death_plague
         elif decision[58] == 1: # 58, enemy
-            print(58, Regent, state[3], state[37], state[94], state[95], state[19])
             if state[3]==1 or state[37]==0 or state[94]==1 or state[95]==1 or state[19]==0:
                 return [Regent, actor, Type, 'realm_magic_death_plague', decision, enemy, '', '', '',  False, -1, state, True, '']
             else:
@@ -3461,16 +3460,18 @@ class Regency(object):
                 reward = reward
                 return [Regent, actor, Type, 'realm_magic_legion_of_the_dead', decision, '', provences[0], '', '',  success, reward, state, False, message]
         # realm_magic_mass_destruction
-        elif decision[63] == 1: 
-            if state[3]==1 or state[37]==0 or state[94]==1 or state[95]==1 or state[12]==0:
-                return [Regent, actor, Type, 'realm_magic_mass_destruction', decision, '', '', '', '',  False, -10, state, True, '']
+        elif decision[63] == 1: # 63, enemy [provences]
+            if state[3]==1 or state[37]==0 or state[94]==1 or state[95]==1 or state[12]==0 or (state[107]+state[106])==0:
+                return [Regent, actor, Type, 'realm_magic_mass_destruction', decision, '', '', '', '',  False, -1, state, True, '']
             else:
-                success, reward, message = self.realm_magic_mass_destruction(Regent, enemy_capital)
-                return [Regent, actor, Type, 'realm_magic_mass_destruction', decision, '', enemy_capital, '', '',  success, reward, state, False, message]
+                if len(provences)==0:
+                    provences = [enemy_capital]
+                success, reward, message = self.realm_magic_mass_destruction(Regent, provences[0])
+                return [Regent, actor, Type, 'realm_magic_mass_destruction', decision, '', provences[0], '', '',  success, reward, state, False, message]
         # realm_magic_raze
-        elif decision[64] == 1: 
+        elif decision[64] == 1:  # 64, enemy
             if state[3]==1 or state[37]==0 or state[94]==1 or state[95]==1 or state[79]==1 or state[12]==0:
-                return [Regent, actor, Type, 'realm_magic_raze', decision, '', '', '', '',  False, -10, state, True, '']
+                return [Regent, actor, Type, 'realm_magic_raze', decision, '', '', '', '',  False, -1, state, True, '']
             else:
                 success, reward, message = self.realm_magic_raze(Regent, enemy)
                 return [Regent, actor, Type, 'realm_magic_raze', decision, enemy, '', '', '',  success, reward, state, False, message]
@@ -5646,6 +5647,8 @@ class Regency(object):
         The aftermath of the destruction lays waste to the surrounding countryside. The 
         populace suffers an immediate degradation of loyalty whether or not any units 
         were destroyed.
+        
+        ADDING IN DAMAGE TO SHIPS IF TARGETED
         '''
         temp = self.Holdings[self.Holdings['Regent'] == Regent].copy()
         temp = temp[temp['Type']=='Source'][['Type', 'Level', 'Provence']]
@@ -5654,32 +5657,63 @@ class Regency(object):
         temp = temp[temp['Provence']==Provence]
         success = False
         reward = 0
-        message = 'Lacks the resources to cast Legion of the Dead'
-        
+        caster = self.Regents[self.Regents['Regent']==Regent]['Full Name'].values[0]
+        message = '{} lacks the resources to cast Mass Destruction'.format(caster)
         RP = self.Regents[self.Regents['Regent']==Regent]['Regency Points'].values[0]
         RB = self.Regents[self.Regents['Regent']==Regent]['Regency Bonus'].values[0]
         GB = self.Regents[self.Regents['Regent']==Regent]['Gold Bars'].values[0]
         Level = self.Regents[self.Regents['Regent']==Regent]['Level'].values[0]
+        ProfBonus = int((7+Level)/4)
+        SpellSave = 8 + ProfBonus + self.Regents[self.Regents['Regent']==Regent]['Regency Bonus'].values[0]
         Limits = [1,5,11,17]
         if temp.shape[0] > 0 and RP >= 10 and GB >= 5:
-            temp = self.Troops[self.Troops['Provence']==Provence].copy()
-            N = 0
-            for i, row in temp.iterrows():
-                for i, row in temp.iterrows():
-                    if N <= 3:
-                        if Limits[N] <= Level and RP >= 10:
-                            print(row['Regent'])
-                            success, crit = self.make_roll(row["Regent"], 10+RB, 'Regency Bonus')
-                            if success == False:
-                                N += 1
-                                self.disband_troops(row['Regent'], Provence, row['Type'], Killed=True)
-                                RP = RP - 10
+            message = '{} cast "Mass Destruction" on {}, '.format(caster, Provence)
+            temp = pd.concat([self.Troops[self.Troops['Provence']==Provence],self.Navy[self.Navy['Provence']==Provence]], sort=False).fillna(-1)
+            temp['roll'] = np.random.randint(1,temp.shape[0]+1, temp.shape[0])
+            temp = temp.sort_values('roll')
+            temp = pd.merge(temp, self.Regents[['Regent', 'Regency Bonus']], on='Regent', how='left')
+            temp['Save'] = np.random.randint(1,20,temp.shape[0]) + temp['Regency Bonus']
+            temp['SeaCheck'] = np.random.randint(1,20,temp.shape[0])
             self.change_regent(Regent, Gold_Bars=GB-5, Regency_Points = RP)
             self.change_loyalty(Provence, -1)
-            success, reward, message = True, N*3, "{} cast 'Mass Destruction' on {}".format(self.Regents[self.Regents['Regent']==Regent]['Full Name'].values[0], Provence)
+            N = 0
+            lst =[]
+            for i, lim in enumerate(Limits):
+                if lim <= Level and RP >= 10 and i <= temp.shape[0]-1:
+                    success = True
+                    RP = RP - 10
+                    if temp['Ship'].values[i] == -1:  # troop
+                        if temp['Save'].values[i] >= SpellSave and temp['Injury'].values[i]>-3:
+                            self.disband_troops(temp['Regent'].values[i], Provence, temp['Type'].values[i], Killed=False, Real=False)
+                            self.add_troops(temp['Regent'].values[i], Provence, temp['Type'].values[i], Home=temp['Home'].values[i], Garrisoned=temp['Garrisoned'].values[i], Injury=temp['Injury'].values[i]-1)
+                            lst.append("injuring a unit of {}'s {}".format(self.Regents[self.Regents['Regent']==temp['Regent'].values[i]]['Full Name'].values[0], temp['Type'].values[i]))
+                        else:
+                            self.disband_troops(temp['Regent'].values[i], Provence, temp['Type'].values[i], Killed=True, Real=False)
+                            N += 1
+                            lst.append("destroying a unit of {}'s {}".format(self.Regents[self.Regents['Regent']==temp['Regent'].values[i]]['Full Name'].values[0], temp['Type'].values[i]))
+                    else:  # ship...
+                        # remove the ship
+                        self.remove_ship(temp['Regent'].values[i], Provence, temp['Ship'].values[i], Name=temp['Name'].values[i])
+                        if temp['Save'].values[i] >= SpellSave and temp['Hull'].values[i] > 1:  # return if a save made...
+                            Seaworthiness = temp['Seaworthiness'].values[i]-np.random.randint(1,4,1)[0]-np.random.randint(1,4,1)[0]
+                            Hull = temp['Hull'].values[i]
+                            if Seaworthiness < temp['SeaCheck'].values[i]:
+                                Hull = Hull -1
+                            # and the ship did not sustain too much damage
+                            if Hull >= 1 and Seaworthiness >= 1:
+                                self.add_ship(temp['Regent'].values[i], Provence, temp['Ship'].values[i], Name=temp['Name'].values[i], Seaworthiness=Seaworthiness, Hull=Hull)
+                                lst.append('damaging "{}", a {} belonging to {}'.format(temp['Name'].values[i], temp['Ship'].values[i], self.Regents[self.Regents['Regent']==temp['Regent'].values[i]]['Full Name'].values[0]))
+                            else:
+                                lst.append('sinking "{}", a {} that belonged to {}'.format(temp['Name'].values[i], temp['Ship'].values[i], self.Regents[self.Regents['Regent']==temp['Regent'].values[i]]['Full Name'].values[0]))
+                                N = N +1
+                        else:
+                            lst.append('destroying "{}", a {} that belonged to {}'.format(temp['Name'].values[i], temp['Ship'].values[i], self.Regents[self.Regents['Regent']==temp['Regent'].values[i]]['Full Name'].values[0]))
+                            N += 1
+            reward = len(lst)+2*N-1
+            message = message + '; '.join(lst)
         return success, reward, message 
     
-    def realm_magic_raze(self, Regent, Target):
+    def realm_magic_raze(self, Regent, Target, provences=[]):
         '''
         RP Cost: 10 per structure level
         GB Cost: 2 per damage level inflicted
@@ -5700,6 +5734,7 @@ class Regency(object):
         siege to a province. The regent that owns the castle may attempt a Bloodline saving 
         throw to halve the damage to the castle in question.
         '''
+        
         temp = self.Holdings[self.Holdings['Regent'] == Regent].copy()
         temp = temp[temp['Type']=='Source'][['Type', 'Level', 'Provence']]
         temp = temp[temp['Level']>=5]
@@ -6412,13 +6447,14 @@ class Regency(object):
         check = check[check['Level']>check['Limit']]
         check['Reduction'] = check['Level']-check['Limit']
         for i, row in check.iterrows():
-            for a in range(row['Reduction']):
+            for a in range(int(row['Reduction'])):
                 temp = self.Holdings[self.Holdings['Provence']==row['Provence']][self.Holdings['Type']==row['Type']].copy()
                 temp = temp[temp['Level']>=1]
                 temp['roll'] = np.random.randint(1,temp.shape[0]+1,temp.shape[0]) + temp['Level']
                 temp = temp.sort_values('roll', ascending=False)
                 # drop a mostly-random holding's level by 1.
-                self.change_holding(row['Provence'], temp['Regent'].values[0], row['Type'], Level=temp['Level'].values[0]-1)
+                if temp.shape[0]>0:
+                    self.change_holding(row['Provence'], temp['Regent'].values[0], row['Type'], Level=temp['Level'].values[0]-1)
         
     # tools    
     def set_difficulty(self, base, Regent, Target, hostile=False, assassination=False, player_rbid=None):

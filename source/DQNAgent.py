@@ -26,7 +26,7 @@ class DQNAgent(object):
         self.agent_predict = 0
         self.learning_rate = 0.0005
         
-        self.action_size = 106
+        self.action_size = 108
         self.action_choices = 72
         
         # different models for different decisions
@@ -632,7 +632,13 @@ class DQNAgent(object):
             
         if Game.Provences[Game.Provences['Regent']==rando].shape[0]>0:
             state[105] = 1  # rando_has_provences
+            
+        if Game.Troops[Game.Troops['Regent']==enemy].shape[0]>0:
+            state[106]= 1  # enemy_has_troops
+        if Game.Navy[Game.Navy['Regent']==enemy].shape[0]>0:
+            state[107]=1 # enemy_has_ships
         return np.asarray(state), capital, high_pop, low_pop, friend, enemy, rando, enemy_capital
+        
         
         
             
