@@ -26,7 +26,7 @@ class DQNAgent(object):
         self.agent_predict = 0
         self.learning_rate = 0.0005
         
-        self.action_size = 108
+        self.action_size = 112
         self.action_choices = 72
         
         # different models for different decisions
@@ -177,10 +177,12 @@ class DQNAgent(object):
         for i, a in enumerate(['Bare', 'Average', 'Rich']):  #4, 5, 6
             if df['Court'].values[0] == a:
                 state[i+4] = 1  # court_bare, court_average, court_rich
-        for i, a in enumerate([1 if df['Gold Bars'].values[0] > a else 0 for i,a in enumerate([10,20,30,40,50,100])]):
-            state[6+i] = a  # gold > 10, 20, 30, 40, 50, 100
-        for i, a in enumerate([1 if df['Regency Points'].values[0] > a else 0 for i,a in enumerate([10,20,30,40,50,100])]):
-            state[12+i] = a # regency > 10, 20, 30, 40, 50, 100 
+        for i, a in enumerate([10,20,30,40,50,100]):
+            if df['Gold Bars'].values[0] >= a:
+                state[6+i] = 1  # gold > 10, 20, 30, 40, 50, 100
+        for i, a in enumerate([10,20,30,40,50,100]):
+            if df['Regency Points'].values[0] >= a:
+                state[12+i] = 1 # regency > 10, 20, 30, 40, 50, 100 
             '''
                 i_am_dead  7
                 i_am_evil
@@ -637,6 +639,27 @@ class DQNAgent(object):
             state[106]= 1  # enemy_has_troops
         if Game.Navy[Game.Navy['Regent']==enemy].shape[0]>0:
             state[107]=1 # enemy_has_ships
+            
+        temp = Game.Holdings[Game.Holdings['Regent'] == Regent].copy()
+        temp = temp[temp['Type']=='Source'][['Type', 'Level', 'Provence']]
+        temp = temp[temp['Level']>=5]
+        temp = pd.concat([temp[['Provence']], Game.LeyLines[Game.LeyLines['Regent']==Regent][['Provence']]])
+        temp = pd.merge(temp, Game.Troops[['Regent', 'Provence']][Game.Troops['Regent']==Regent], on='Provence', how='inner').fillna(0)
+        temp = pd.merge(temp[['Provence']], Game.Provences[Game.Provences['Regent']==enemy][['Provence', 'Castle']], on='Provence', how='inner')
+        if temp.shape[0]>0:
+            state[108] = 1  # I_am_seiging_a_castle_i_can_raze
+            
+            
+        temp = Game.Holdings[Game.Holdings['Regent'] == Regent].copy()
+        temp = temp[temp['Type']=='Source'][['Type', 'Level', 'Provence']]
+        temp = temp[temp['Level']>=7]
+        temp = pd.concat([temp[['Provence']], Game.LeyLines[Game.LeyLines['Regent']==Regent][['Provence']]])
+        if temp[temp['Provence']==capital].shape[0]>0:
+            state[109] = 1  # can stronghold spell capital
+        if temp[temp['Provence']==high_pop].shape[0]>0:
+            state[110] = 1 # can stronghold spell high_pop
+        if temp[temp['Provence']==low_pop].shape[0]>0:
+            state[111] = 1 # can stronghold spell low_pop
         return np.asarray(state), capital, high_pop, low_pop, friend, enemy, rando, enemy_capital
         
         

@@ -553,7 +553,7 @@ class Regency(object):
         '''
         cols = ['Provence', 'Regent', 'Type', 'Level', 'Contested']
         self.Holdings = self.Holdings.append(pd.DataFrame([[Provence, Regent, Type, Level, Contested]], columns=cols))
-        self.Holdings = self.Holdings.reset_index()
+        self.Holdings = self.Holdings.reset_index(drop=True)
         self.Holdings = self.Holdings[cols]
 
     def change_holding(self, Provence, Regent, Type, Level=None, Contested=None, new_Regent = None, mult_level=1):
@@ -3469,50 +3469,62 @@ class Regency(object):
                 success, reward, message = self.realm_magic_mass_destruction(Regent, provences[0])
                 return [Regent, actor, Type, 'realm_magic_mass_destruction', decision, '', provences[0], '', '',  success, reward, state, False, message]
         # realm_magic_raze
-        elif decision[64] == 1:  # 64, enemy
-            if state[3]==1 or state[37]==0 or state[94]==1 or state[95]==1 or state[79]==1 or state[12]==0:
+        elif decision[64] == 1:  # 64, enemy, [provences]
+            if state[3]==1 or state[37]==0 or state[94]==1 or state[95]==1 or state[79]==1 or state[12]==0 or state[108]==0:
                 return [Regent, actor, Type, 'realm_magic_raze', decision, '', '', '', '',  False, -1, state, True, '']
             else:
-                success, reward, message = self.realm_magic_raze(Regent, enemy)
-                return [Regent, actor, Type, 'realm_magic_raze', decision, enemy, '', '', '',  success, reward, state, False, message]
+                if len(provences) == 0:
+                    temp = self.Holdings[self.Holdings['Regent'] == Regent].copy()
+                    temp = temp[temp['Type']=='Source'][['Type', 'Level', 'Provence']]
+                    temp = temp[temp['Level']>=5]
+                    temp = pd.concat([temp[['Provence']], self.LeyLines[self.LeyLines['Regent']==Regent][['Provence']]])
+                    temp = pd.merge(temp, self.Troops[['Regent', 'Provence']][self.Troops['Regent']==Regent], on='Provence', how='inner').fillna(0)
+                    temp = pd.merge(temp[['Provence']], self.Provences[self.Provences['Regent']==enemy][['Provence', 'Castle']], on='Provence', how='inner')
+                    temp['roll'] = np.random.randint(1,6,temp.shape[0])
+                    temp = temp.sort_values('roll')
+                    provences = list(temp['Provence'])
+
+                success, reward, message = self.realm_magic_raze(Regent, provences[0])
+                return [Regent, actor, Type, 'realm_magic_raze', decision, '', provences[0], '', '',  success, reward, state, False, message]
         # realm_magic_stronghold_capital
-        elif decision[65] == 1: 
-            if state[3]==1 or state[37]==0 or state[94]==1 or state[95]==1 or state[79]==1 or state[12]==0 or state[6]==0 or state[23]==0:
+        elif decision[65] == 1:  
+            if state[3]==1 or state[37]==0 or state[94]==1 or state[95]==1 or state[12]==0 or state[6]==0 or state[23]==0 or state[109]==0:
                 return [Regent, actor, Type, 'realm_magic_stronghold', decision, '', '', '', '',  False, -10, state, True, '']
             else:
                 success, reward, message = self.realm_magic_stronghold(Regent, capital)
                 return [Regent, actor, Type, 'realm_magic_stronghold', decision, '', capital, '', '',  success, reward, state, False, message]
         # realm_magic_stronghold_high_pop
         elif decision[66] == 1: 
-            if state[3]==1 or state[37]==0 or state[94]==1 or state[95]==1 or state[79]==1 or state[12]==0 or state[6]==0 or state[23]==0:
+            if state[3]==1 or state[37]==0 or state[94]==1 or state[95]==1 or state[12]==0 or state[6]==0 or state[23]==0 or state[110]==0:
                 return [Regent, actor, Type, 'realm_magic_stronghold', decision, '', '', '', '',  False, -10, state, True, '']
             else:
                 success, reward, message = self.realm_magic_stronghold(Regent, high_pop)
                 return [Regent, actor, Type, 'realm_magic_stronghold', decision, '', high_pop, '', '',  success, reward, state, False, message] 
         # realm_magic_stronghold_low_pop
         elif decision[67] == 1: 
-            if state[3]==1 or state[37]==0 or state[94]==1 or state[95]==1 or state[79]==1 or state[12]==0 or state[6]==0 or state[23]==0:
+            if state[3]==1 or state[37]==0 or state[94]==1 or state[95]==1 or state[12]==0 or state[6]==0 or state[23]==0 or state[111]==0:
                 return [Regent, actor, Type, 'realm_magic_stronghold', decision, '', '', '', '',  False, -10, state, True, '']
             else:
                 success, reward, message = self.realm_magic_stronghold(Regent, low_pop)
                 return [Regent, actor, Type, 'realm_magic_stronghold', decision, '', low_pop, '', '',  success, reward, state, False, message]
         # realm_magic_stronghold_capital_perm
         elif decision[68] == 1: 
-            if state[3]==1 or state[37]==0 or state[94]==1 or state[95]==1 or state[79]==1 or state[13]==0 or state[6]==0 or state[23]==0:
+            if state[3]==1 or state[37]==0 or state[94]==1 or state[95]==1 or state[13]==0 or state[6]==0 or state[23]==0 or state[26]==0 or state[109]==0:
                 return [Regent, actor, Type, 'realm_magic_stronghold', decision, '', '', '', '',  False, -10, state, True, '']
             else:
                 success, reward, message = self.realm_magic_stronghold(Regent, capital, True)
                 return [Regent, actor, Type, 'realm_magic_stronghold', decision, '', capital, '', '',  success, reward, state, False, message]
         # realm_magic_stronghold_high_pop_perm
         elif decision[69] == 1: 
-            if state[3]==1 or state[37]==0 or state[94]==1 or state[95]==1 or state[79]==1 or state[13]==0 or state[6]==0 or state[23]==0:
+            if state[3]==1 or state[37]==0 or state[94]==1 or state[95]==1 or state[13]==0 or state[6]==0 or state[23]==0 or state[27]==0 or state[110]==0:
                 return [Regent, actor, Type, 'realm_magic_stronghold', decision, '', '', '', '',  False, -10, state, True, '']
             else:
                 success, reward, message = self.realm_magic_stronghold(Regent, high_pop, True)
                 return [Regent, actor, Type, 'realm_magic_stronghold', decision, '', high_pop, '', '',  success, reward, state, False, message] 
         # realm_magic_stronghold_low_pop_perm
         elif decision[70] == 1: 
-            if state[3]==1 or state[37]==0 or state[94]==1 or state[95]==1 or state[79]==1 or state[13]==0 or state[6]==0 or state[23]==0:
+            print(70, Regent, high_pop, state[3], state[37], state[94], state[95], state[12], state[6], state[23], state[28], state[111])
+            if state[3]==1 or state[37]==0 or state[94]==1 or state[95]==1 or state[13]==0 or state[6]==0 or state[23]==0 or state[28]==0 or state[111]==0:
                 return [Regent, actor, Type, 'realm_magic_stronghold', decision, '', '', '', '',  False, -10, state, True, '']
             else:
                 success, reward, message = self.realm_magic_stronghold(Regent, low_pop, True)
@@ -5734,15 +5746,18 @@ class Regency(object):
         siege to a province. The regent that owns the castle may attempt a Bloodline saving 
         throw to halve the damage to the castle in question.
         '''
-        
+        caster = self.Regents[self.Regents['Regent']==Regent]['Full Name'].values[0]
         temp = self.Holdings[self.Holdings['Regent'] == Regent].copy()
         temp = temp[temp['Type']=='Source'][['Type', 'Level', 'Provence']]
         temp = temp[temp['Level']>=5]
         temp = pd.concat([temp[['Provence']], self.LeyLines[self.LeyLines['Regent']==Regent][['Provence']]])
         temp = temp[temp['Provence']==Target]
+        temp = pd.merge(temp, self.Provences, on='Provence', how='left')
+        temp = pd.merge(self.Troops[self.Troops['Regent']==Regent][['Provence']], temp, on='Provence', how='left')
+        temp = temp[temp['Castle']>0]
         success = False
         reward = 0
-        message = 'Lacks the resources to cast Legion of the Dead'
+        message = '{} lacks the resources to cast "Raze"'.format(caster)
         
         RP = self.Regents[self.Regents['Regent']==Regent]['Regency Points'].values[0]
         RB = self.Regents[self.Regents['Regent']==Regent]['Regency Bonus'].values[0]
@@ -5750,26 +5765,23 @@ class Regency(object):
         Level = self.Regents[self.Regents['Regent']==Regent]['Level'].values[0]
         
         if temp.shape[0] > 0 and RP >= 10 and GB >= 2:
-            temp = pd.merge(self.Troops[self.Troops['Regent']=='Regent'][['Provence']], self.Provences[self.Provences['Regent']==Target], on='Provence', how='left')
-            temp = temp[temp['Castle']>0]
-            if temp.shape[0]>0:  # I have troops where an enemy has a castle
-                Level = temp.iloc[0]['Castle']
-                dmg = 0
-                for i in range(Level):
-                    if RP >= 10 and GB >= 2:
-                        dmg += 1
-                        RP = RP - 10
-                        GB = GB - 2
-                save, _ = self.make_roll(Target, 10+RB, 'Regency Bonus')
-                if save == True:
-                    dmg = int(dmg/2)
-                    if dmg == 0:
-                        dmg = 1
-                self.change_provence(temp.iloc[0]['Provence'], Castle = Level - dmg)
-                self.change_regent(Regent, Gold_Bars = GB, Regency_Points = RP)
-                success = True
-                reward = dmg*5
-                message = "{} cast 'Raze' on {}".format(self.Regents[self.Regents['Regent']==Regent].copy(), temp.iloc[0]['Castle Name'])
+            Level = temp.iloc[0]['Castle']
+            dmg = 0
+            for i in range(Level):
+                if RP >= 10 and GB >= 2:
+                    dmg += 1
+                    RP = RP - 10
+                    GB = GB - 2
+            save, _ = self.make_roll(self.Provences[self.Provences['Provence']==Target]['Regent'].values[0], 10+RB, 'Regency Bonus')
+            if save == True:
+                dmg = int(dmg/2)
+                if dmg == 0:
+                    dmg = 1
+            self.change_provence(temp.iloc[0]['Provence'], Castle = Level - dmg)
+            self.change_regent(Regent, Gold_Bars = GB, Regency_Points = RP)
+            success = True
+            reward = dmg*5
+            message = "{} cast 'Raze' on '{}' in {}".format(caster, temp.iloc[0]['Castle Name'],Target)
         return success, reward, message 
             
     def realm_magic_stronghold(self, Regent, Provence, Perm=False):
@@ -5790,6 +5802,7 @@ class Regency(object):
         10 years. It will not destroy itself if the caster is later killed or dies of 
         natural causes.
         '''
+        caster = self.Regents[self.Regents['Regent']==Regent]['Full Name'].values[0]
         temp = self.Holdings[self.Holdings['Regent'] == Regent].copy()
         temp = temp[temp['Type']=='Source'][['Type', 'Level', 'Provence']]
         temp = temp[temp['Level']>=7]
@@ -5797,13 +5810,12 @@ class Regency(object):
         temp = temp[temp['Provence']==Provence]
         success = False
         reward = 0
-        message = 'Lacks the resources to cast Stronghold'
+        message = "Lacks the resources to cast 'Stronghold'"
         
         RP = self.Regents[self.Regents['Regent']==Regent]['Regency Points'].values[0]
         RB = self.Regents[self.Regents['Regent']==Regent]['Regency Bonus'].values[0]
         GB = self.Regents[self.Regents['Regent']==Regent]['Gold Bars'].values[0]
         Level = self.Regents[self.Regents['Regent']==Regent]['Level'].values[0]
-        
         if temp.shape[0] > 0 and RP >= 6 and GB >= 10:
             temp = self.Provences[self.Provences['Provence']==Provence].copy()
             if temp.shape[0]>0:
@@ -5819,10 +5831,26 @@ class Regency(object):
                             RP = RP - 12
                             castle += 1
                 if castle > 0 :
-                    self.change_provence(Provence, Castle=castle)
+                    # Name
+                    name = self.Provences[self.Provences['Provence']==Provence]['Castle Name'].values[0]
+                    if name == '':
+                            t1 = pd.read_csv('csv/castle_pre.csv')
+                            t2 = pd.read_csv('csv/castle_post.csv')
+                            t1['roll'] = np.random.randint(1,t1.shape[0]+1,t1.shape[0])
+                            t2['roll'] = np.random.randint(1,t2.shape[0]+1,t2.shape[0])
+                            t1 = t1.sort_values('roll')
+                            t2 = t2.sort_values('roll')
+                            name = t1['Name'].values[0]+t2['End'].values[0]
+                            name = name.replace('_',' ').replace('PPP',caster).title().replace("'S","'s")
+                    if Perm == True:           
+                        type = 'permanent' 
+                    else:
+                        type = 'temporary'
+                        name = name + " (Leomund's Massive Fortitfication')"
+                    self.change_provence(Provence, Castle=castle, Castle_Name=name)
                     success = True
                     reward = castle*5
-                    message = "{} cast 'Stronghold' in {}.".format(self.Regents[self.Regents['Regent']==Regent]['Full Name'].values[0], Provence)
+                    message = "{} cast 'Stronghold' in {} creating '{}', a level {} {} castle.".format(caster, Provence, name, castle, type)
                     if Perm == False:
                         self.Projects = self.Projects.append(pd.DataFrame([[Regent, 'Realm Magic Stronghold', (Provence, castle), Level*3]], columns=self.Projects.keys()))
             self.change_regent(Regent, Gold_Bars = GB - 10, Regency_Points=RP)
@@ -6402,13 +6430,16 @@ class Regency(object):
             elif row['Project Type'] == 'Realm Magic Stronghold':  # destroy the castle
                 castle = self.Provences[self.Provences['Provence']==row['Details'][0]].iloc[0]['Castle']
                 self.change_provence(row['Details'][0], Castle=castle - row['Details'][1] )
+                if self.Provences[self.Provences['Provence']==row['Details'][0]].iloc[0]['Castle'] == 0:
+                    self.change_provence(row['Details'][0], Castle_Name='' )
+                else:
+                    self.change_provence(row['Details'][0], Castle_Name=self.Provences[self.Provences['Provence']==row['Details'][0]].iloc[0]['Castle Name'].str.replace(" (Leomund's Massive Fortification)", ''))
             elif row['Project Type'] == 'Troop Permissions':
                 self.add_relationship(row['Regent'], row['Details'], Vassalage=-1)
             elif row['Project Type'] == 'Build Ship':
                 self.add_ship(row['Regent'], row['Details'][1], row['Details'][0], row['Details'][2])
             elif row['Project Type'] == 'Muster Troops':
-                self.add_troops(row['Regent'], row['Details'][0], row['Details'][1], Home=row['Details'][2])
-                       
+                self.add_troops(row['Regent'], row['Details'][0], row['Details'][1], Home=row['Details'][2])         
         # garrisoned/recently recruited Troops
         temp = self.Troops[self.Troops['Garrisoned']==1].copy()
         # free 'em all
