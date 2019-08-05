@@ -3523,7 +3523,6 @@ class Regency(object):
                 return [Regent, actor, Type, 'realm_magic_stronghold', decision, '', high_pop, '', '',  success, reward, state, False, message] 
         # realm_magic_stronghold_low_pop_perm
         elif decision[70] == 1: 
-            print(70, Regent, high_pop, state[3], state[37], state[94], state[95], state[12], state[6], state[23], state[28], state[111])
             if state[3]==1 or state[37]==0 or state[94]==1 or state[95]==1 or state[13]==0 or state[6]==0 or state[23]==0 or state[28]==0 or state[111]==0:
                 return [Regent, actor, Type, 'realm_magic_stronghold', decision, '', '', '', '',  False, -10, state, True, '']
             else:
