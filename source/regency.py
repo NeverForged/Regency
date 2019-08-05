@@ -3531,7 +3531,7 @@ class Regency(object):
         # build_ship
         elif decision[71] == 1:
             if state[94]==1:
-                return [Regent, actor, Type, 'build_ship', decision, '', '', '', '',  False, -10, state, True, '']
+                return [Regent, actor, Type, 'build_ship', decision, '', '', '', '',  False, -1, state, True, '']
             else:
                 # what type and where
                 temp = pd.concat([self.Provences[self.Provences['Regent']==Regent][['Provence']]
@@ -3559,6 +3559,38 @@ class Regency(object):
                         ships = ships.sort_values('roll', ascending=False)
                         success, reward, message = self.bonus_action_build(Regent, Provence, Ship = ships.iloc[0]['Ship'])
                         return [Regent, actor, Type, 'build_ship', decision, '', Provence, '', '',  success, reward, state, False, message]
+        # garrison_troops_capital
+        elif decision[72] == 1 or decision[73] == 1 or decision[74] == 1:  # 72, capital/high_pop/low_pop, [troops, provences]
+            print('garrison', Regent, state[23], state[44], state[112])
+            Target = ''
+            if decision[72] == 1:
+                if state[23]== 0 or state[44] == 0 or state[112] == 0:
+                    return [Regent, actor, Type, 'garrison_troops_capital', decision, '', '', '', '',  False, -1, state, True, '']
+                else:
+                    Target = capital
+            if decision[73] == 1:
+                if state[23]== 0 or state[44] == 0 or state[113] == 0:
+                    return [Regent, actor, Type, 'garrison_troops_high_pop', decision, '', '', '', '',  False, -1, state, True, '']
+                else:
+                    Target = high_pop
+            elif decision[74] == 1:
+                if state[23]== 0 or state[44] == 0 or state[114] == 0:
+                    return [Regent, actor, Type, 'garrison_troops_low_pop', decision, '', '', '', '',  False, -1, state, True, '']
+                else:
+                    Target = low_pop
+            
+            if len(troops) == 0 or len(provences) == 0:
+                temp = self.Troops[self.Troops['Regent']==Regent]
+                temp['roll'] = np.random.randint(1,6,temp.shape[0]) + temp['CR'] + 10*(temp['Provence'] == capital)
+                temp = temp.sort_values('roll', ascending=False)
+                space = self.Provences[self.Provences['Provence']==capital]['Castle'].values[0]
+                space = space - np.sum(temp[temp['Provence']==capital]['Garrisoned'])
+                print(space)
+                for a in range(space):
+                    troops.append(temp['Type'].values[a])
+                    provences.append(temp['Provence'].values[a])
+            success, reward, message = self.bonus_action_move_troops(Regent, troops, provences, Target, 1)
+            return [Regent, actor, Type, 'garrison_troops', decision, '', Target, '', '',  success, reward, state, False, message]
         # Nothing Doin'
         else:
             return [Regent, actor, Type, 'None/Error', decision, '', '', '', '', False, 0, state, False, 'Error: No Action Returned']
@@ -4219,7 +4251,7 @@ class Regency(object):
             message =  '{} hired {} as a Lieutenant'.format(self.Regents[self.Regents['Regent']==Regent]['Full Name'].values[0], Name)
         return success, 5, message
         
-    def bonus_action_move_troops(self, Regent, Troops, Provence, Target):
+    def bonus_action_move_troops(self, Regent, Troops, Provence, Target, Garrison=0):
         '''
         Type: Bonus
         Base Cost: 1 GB
@@ -4312,9 +4344,15 @@ class Regency(object):
                             temp = self.Troops[self.Troops['Regent'] == Regent]
                             temp = temp[temp['Provence']==Provence[i]]
                             temp = temp[temp['Type'] == unit]
-                            self.Troops.ix[temp.index[0], 'Provence'] = Target
+                            temp = temp[temp['Garrisoned']==0]
+                            self.disband_troops(row['Regent'], row['Provence'], row['Type'], Killed=False, Real=False)
+                            self.add_troops(row['Regent'], Target, row['Type'], row['Home'], Garrisoned=Garrison, Injury=row['Injury'])
+                            
+        end_bit = '.'
+        if Garrison == 1:
+            end_bit = ' to Garrison in "{}".'.format(self.Provences[self.Provences['Provence']==Target]['Castle Name'].values[0])
         self.change_regent(Regent, Gold_Bars = self.Regents[self.Regents['Regent']==Regent]['Gold Bars'].values[0] - int(points/10))
-        return True, len(Troops), '{} moved {} to {}'.format(self.Regents[self.Regents['Regent'] == Regent]['Full Name'].values[0], ', '.join(Troops), Target)
+        return True, len(Troops), '{} moved {} to {}{}'.format(self.Regents[self.Regents['Regent'] == Regent]['Full Name'].values[0], ', '.join(Troops), Target, end_bit)
         
     def bonus_action_muster_armies(self, Regent, Troops, Provences):
         '''
@@ -4357,7 +4395,9 @@ class Regency(object):
         # Garrisoned = 1
         # make sure they can muster the troop...
         mustered = []
-        for i, Type in enumerate(Troops):
+        i = -1
+        for j, Type in enumerate(Troops):
+            i +=1
             temp = self.troop_units[self.troop_units['Unit Type']==Type]
             if 'Mercenary' not in Type or 'Levies' not in Type:
                 temp = temp[temp['Type'] == self.Regents[self.Regents['Regent']==Regent]['Race'].values[0]]
@@ -6692,7 +6732,7 @@ class Regency(object):
         if Culture == 'A':  # Anuirean
             names = 'Adaere, Aedric, Aeric, Agelmore, Anphelan, Ansen, Anuvier, Arlen, Arvuor, Bannier, Blaede, Boeric, Brosen, Caelan, Caern, Colier, Carel, Carilon, Coradan, Daene, Dietric, Droene, Duraend, Elamien, Eldried, Foerde, Friemen, Gaelin, Gavin, Hadrien, Halmied, Landen, Liemen, Moerel, Moergan, Mourde, Noelen, Norvien, Oeren, Oervel, Onwen, Parniel, Pierden, Raesene, Raenwe, Riegon, Ruinil, Ruormad, Shaemes, Shaene, Stiele, Tannen, Torele, Trevan, Vaesil, Vordhuine, Adrien, Aerona, Aithne. Arwen, Aubrae, Baele, Blaese, Briende, Caliendre, Cariene, Cristier, Darnae, Dierdren, Donele, Erin, Etiene, Faelan, Fhiele, Friede, Gael, Ghesele, Gwenevier, Halie, Idele, Ivinie, Jadrien, Laera, Laile, Lauriel, Loeren, Maesene, Marlae, Mieve, Morwe, Niela, Noeva, Oerwinde, Paeghen, Ranele, Raesa, Renae, Rieva, Ruimiele, Saebra, Savane, Seriena, Shannen, Tieghan, Rainer, Wimunt, Guian, Fulke, Azelma, Fresende, Arlette, Jeulie, Hawise, Hugbert, Anthoine, Jean, Osmund, Berthille, Jehanne, Adile, Molle, Laurent, Boemund, Madeleine, Aveline, Aaliz, Colas, Drogue, Albreid, Lina, Maria, Isabel, Ezilda, Suzanne, Herluin, Edelmir, Gilles, Haelfreid'.split(', ')
         elif Culture == 'B' or Culture == 'Br':  # Brecht
-            names = 'Adler, Alaric, Albrecht, Alden, Alford, Ansell, Bertram, Bram, Brand, Britter, Calder, Darold, Dekker, Dirk, Edsel, Eldred, Everard, Frederick, Garth, Gunther, Harold, Helmet, Hugo, Hubert, Karl, Kiel, Konrad, Kort, Kurt, Luther, Martel, Otto, Pieter, Richard, Siegfried, Tanbert, Victor, Wilhelm, Adele, Alberta, Alfreda, Alisse, Aloise, Averil, Arden, Arlinda, Belinda, Brenda, Delma, Edlin, Elma, Elsa, Emma, Frederica, Gretchen, Griselda, Heidi, Helga, Hilda, Ilse, Irma, Katherine, Matilda, Melisande, Selma, Sirena, Thelma, Wlma'.split(', ')
+            names = 'Adler, Alaric, Albrecht, Alden, Alford, Ansell, Bertram, Bram, Brand, Britter, Calder, Darold, Dekker, Dirk, Edsel, Eldred, Everard, Frederick, Garth, Gunther, Harold, Helmet, Hugo, Hubert, Karl, Kiel, Konrad, Kort, Kurt, Luther, Martel, Otto, Pieter, Richard, Siegfried, Tanbert, Victor, Wilhelm, Adele, Alberta, Alfreda, Alisse, Aloise, Averil, Arden, Arlinda, Belinda, Brenda, Delma, Edlin, Elma, Elsa, Emma, Frederica, Gretchen, Griselda, Heidi, Helga, Hilda, Ilse, Irma, Katherine, Matilda, Melisande, Selma, Sirena, Thelma, Wilma'.split(', ')
         elif Culture == 'R' or Culture == 'Rj':  # Rjurik
             names = 'Abeodan, Abrecan, Aella, Aethelbald, Aethelbjorht, Adalbjorht, Adalhard, Aethelhere, Aethelwold, Aethelwulf, Agdi, Agiefan, Agnar, Aiken, Aldbjorht, Aldfrith, Aldred, Aldwulf, Almund, Alrek, Alvin, Alwalda, An, Amalwin, Anders, Angantyr, Anhaga, Anwaelda, Aran, Archibald, Aric, Armrod, Arnfinn, Arngrim, Asmund, Atli, Auda, Audric, Awiergan, Axel, Baldlice, Bard, Barri, Beiti, Bild, Bern, Bernhard, Beowulf, Bjorhtwald, Bjorhtrek, Bjarkmar, Bjorn, Boden, Borg, Borgar, Brodric, Bosi, Brand, Brynjolf, Budli, Bui, Ceolfrith, Ceolred, Ceolwuld, Cuthbjorht, Cuthwin, Cynric, Dane, Drott, Eadbald, Eardwulf, Eberhard, Ecgfrith, Eddval, Edric, Einar, Egil, Egbjorht, Egfrid, Einar, Eirik, Eitil, Emmon, Eric, Eorp, Eorpwald, Eylimi, Eyolf, Eystein, Fafnir, Fardolf, Finnbogi, Fjolmod, Fjolvar, Fjori, Franmar, Frans, Freki, Fridleif, Frithjof, Frodi, Frodrek, Frosti, Fulbjorht, Fyri, Gardar, Gauk, Gauti, Gautrek, Geirmund, Geirrod, Geirthjof, Geomar, Gerold, Gilling, Gjuki, Glammad, Godric, Gothorm, Gunnar, Gunnbjorn, Guntbald, Gust, Guthorm, Hadding, Haeming, Hafgrim, Hagal, Hak, Haki, Hakon, Halfdan, Haltigar, Hamal, Hamdir, Harald, Hardrad, Harek, Hauk, Havard, Hedin, Hegibjorht, Heidrek, Heimir, Helgi, Hendrek, Herbjorn, Hererinc, Heretoga, Hertholf, Hervard, Hildigrim, Hjalmar, Hjalprek, Hjordmund, Hjorleif, Hjorolf, Hjorvard, Hlodvard, Hlodver, Hlothver, Hodbrodd, Hogni, Hoketil, Holmgeir, Holt, Hosvir, Hrefknel, Hrani, Hreggvid, Hring, Hroar, Hrodmar, Hroi, Hrolf, Hrollaug, Hrosskel, Hrotti, Hunding, Hunthjof, Hymling, Idmund, Illugi, Imsigull, Ingjald, Ingram, Ivar, Jan, Jarnskeggi, Jokul, Joris, Jormunrek, Karel, Kareloman, Kenric, Ketil, Kjar, Knui, Kol, Krabbi, Kraki, Lars, Leif, Lodevjek, Mathfrid, Meginhard, Melnir, Neri, Nordbjorht, Odd, Odolf, Olaf, Olvir, Orkning, Orr, Osmund, Osric, Oswald, Otgar, Otrygg, Ottar, Pieter, Poul, Raevil, Rainer, Raknar, Ref, Rennir, Rikhard, Rodstaff, Rolf, Rudolf, Runolf, Saemund, Sigmund, Sigurd, Sihtric, Sinfjotli, Sirnir, Sjolf, Skuli, Skuma, Slagfid, Smid, Snaeulf, Snaevar, Snidil, Snorri, Sorkvirm Sorli, Soti, Starkad, Steinthor, Storm, Storvirk, Styr, Svafnir, Svafrlami, Svart, Sven, Svidi, Svip, Thjobald, Thjodor, Thjodrek, Thor, Thord, Thorfinn, Thorgeir, Thorir, Thormod, Thorstein, Thrand, Thvari, Tind, Toki, Tryfing, Ulf, Ulfhedin, Vidgrip, Vignar, Vikar, Vilhjelm, Vilfrid, Visin, Volund, Vulfhere, Vulfric, Vulfrum, Yngvi, Ada, Adelind, Aesa, Alfhild, Alof, Anneke, Arnora, Asa, Aslaug, Astrid, Aud, Bekkhild, Bera, Bestla, Birditta, Bodvild, Borghild, Borgny, Brandi, Brynhild, Busla, Dagmar, Dagny, Dana, Eadith, Edda, Edny, Elke, Emila, Etta, Eyfura, Fjotra, Freya, Freydis,Galumvor, Geirrid, Geralda, Gerta, Gisela, Gjaflaug, Greta, Grimhild, Groa, Gudrid, Gudrun, Gullrond, Halldis, Hallfrid, Hallveig, Hedda, Hekja, Helga, Herborg, Herkja, Hervor, Hildigunn, Hildirid, Hjordis, Hjotra, Hleid, Hrafnhild, Hrodrglod, Inga, Ingibjorg, Ingigerd, Ingrid, Isgerd, Jannika, Kallan, Kara, Karela, Karelina, Karena, Kay, Kolina, Kolfrosta, Kostbera, Leoda, Linna, Lofnheid, Lofthaena, Lyngheid, Nauma, Malena, Oddrun, Olga, Olvor, Ragnhild, Rana, Rowena, Rjbekka, Saereid, Sigrid, Sigrlinn, Silksif, Sinrjod, Skjalf, Solvig, Svanhvit, Swanhild, Sylgja, Thjodhild, Thorgerd, Thorunn, Throa, Thurid, Tofa, Ulrika, Unn, Uta, Vaetild, Velda, Yrsa'.split(', ')
         elif Culture == 'V' or Culture == 'Vo':  #Vosgaard
@@ -6709,7 +6749,7 @@ class Regency(object):
                     for c in last:
                         names.append(a + ' ' + b + c)
         elif Culture == 'E':
-            names = 'Aedan, Aed, Ailbhe, Ailill, Ailin, Aingael, Aislin, Aithne, Allanleigh (al-LAN-lay), Ardghal, Barreight, Biorach, Blathnat, Brigh, Bronach, Bruibevann, Braedonnal, Byrnwbhie (BUR-noo-vee), Cadgwogawn, Caelcormac, Caellach, Cairbre, Calraath, Caoilfhionn, Caoimhin, Caolan, Cathair, Cathal, CathAn, Cearbhall, Ceincorinn, Cian, Ciardha, ColmAn, Conall, Conan, Conchobhar, Conlaed, Conleth, Connal, Conri, Conannelaght (koh-NAN-ne-lach), Corvwyn, Comhghan, Cormac, Cuan, Cuchulainn, Daegandal, Deaglan, Daire, Daithi, Dalaigh, Damhain, Dara, Darochinn, Delwynndwn (del-WIN-doon), Derwyndal, DeoradhAin, Devlyn, Donnachaidh, Donnabhain, Dubhghall (doy-al), Dubhghlas, Eachann, Eagandigh, Eamonnal, Eidirsceoil, Erghwen, Fiellnn, Finn, Fionnbharr, Gannelganwn (gan-nel-gan-NOON), Garradh, Glyngrean, Lachlan, Lynn, Merwyndin, Morgan, Niall (NYE-ull), Rhannoch, Rhaal, Rhys, Riordan, Seabharinn (she-VAR-in), Siele, Sliebheinn (slay-VEEN), Talerdigh, Tuall, Ailien, Alliena, Ardenna, Ashleight, Audreeana, Breeana, Brigyte, Briona, Bronwyn, Caitlannagh (kate-LAN-nay), Camrynnyd, Caileight, Dannagh, Deirdre, Duana, Erinn, Fiona, Finnegwyn, Glynna, Gwenyth, Gwenneigr (gwen-NEER), Iyaell, Leeana, Llewellyn, Mawrmaval (MOOR-ma-val), Maeghan, Maebhe, Mhiellwynn, Niobhe, Nysneirdre (nis-NEER-drey), Rhiannon, Rhondal, Rhuann, Shielynn, Sinead (she-NAYD), Siobhan (sheh-VAWN), Tuanala'.split(', ')
+            names = 'Aedan, Aed, Ailbhe, Ailill, Ailin, Aingael, Aislin, Aithne, Allanleigh (al-LAN-lay), Ardghal, Barreight, Biorach, Blathnat, Brigh, Bronach, Bruibevann, Braedonnal, Byrnwbhie (BUR-noo-vee), Cadgwogawn, Caelcormac, Caellach, Cairbre, Calraath, Caoilfhionn, Caoimhin, Caolan, Cathair, Cathal, CathAn, Cearbhall, Ceincorinn, Cian, Ciardha, Colman, Conall, Conan, Conchobhar, Conlaed, Conleth, Connal, Conri, Conannelaght (koh-NAN-ne-lach), Corvwyn, Comhghan, Cormac, Cuan, Cuchulainn, Daegandal, Deaglan, Daire, Daithi, Dalaigh, Damhain, Dara, Darochinn, Delwynndwn (del-WIN-doon), Derwyndal, DeoradhAin, Devlyn, Donnachaidh, Donnabhain, Dubhghall (doy-al), Dubhghlas, Eachann, Eagandigh, Eamonnal, Eidirsceoil, Erghwen, Fiellnn, Finn, Fionnbharr, Gannelganwn (gan-nel-gan-NOON), Garradh, Glyngrean, Lachlan, Lynn, Merwyndin, Morgan, Niall (NYE-ull), Rhannoch, Rhaal, Rhys, Riordan, Seabharinn (she-VAR-in), Siele, Sliebheinn (slay-VEEN), Talerdigh, Tuall, Ailien, Alliena, Ardenna, Ashleight, Audreeana, Breeana, Brigyte, Briona, Bronwyn, Caitlannagh (kate-LAN-nay), Camrynnyd, Caileight, Dannagh, Deirdre, Duana, Erinn, Fiona, Finnegwyn, Glynna, Gwenyth, Gwenneigr (gwen-NEER), Iyaell, Leeana, Llewellyn, Mawrmaval (MOOR-ma-val), Maeghan, Maebhe, Mhiellwynn, Niobhe, Nysneirdre (nis-NEER-drey), Rhiannon, Rhondal, Rhuann, Shielynn, Sinead (she-NAYD), Siobhan (sheh-VAWN), Tuanala'.split(', ')
         elif Culture == 'D':
             first = 'Barrendd, Born, Brottor, Eberk, Einkil, Glarin, Oin, Olin, Taklinn, Thorin, Traubon, Uhr, Ulfgar, Tveit, Artin, Aulhil, Dargha, Dagnal, Diesa, Gunnloda, Hiln, Ilde, Liftrasa, Sannl, Trogga'.split(', ')
             fam = 'Baldrek, Dankil, Gorunn, Holderhek, loderr, Lutgehr, Rumnaheim, Strakeln, Torunn, Ungart'.split(', ')

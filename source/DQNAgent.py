@@ -26,8 +26,8 @@ class DQNAgent(object):
         self.agent_predict = 0
         self.learning_rate = 0.0005
         
-        self.action_size = 112
-        self.action_choices = 72
+        self.action_size = 115
+        self.action_choices = 75
         
         # different models for different decisions
         self.tax_model = self.network(N=4, K=25)
@@ -660,6 +660,20 @@ class DQNAgent(object):
             state[110] = 1 # can stronghold spell high_pop
         if temp[temp['Provence']==low_pop].shape[0]>0:
             state[111] = 1 # can stronghold spell low_pop
+            
+        if state[23] > 0:
+            temp = pd.merge(Game.Provences[Game.Provences['Regent']==Regent][Game.Provences['Castle']>0]
+                    , Game.Troops[Game.Troops['Regent']==Regent], on='Provence', how='left')
+            temp = temp[['Provence','Castle','Type','Garrisoned']]
+            temp = temp.groupby(['Provence','Castle']).sum().reset_index()
+            if temp.shape[0]>0:
+                temp['Garrison Space'] = temp['Castle'] - temp['Garrisoned']
+                temp = temp[temp['Garrison Space']>0]
+                if temp.shape[0]>0:
+                    for i, a in enumerate([capital, high_pop, low_pop]):
+                        if temp[temp['Provence']==a].shape[0]>0:
+                            state[112+i] = 1  # capital/high_pop/low_pop has space for Garrisoned Troops
+            
         return np.asarray(state), capital, high_pop, low_pop, friend, enemy, rando, enemy_capital
         
         
