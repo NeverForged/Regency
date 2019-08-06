@@ -643,8 +643,6 @@ class Regency(object):
         '''
         None = not changed
         '''
-        
-        
         old = self.Provences[self.Provences['Provence'] == Provence]
         if old.shape[0]>0:
             if Regent == None:
@@ -727,13 +725,12 @@ class Regency(object):
                 if Magic > sp:
                     Magic = sp
                 # change Holding Levels
-                old_check = 9000
                 for i, a in enumerate(['Law', 'Guild', 'Temple', 'Source']):
                     against = [Population, Population, Population, Magic][i]
                     temp = self.Holdings[self.Holdings['Provence']==Provence].copy()
                     temp = temp[temp['Type']==a][temp['Level']>0]
                     check = np.sum(temp['Level'])
-                    while check > against and temp.shape[0]>0:
+                    while check > against and check > 0 and temp.shape[0]>0:
                         temp = self.Holdings[self.Holdings['Provence']==Provence].copy()
                         temp = temp[temp['Type']==a].copy()
                         temp = temp[temp['Level']>0].copy()  # no point adjusting 0-level holdings  
@@ -741,12 +738,10 @@ class Regency(object):
                         '''
                         If a province's ratings change in such a way as to make the current holding levels in the province illegal, then the holding levels must be immediately adjusted. The affected regent should be determined randomly in proportion to the number of holdings held.
                         '''
-                        if check > against:      
+                        if check > against and temp.shape[0]>0:      
                             temp['Roll'] = np.random.randint(1,check+temp.shape[0],temp.shape[0]) + temp['Level']
                             temp = temp.sort_values(['Contested', 'Roll'], ascending=False)
                             self.change_holding(Provence, temp['Regent'].values[0], a, Level=temp['Level'].values[0]-1)
-                            old_check = check
-            
             if Taxation == None:
                 Taxation = old['Taxation'].values[0]
             if Magic <= 0:
@@ -1127,6 +1122,12 @@ class Regency(object):
         Threshold: Likliehood that an NPC gets an event
         Regions = a list of regions to restrict to
         '''
+        try:
+            if self.Action >= 4:
+                self.Action = 1
+                self.Season = self.Season + 1
+        except:
+            print('New Game?')
         override = self.random_override.copy()
         if Threshold < 1:  # flaot to int
             Threshold = int(100*Threshold)
@@ -2096,7 +2097,7 @@ class Regency(object):
         df = pd.concat([df, temp[['Regent', 'Revenue']]], sort=False)
         
         # 4.7 occupation and Pillaging
-        # CODE NEEDED HERE
+        # Is included below in War Moves
 
         # figure it all out
         df = df.groupby('Regent').sum().reset_index()
@@ -2991,10 +2992,10 @@ class Regency(object):
                 temp = pd.merge(temp_[['Provence']], temp, on='Provence', how='left')
                 if temp.shape[0] < 1:
                     return [Regent, actor, Type, 'muster_levies', decision, '', '', '', '',  False, -1, state, True, '']  
-                else:
-                    temp = pd.merge(temp, self.Troops[self.Troops['Regent'] != Regent][['Provence', 'CR']].groupby('Provence').sum().reset_index(), on='Provence', how='left').fillna(0)
-                    temp = temp.sort_values('CR', ascending=False)  # raise levies in attacked provences if possible
-                    provences = [temp.iloc[0]['Provence'] for a in range(temp.iloc[0]['Level'])]
+                
+                temp = pd.merge(temp, self.Troops[self.Troops['Regent'] != Regent][['Provence', 'CR']].groupby('Provence').sum().reset_index(), on='Provence', how='left').fillna(0)
+                temp = temp.sort_values('CR', ascending=False)  # raise levies in attacked provences if possible
+                provences = [temp.iloc[0]['Provence'] for a in range(temp.iloc[0]['Level'])]
             temp = self.Holdings[self.Holdings['Type']=='Law']
             temp = temp[temp['Regent']==Regent]
             if len(provences) > temp[temp['Provence']==provences[0]]['Level'].values[0]:
@@ -3338,7 +3339,6 @@ class Regency(object):
                 return [Regent, actor, Type, 'establish_trade_route_friend', decision, friend, '', provences[0], provences[1],  success, reward, state, False, message]
             else:
                 return [Regent, actor, Type, 'establish_trade_route_rando', decision, rando, '', provences[0], provences[1],  success, reward, state, False, message]
-
         # Realm Magic - Alchemy-self
         elif decision[54] == 1:  # 54
             if state[3]==1 or state[37]==0 or state[95]==1:
@@ -3590,10 +3590,10 @@ class Regency(object):
                 temp = temp.sort_values('roll', ascending=False)
                 space = self.Provences[self.Provences['Provence']==capital]['Castle'].values[0]
                 space = space - np.sum(temp[temp['Provence']==capital]['Garrisoned'])
-                print(space)
                 for a in range(space):
-                    troops.append(temp['Type'].values[a])
-                    provences.append(temp['Provence'].values[a])
+                    if a <= temp.shape[0]-1:
+                        troops.append(temp['Type'].values[a])
+                        provences.append(temp['Provence'].values[a])
             success, reward, message = self.bonus_action_move_troops(Regent, troops, provences, Target, 1)
             return [Regent, actor, Type, 'garrison_troops', decision, '', Target, '', '',  success, reward, state, False, message]
         # ungarrison troops
@@ -6490,9 +6490,10 @@ class Regency(object):
                 self.row = row['Details']
                 self.add_geo(row['Details'][0], row['Details'][1], Road=1)
             elif row['Project Type'] == 'Undead Troops':  # disband the troops
-                tfinder = self.Troops[self.Troops['Regent']==row['Regent']].copy()
-                prov = tfinder[tfinder['Type']=='Undead Troops'].iloc[0]['Provence']
-                self.disband_troops(row['Regent'], prov, 'Undead Troops', Killed=False)
+                tfinder = self.Troops[self.Troops['Regent']==row['Regent']][self.Troops['Type']=='Undead Troops'].copy()
+                if tfinder.shape[0]>0:
+                    prov = tfinder.iloc[0]['Provence']
+                    self.disband_troops(row['Regent'], prov, 'Undead Troops', Killed=False)
             elif row['Project Type'] == 'Realm Magic Stronghold':  # destroy the castle
                 castle = self.Provences[self.Provences['Provence']==row['Details'][0]].iloc[0]['Castle']
                 self.change_provence(row['Details'][0], Castle=castle - row['Details'][1] )
