@@ -27,7 +27,7 @@ class DQNAgent(object):
         self.learning_rate = 0.0005
         
         self.action_size = 115
-        self.action_choices = 75
+        self.action_choices = 76
         
         # different models for different decisions
         self.tax_model = self.network(N=4, K=25)
@@ -233,7 +233,6 @@ class DQNAgent(object):
                 high_pop = capital
                 low_pop = capital
             provences_i_care_about = [capital, high_pop, low_pop]
-            
             if over != None:  # Override!
                 if over[1] != None:
                     capital = over[1]
@@ -242,7 +241,6 @@ class DQNAgent(object):
                 if over[3] != None:
                     low_pop = over[3]
                 provences_i_care_about = [capital, high_pop, low_pop]
-                
             for i, prov in enumerate(provences_i_care_about):
                 if my_provences[my_provences['Provence'] == prov]['Castle'].values[0] == 0:
                     state[26+i] = 1  # capital_no_castle, hih_pop_no_castle, low_pop_no_castle
