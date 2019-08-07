@@ -914,6 +914,22 @@ class Regency(object):
         Remove the regent from regents, Relationships, and holdings
         clear the regent from provences
         '''
+        # memory thing...
+        if self.Train==True:
+            action = self.Action
+            season = self.Season
+            if action >= 4:
+                action = 3
+            temp = self.Seasons[self.Season]['Actions'][action]
+            temp = temp[temp['Regent']==Regent]
+            while temp.shape[0] == 0:
+                action = action -1
+                if action == 0:
+                    action = 3
+                    season = season - 1
+                temp = self.Seasons[season]['Actions'][self.Action]
+            # -100 for being dead.
+            self.agent.remember(temp['State'].values[-1], temp['Decision'].values[-1], -100, temp['Next State'].values[-1], 'Action', True)
         self.Holdings = self.Holdings[self.Holdings['Regent'] != Regent]  # just gone
         self.Provences['Regent'] = self.Provences['Regent'].str.replace(Regent, '')
         self.Relationships = self.Relationships[self.Relationships['Regent'] != Regent]
@@ -1034,7 +1050,8 @@ class Regency(object):
 
         self.Troops = self.Troops.append(pd.DataFrame([[Regent, Provence, Type, temp['Maintenance Cost'].values[0], temp['BCR'].values[0], Garrisoned, Home, Injury]]
                                                       , columns=['Regent', 'Provence', 'Type', 'Cost', 'CR', 'Garrisoned', 'Home', 'Injury']), ignore_index=True)
-        self.Troops = self.Troops.reset_index(drop=True)
+        self.Troops = self.Troops.reset_index()
+        self.Troops = self.Troops[['Regent', 'Provence', 'Type', 'Cost', 'CR', 'Garrisoned', 'Home', 'Injury']]
         
     def disband_troops(self, Regent, Provence, Type, Killed=False, Real=True):
         '''
@@ -2361,7 +2378,9 @@ class Regency(object):
                                     # and train it... to prevent future mistakes
                                     self.agent.train_short_memory(state, action, reward, next_state, 'Action', invalid)
                                 else:  # update action vector
-                                    
+                                    # minor rewards are short-term trained...
+                                    self.agent.train_short_memory(state, action, reward, self.agent.get_action_state(row['Regent'], self, None)[0], 'Action', invalid)
+                                    self.agent.remember(state, decision,0, self.agent.get_action_state(row['Regent'], self, None)[0], 'Action', invalid)
                                     self.Seasons[self.Season]['Actions'][self.Action].loc[index] = [Regent, Actor, Action_Type, action, Decision, Target_Regent, Provence, Target_Provence, Target_Holding, Success, reward, State, invalid, Message, self.agent.get_action_state(row['Regent'], self, None)[0]]
                             
                     self.Bonus = 0
@@ -2411,10 +2430,14 @@ class Regency(object):
                 if self.Season == self.GameLength-1 and self.Action==3:
                     self.score_keeper()
                     for q, staterow in self.Seasons[self.Season]['Actions'][self.Action].iterrows():
-                        self.agent.remember(staterow['State'], staterow['Decision'], staterow['Base Reward'] + self.Score[self.Score['Regent']==staterow['Regent']]['Score'].values[0] , staterow['Next State'], 'Action', True)
+                        if self.Score[self.Score['Regent']==staterow['Regent']].shape[0] > 0:
+                            self.agent.remember(staterow['State'], staterow['Decision'], self.Score[self.Score['Regent']==staterow['Regent']]['Score'].values[0] , staterow['Next State'], 'Action', True)
+                    self.agent.save()
                 else:
                     for q, staterow in self.Seasons[self.Season]['Actions'][self.Action].iterrows():
-                        self.agent.remember(staterow['State'], staterow['Decision'], staterow['Base Reward'], staterow['Next State'], 'Action', False)
+                        # self.agent.remember(staterow['State'], staterow['Decision'], staterow['Base Reward'], staterow['Next State'], 'Action', False)
+                        # no reward til end!
+                        self.agent.remember(staterow['State'], staterow['Decision'], 0, staterow['Next State'], 'Action', False)
                 # train
                 self.agent.replay_new('Action')
             if self.Initiative <= np.min(self.Seasons[self.Season]['Season']['Initiative']):
@@ -6793,35 +6816,75 @@ class Regency(object):
         
     def score_keeper(self):
         '''
-        5 points + population + castle per provence
-        holdings level for holdings
-        +10 biggest army
-        +10 biggest navy
-        +100 City of Anuire
+        Score logic below.  Agent is rewarded based on increase in score.
         '''
-        score = self.Regents[['Regent', 'Full Name']]
+        score = self.Regents[self.Regents['Alive']==True][['Regent', 'Full Name', 'Attitude']]
+        # Provences 5 + Population + Castle + 100 if you got City of Anuire
         temp = self.Provences[['Regent', 'Population','Castle', 'Provence']]
         temp['Provence'] = 5 + 100*(temp['Provence']=='City of Anuire')
         temp = temp.groupby('Regent').sum().reset_index()
         score = pd.merge(score, temp, on='Regent', how='left').fillna(0)
+        score['First Score'] = score['Provence']
+
+        # Holdings 3 + Level
         temp = self.Holdings[['Regent', 'Level']]
         temp['Holding'] = 3
         temp = temp.groupby('Regent').sum().reset_index()
         score = pd.merge(score, temp, on='Regent', how='left').fillna(0)
+        score['First Score'] = score['First Score'] + score['Holding']
+
+        # Troops = Army CR/2 or CR if aggressive
         temp = self.Troops.copy()[['Regent', 'CR']].groupby('Regent').sum().reset_index()
-        temp['Troops'] = 10*(temp['CR'] == np.max(temp['CR'])) 
+        temp['Troops'] = (temp['CR']/2)
         temp = temp[['Troops', 'Regent']]
         score = pd.merge(score, temp, on='Regent', how='left').fillna(0)
+        score['First Score'] = score['First Score'] + score['Troops'] + score['Troops']*(score['Attitude']=='Aggressive')
+
+        # Navy = Troop Capacity/2
         temp = self.Navy.copy()[['Regent', 'Troop Capacity']].groupby('Regent').sum().reset_index()
-        temp['Navy'] = 10*(temp['Troop Capacity'] == np.max(temp['Troop Capacity'])) 
+        temp['Navy'] = (temp['Troop Capacity']/2)
         temp = temp[['Navy', 'Regent']]
         score = pd.merge(score, temp, on='Regent', how='left').fillna(0)
-        score['First Score'] = score['Population']+score['Castle']+score['Provence']+score['Holding']+score['Navy']
+        score['First Score'] = score['First Score'] + score['Navy']
+
+        # Roads + Caravan Yield + Shipping Yield (half again if peaceful)
+        temp = pd.merge(self.Geography,self.Provences[['Provence', 'Regent','Population']],on='Provence',how='left')
+        temp_ = self.Provences[['Provence', 'Population']]
+        temp_['Neighbor'] = temp_['Provence']
+        temp_['OPOP'] = temp_['Population']
+        temp = pd.merge(temp, temp_[['Neighbor', 'OPOP']], on='Neighbor', how='left').fillna(0)
+        temp['Caravan'] = temp['Caravan'] * ((temp['Population']+temp['OPOP'])/2).astype(int)
+        temp['Shipping'] = temp['Shipping'] + temp['Shipping'] * ((temp['Population']+temp['OPOP'])/2).astype(int)
+        temp = temp[['Regent', 'Road', 'Caravan', 'Shipping']].groupby('Regent').sum().reset_index()
+        score = pd.merge(score, temp, on='Regent', how='left').fillna(0)
+        score['First Score'] = score['First Score'] + score['Road'] + score['Caravan'] + score['Shipping'] 
+        score['First Score'] = score['First Score'] + ((score['Road']+score['Caravan']+score['Shipping'])/2)*(score['Attitude']=='Peaceful')
+
+        # subtract points for vassalage/forced payment
+        temp = self.Relationships.copy()[['Regent','Payment','Vassalage']].groupby('Regent').sum().reset_index()
+        temp['subserve'] = temp['Payment']+temp['Vassalage']
+        temp = temp[['Regent', 'subserve']]
+        score = pd.merge(score, temp, on='Regent', how='left').fillna(0)
+        score['First Score'] = score['First Score'] - score['subserve'] - (score['subserve']/2)*(score['Attitude']=='Aggressive')
+
+        # add for vassalage and payment
+        temp = self.Relationships.copy()[['Other','Payment','Vassalage']].groupby('Other').sum().reset_index()
+        temp['Regent'] = temp['Other']
+        temp = temp[['Regent', 'Payment','Vassalage']]
+        score = pd.merge(score, temp, on='Regent', how='left').fillna(0)
+        score['First Score'] = score['First Score'] + score['Payment'] + score['Vassalage']
+        score['First Score'] = score['First Score'] + (score['Payment']/2)*(score['Attitude']=='Aggressive')
+        score['First Score'] = score['First Score'] + (score['Vassalage']/2)*(score['Attitude']=='Peaceful')
+
+
+        score['First Score'] = score['First Score'] .astype(int)
         try:
             self.Score.shape[0]
             score['Final Score'] = score['First Score']
-            self.Score = pd.merge(self.Score, score[['Regent','Final Score']], on='Regent',how='left').fillna(0)
+            score[['Regent', 'Full Name', 'Final Score']]
+            self.Score = pd.merge(score[['Regent','Full Name','Final Score']], self.Score[['Regent','First Score']], on='Regent',how='left').fillna(0)
             self.Score['Score'] = self.Score['Final Score'] - self.Score['First Score']
-            # do a thing.
+            self.Score = self.Score.sort_values('Score',ascending=False)
+            print(self.Score.head(10).to_string())
         except:
             self.Score = score[['Regent', 'Full Name', 'First Score']]
