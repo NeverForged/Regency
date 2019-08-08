@@ -26,7 +26,7 @@ class DQNAgent(object):
         self.agent_predict = 0
         self.learning_rate = 0.0005
         
-        self.action_size = 115
+        self.action_size = 116
         self.action_choices = 76
         
         # different models for different decisions
@@ -671,7 +671,20 @@ class DQNAgent(object):
                     for i, a in enumerate([capital, high_pop, low_pop]):
                         if temp[temp['Provence']==a].shape[0]>0:
                             state[112+i] = 1  # capital/high_pop/low_pop has space for Garrisoned Troops
-            
+                            
+        temp = pd.merge(Game.Holdings[Game.Holdings['Regent']==Regent].copy()
+                        , Game.troop_units[Game.troop_units['Unit Type'] == 'Levies'].copy()
+                        , left_on='Type', right_on='Requirements Holdings'
+                        , how='left').fillna(0)
+        temp = temp[temp['Requirements Level']<=temp['Level']]
+        temp = temp[temp['Unit Type'] != 0]
+        temp_ = pd.merge(temp[['Regent', 'Provence']], Game.Provences[['Provence', 'Regent', 'Population']], on=['Provence', 'Regent'], how='left')
+        temp_ = temp_[temp_['Population'] > 0]
+        temp = pd.merge(temp_[['Provence']], temp, on='Provence', how='left')
+        if temp.shape[0]>0:
+            state[115] = 1  # I can recruit levies
+        
+        # save last memory with no reward
         if Game.Train == True and (Game.Season!=0 or Game.Action!=1):
             season = Game.Season
             action = Game.Action - 1
@@ -680,7 +693,10 @@ class DQNAgent(object):
                 action = 3
             temp = Game.Seasons[season]['Actions'][action]
             temp = temp[temp['Regent']==Regent]
-            self.remember(temp['State'].values[0], temp['Decision'].values[0], 0, state, 'Action', False)
+            if temp.shape[0]>0:
+                self.remember(temp['State'].values[0], temp['Decision'].values[0], 0, state, 'Action', False)
+            else:
+                print('missing action')
         return np.asarray(state), capital, high_pop, low_pop, friend, enemy, rando, enemy_capital
         
         
