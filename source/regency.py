@@ -2433,11 +2433,11 @@ class Regency(object):
                         if self.Score[self.Score['Regent']==staterow['Regent']].shape[0] > 0:
                             self.agent.remember(staterow['State'], staterow['Decision'], self.Score[self.Score['Regent']==staterow['Regent']]['Score'].values[0] , staterow['Next State'], 'Action', True)
                     self.agent.save()
-                else:
-                    for q, staterow in self.Seasons[self.Season]['Actions'][self.Action].iterrows():
+                # else:
+                    # for q, staterow in self.Seasons[self.Season]['Actions'][self.Action].iterrows():
                         # self.agent.remember(staterow['State'], staterow['Decision'], staterow['Base Reward'], staterow['Next State'], 'Action', False)
                         # no reward til end!
-                        self.agent.remember(staterow['State'], staterow['Decision'], 0, staterow['Next State'], 'Action', False)
+                        # self.agent.remember(staterow['State'], staterow['Decision'], 0, staterow['Next State'], 'Action', False)
                 # train
                 self.agent.replay_new('Action')
             if self.Initiative <= np.min(self.Seasons[self.Season]['Season']['Initiative']):

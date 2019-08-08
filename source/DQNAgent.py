@@ -672,6 +672,15 @@ class DQNAgent(object):
                         if temp[temp['Provence']==a].shape[0]>0:
                             state[112+i] = 1  # capital/high_pop/low_pop has space for Garrisoned Troops
             
+        if Game.Train == True and (Game.Season!=0 or Game.Action!=1):
+            season = Game.Season
+            action = Game.Action - 1
+            if action == 0:
+                season = season -1
+                action = 3
+            temp = Game.Seasons[season]['Actions'][action]
+            temp = temp[temp['Regent']==Regent]
+            self.remember(temp['State'].values[0], temp['Decision'].values[0], 0, state, 'Action', False)
         return np.asarray(state), capital, high_pop, low_pop, friend, enemy, rando, enemy_capital
         
         
