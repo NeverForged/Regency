@@ -22,15 +22,22 @@ Based on the 5e Conversion of the Regency system from Birthright,
 	
 **DataFrames:**
 
-- **Provences:** *[Provence, Domain, Region, Regent, Terrain, Loyalty, Taxation, 
-				Population, Magic, Castle, Capital, Position]*
-- **Holdings:** *[Provence, Domain, Regent, Type, Level]*
-- **Regents:**  *[Regent, Full Name, Player, Class, Level, Alignment, Race, 
-				Str, Dex, Con, Int, Wis, Cha, Insight, Deception, Persuasion, 
-				Regency Points, Gold Bars, Regency Bonus, Attitude]*
-- **Geography:** *[Provence, Neighbor, Border, Road, Caravan, Shipping]*
-- **Relationship:** *[Regent, Other, Diplomacy, Payment, Vassalage]*
-- **Troops:** *[Regent, Provence, Type, Cost, CR]*
+- **Provences:** *['Provence', 'Domain', 'Region', 'Regent', 'Terrain', 'Loyalty',
+       'Taxation', 'Population', 'Magic', 'Castle', 'Castle Name', 'Capital',
+       'Position', 'Contested', 'Waterway', 'Brigands']*
+- **Holdings:** *['Provence', 'Regent', 'Type', 'Level', 'Contested']*
+- **Regents:**  *['Regent', 'Full Name', 'Bloodline', 'Culture', 'Player', 'Class',
+       'Level', 'Alignment', 'Race', 'Str', 'Dex', 'Con', 'Int', 'Wis', 'Cha',
+       'Insight', 'Deception', 'Persuasion', 'Regency Points', 'Gold Bars',
+       'Regency Bonus', 'Attitude', 'Alive', 'Divine', 'Arcane']*
+- **Geography:** *['Provence', 'Neighbor', 'Border', 'Road', 'Caravan', 'Shipping',
+       'RiverChasm']*
+- **Relationships:** *['Regent', 'Other', 'Diplomacy', 'Payment', 'Vassalage', 'At War',
+       'Trade Permission']*
+- **Troops:** *['Regent', 'Provence', 'Type', 'Cost', 'CR', 'Garrisoned', 'Home',
+       'Injury']*
+- **Navy:** *['Regent', 'Provence','Ship','Hull','Troop Capacity', 'Seaworthiness', 'Name']*
+- **LeyLines:** *['Regent', 'Provence', 'Other']*
 - **Seasons:** A dictionary of season-dataframes (to keep track of what happened)
 - **Lieutenants:** A List of regent-lieutenant pairs
 
@@ -42,3 +49,5 @@ Lifted from [maurock/snake-ga](https://github.com/maurock/snake-ga), this was us
 - Determine how many gold bars to spend on an action
 - Determine how much regency to spend on a thing.
 
+### mapping.py
+This shows maps of the world based on the parameters entered by the user.

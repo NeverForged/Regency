@@ -315,6 +315,36 @@ class Regency(object):
         dct['Requirements Level'].append(99)
         dct['BCR'].append(2)
         
+        # Other Monsters
+        dct['Unit Type'].append('Dragon')
+        dct['Type'].append('Monster')
+        dct['Muster Cost'].append(30)
+        dct['Maintenance Cost'].append(10)
+        dct['Requirements Holdings'].append('Mercenaries')
+        dct['Requirements Level'].append(0)
+        dct['BCR'].append(15)
+        dct['Unit Type'].append('Giants')
+        dct['Type'].append('Monster')
+        dct['Muster Cost'].append(10)
+        dct['Maintenance Cost'].append(5)
+        dct['Requirements Holdings'].append('Mercenaries')
+        dct['Requirements Level'].append(0)
+        dct['BCR'].append(10)
+        dct['Unit Type'].append('Ogres')
+        dct['Type'].append('Monster')
+        dct['Muster Cost'].append(6)
+        dct['Maintenance Cost'].append(3)
+        dct['Requirements Holdings'].append('Mercenaries')
+        dct['Requirements Level'].append(0)
+        dct['BCR'].append(5)
+        dct['Unit Type'].append('Orog Infantry')
+        dct['Type'].append('Monster')
+        dct['Muster Cost'].append(4)
+        dct['Maintenance Cost'].append(2)
+        dct['Requirements Holdings'].append('Mercenaries')
+        dct['Requirements Level'].append(0)
+        dct['BCR'].append(3)
+        
         # make the table...
         self.troop_units = pd.DataFrame(dct)
         
@@ -1109,7 +1139,8 @@ class Regency(object):
         self.Navy = self.Navy.append(pd.DataFrame([[Regent, Provence, Ship, temp['Hull'].values[0], temp['Troop Capacity'].values[0], temp['Seaworthiness'].values[0], Name]],
                                         columns=['Regent', 'Provence','Ship','Hull','Troop Capacity', 'Seaworthiness', 'Name'])).reset_index(drop=True)[['Regent', 'Provence','Ship','Hull','Troop Capacity', 'Seaworthiness', 'Name']]
         
-    
+        self.Navy = self.Navy[['Regent', 'Provence','Ship','Hull','Troop Capacity', 'Seaworthiness', 'Name']]
+        
     def remove_ship(self, Regent, Provence, Ship, Name=None):
         '''
         Remove a ship from a give place
@@ -3068,9 +3099,12 @@ class Regency(object):
                 if len(troops) == 0 or len(provences) == 0:
                     temp = pd.concat([self.Provences[self.Provences['Regent']==Regent][['Provence']]
                                       , self.Holdings[self.Holdings['Regent']==Regent][['Provence']]], sort=False)
-                    mercs = self.troop_units[self.troop_units['Unit Type'].str.contains('Mercenary')]
+                    mercs = self.troop_units[self.troop_units['Type'].str.contains('Mercenary')]
                     gold = self.Regents[self.Regents['Regent'] == Regent]['Gold Bars'].values[0]
-                    mercs = mercs[mercs['Muster Cost'] <= gold]
+                    if self.Regents[self.Regents['Regent']==Regent]['Class'].values[0] == 'Awnsheghlien':
+                        # allow the Gorgon et all to have dragions and stuff
+                        mercs = pd.concat([mercs, self.troop_units[self.troop_units['Type'].str.contains('Monster')]]).drop_duplicates()
+                    mercs = mercs[mercs['Muster Cost'] <= gold] 
                     if temp.shape[0] < 1 or mercs.shape[0] < 1:
                         return [Regent, actor, Type, 'muster_mercenaries', decision, '', '', '', '',  False, -1, state, True, '']
                     else:
