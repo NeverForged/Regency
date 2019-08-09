@@ -3455,7 +3455,7 @@ class Regency(object):
                                       , self.Holdings[self.Holdings['Regent']==enemy][['Provence', 'Level']]], sort=False).fillna(5)
                         provences = list(set(temp['Provence']))
                     if len(provences) > 4:
-                        provence = provences[:4]
+                        provences = provences[:4]
                     success, reward, message = self.realm_magic_blight(Regent, provences)
                     return [Regent, actor, Type, 'realm_magic_blight', decision, enemy, '', ', '.join(provences), '',  success, reward, state, False, message]
             # realm_magic_death_plague
@@ -5588,8 +5588,8 @@ class Regency(object):
                         # gold increase for Provence itself.
                         Reg = self.Provences[self.Provences['Provence']==Provence]['Regent'].values[0]
                         # The province may also lose a grade of loyalty
-                        save, _ = self.make_roll(Reg, 10+self.Regents[self.Regents['Regent']==Regent]['Regency Bonus'].values[0], 'Regency Bonus')
-                        if save == False:
+                        save_, _ = self.make_roll(Reg, 10+self.Regents[self.Regents['Regent']==Regent]['Regency Bonus'].values[0], 'Regency Bonus')
+                        if save_ == False:
                             self.change_loyalty(Provence, -1)
                         if self.Regents[self.Regents['Regent']==Reg]['Gold Bars'].values[0] >= 1:
                             self.change_regent(Reg, Gold_Bars = self.Regents[self.Regents['Regent']==Reg]['Gold Bars'].values[0] - 1 )

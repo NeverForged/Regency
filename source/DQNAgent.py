@@ -347,22 +347,25 @@ class DQNAgent(object):
             # get pop by type...
             pop = pd.merge(temp[['Provence']].drop_duplicates(), Game.Holdings.copy(), on='Provence', how='left')
             pop = pop[['Provence', 'Type', 'Level']].groupby(['Provence', 'Type']).sum().reset_index()
-            pop = pd.merge(pop, Game.Provences.copy(), on='Provence', how='left')
-            pop = pop[pop['Contested']==0]  # allow ruling holdings where others are contested
-            pop1 = pop[pop['Type']!='Source']
-            pop2 = pop[pop['Type']=='Source']
-            pop1['Limit']=pop1['Population']
-            pop2['Limit']=pop2['Magic']
-            pop=pd.concat([pop1, pop2])
-            pop[pop['Level']<pop['Limit']][['Provence', 'Type', 'Level', 'Limit']]
-            pop['Raise'] = pop['Limit']-pop['Level']
-            
-            # get the holdings I can improve...
-            temp = pd.merge(pop[['Provence', 'Type', 'Raise']], temp, on=['Provence','Type'], how='left').fillna(-1)
-            temp = temp[temp['Level']>-1]
-            
-            if temp.shape[0] > 0:
-                state[42] = 1  # my_holdings_can_increase_in_level
+            try:
+                pop = pd.merge(pop, Game.Provences.copy(), on='Provence', how='left')
+                pop = pop[pop['Contested']==0]  # allow ruling holdings where others are contested
+                pop1 = pop[pop['Type']!='Source']
+                pop2 = pop[pop['Type']=='Source']
+                pop1['Limit']=pop1['Population']
+                pop2['Limit']=pop2['Magic']
+                pop=pd.concat([pop1, pop2])
+                pop[pop['Level']<pop['Limit']][['Provence', 'Type', 'Level', 'Limit']]
+                pop['Raise'] = pop['Limit']-pop['Level']
+                
+                # get the holdings I can improve...
+                temp = pd.merge(pop[['Provence', 'Type', 'Raise']], temp, on=['Provence','Type'], how='left').fillna(-1)
+                temp = temp[temp['Level']>-1]
+                
+                if temp.shape[0] > 0:
+                    state[42] = 1  # my_holdings_can_increase_in_level
+            except:
+                None
             
            
         '''   
