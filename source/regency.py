@@ -3176,7 +3176,7 @@ class Regency(object):
                         df = self.Holdings[self.Holdings['Regent']==Regent][self.Holdings['Type']==hType].copy()
                         df['Check'] = df['Type']
                         temp_check = pd.merge(temp_check, df[['Provence','Check']], on='Provence', how='left').fillna(0)
-                        temp_check = temp_check[temp_check['Check']==0]
+                        # temp_check = temp_check[temp_check['Check']==0]
                         # More likely to set up shop in rival area
                         if temp.shape[0]>0:
                             Target = temp_check.iloc[0]['Provence']
