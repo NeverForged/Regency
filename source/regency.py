@@ -315,36 +315,6 @@ class Regency(object):
         dct['Requirements Level'].append(99)
         dct['BCR'].append(2)
         
-        # Other Monsters
-        dct['Unit Type'].append('Dragon')
-        dct['Type'].append('Monster')
-        dct['Muster Cost'].append(30)
-        dct['Maintenance Cost'].append(10)
-        dct['Requirements Holdings'].append('Mercenaries')
-        dct['Requirements Level'].append(0)
-        dct['BCR'].append(15)
-        dct['Unit Type'].append('Giants')
-        dct['Type'].append('Monster')
-        dct['Muster Cost'].append(10)
-        dct['Maintenance Cost'].append(5)
-        dct['Requirements Holdings'].append('Mercenaries')
-        dct['Requirements Level'].append(0)
-        dct['BCR'].append(10)
-        dct['Unit Type'].append('Ogres')
-        dct['Type'].append('Monster')
-        dct['Muster Cost'].append(6)
-        dct['Maintenance Cost'].append(3)
-        dct['Requirements Holdings'].append('Mercenaries')
-        dct['Requirements Level'].append(0)
-        dct['BCR'].append(5)
-        dct['Unit Type'].append('Orog Infantry')
-        dct['Type'].append('Monster')
-        dct['Muster Cost'].append(4)
-        dct['Maintenance Cost'].append(2)
-        dct['Requirements Holdings'].append('Mercenaries')
-        dct['Requirements Level'].append(0)
-        dct['BCR'].append(3)
-        
         # make the table...
         self.troop_units = pd.DataFrame(dct)
         
@@ -626,6 +596,10 @@ class Regency(object):
         self.Holdings = pd.concat([df1, df2, df3], sort=True)
         # add it back in
         self.add_holding(Provence, new_Regent, Type, Level, Contested)
+        self.Holdings = self.Holdings.groupby(['Provence','Regent','Type','Contested']).sum().reset_index()
+        self.Holdings = self.Holdings[['Provence','Regent','Type','Level','Contested']]
+        self.Holdings['Level']=self.Holdings['Level'].astype(int)
+        
         
     def remove_holding(self, Provence, Regent, Type):
         '''
@@ -1139,8 +1113,7 @@ class Regency(object):
         self.Navy = self.Navy.append(pd.DataFrame([[Regent, Provence, Ship, temp['Hull'].values[0], temp['Troop Capacity'].values[0], temp['Seaworthiness'].values[0], Name]],
                                         columns=['Regent', 'Provence','Ship','Hull','Troop Capacity', 'Seaworthiness', 'Name'])).reset_index(drop=True)[['Regent', 'Provence','Ship','Hull','Troop Capacity', 'Seaworthiness', 'Name']]
         
-        self.Navy = self.Navy[['Regent', 'Provence','Ship','Hull','Troop Capacity', 'Seaworthiness', 'Name']]
-        
+    
     def remove_ship(self, Regent, Provence, Ship, Name=None):
         '''
         Remove a ship from a give place
@@ -2216,7 +2189,7 @@ class Regency(object):
             df = df[['Regent','Cost']]
             
             # 5.2 Pay Armies & Maintain Ships
-            temp = self.Troops[['Regent', 'Cost']].copy()  # this would be easy,        but we have to disband if we can't pay
+            temp = self.Troops[['Regent', 'Cost']].copy()  # this would be easy, but we have to disband if we can't pay
             if Update:
                 temp_ = temp.groupby('Regent').sum().reset_index()
                 check = pd.merge(self.Regents[['Regent', 'Gold Bars', 'Player']].copy(), df.copy(), on='Regent')
@@ -3099,12 +3072,9 @@ class Regency(object):
                 if len(troops) == 0 or len(provences) == 0:
                     temp = pd.concat([self.Provences[self.Provences['Regent']==Regent][['Provence']]
                                       , self.Holdings[self.Holdings['Regent']==Regent][['Provence']]], sort=False)
-                    mercs = self.troop_units[self.troop_units['Type'].str.contains('Mercenary')]
+                    mercs = self.troop_units[self.troop_units['Unit Type'].str.contains('Mercenary')]
                     gold = self.Regents[self.Regents['Regent'] == Regent]['Gold Bars'].values[0]
-                    if self.Regents[self.Regents['Regent']==Regent]['Class'].values[0] == 'Awnsheghlien':
-                        # allow the Gorgon et all to have dragions and stuff
-                        mercs = pd.concat([mercs, self.troop_units[self.troop_units['Type'].str.contains('Monster')]]).drop_duplicates()
-                    mercs = mercs[mercs['Muster Cost'] <= gold] 
+                    mercs = mercs[mercs['Muster Cost'] <= gold]
                     if temp.shape[0] < 1 or mercs.shape[0] < 1:
                         return [Regent, actor, Type, 'muster_mercenaries', decision, '', '', '', '',  False, -1, state, True, '']
                     else:
@@ -3354,7 +3324,6 @@ class Regency(object):
                     if len(provences) == 0 and len(holdings) == 0:
                         provences = list(self.Provences[self.Provences['Regent']==Regent]['Provence'])
                         holdings = [(row['Provence'],row['Type']) for i, row in self.Holdings[self.Holdings['Regent']==Regent].iterrows()]
-                        
                     success, reward, message = self.domain_action_investiture(Regent, Target=friend, Invest=True, provences=provences, holdings=holdings)
                     reward = reward - 20 + 15*state[18] + 10*state[58] + 5*state[57]  # bad idea, unless giving away a legacy
                     return [Regent, actor, Type, 'investure_invest_friend', decision, friend, '', '', '',  success, reward, state, False, message]
@@ -3486,8 +3455,10 @@ class Regency(object):
                     # get Targets
                     if len(provences) == 0:
                         temp = pd.concat([self.Provences[self.Provences['Regent']==enemy][['Provence']]
-                                      , self.Holdings[self.Holdings['Regent']==enemy][['Provence', 'Level']]], sort=False).fillna(5)
-                        provences = list(set(temp['Provence']))
+                                      , self.Holdings[self.Holdings['Regent']==enemy][['Provence', 'Level']]], sort=False).fillna(10)
+                        temp = temp.groupby('Provence').sum().reset_index()
+                        temp = temp.sort_values('Level', ascending=False)
+                        provences = list(temp['Provence'])
                     if len(provences) > 4:
                         provences = provences[:4]
                     success, reward, message = self.realm_magic_blight(Regent, provences)
@@ -5250,7 +5221,7 @@ class Regency(object):
                                 invested.append('A {} Holding in {}'.format(row['Type'], row['Provence']))
                                 Regency = Regency - row['Level']
                             elif row['Type'] == 'Law' or row['Type'] == 'Guild':
-                                self.change_holding(row['Provence'], row['Regent'], row['Type'], Contested=0, new_Regent = towho)
+                                self.change_holding(row['Provence'], row['Regent'], row['Type'], row['Level'], Contested=0, new_Regent = towho)
                                 invested.append('A {} Holding in {}'.format(row['Type'], row['Provence']))
                                 Regency = Regency - row['Level']
                 if len(invested) > 0:
@@ -5622,7 +5593,9 @@ class Regency(object):
                         # gold increase for Provence itself.
                         Reg = self.Provences[self.Provences['Provence']==Provence]['Regent'].values[0]
                         # The province may also lose a grade of loyalty
-                        save_, _ = self.make_roll(Reg, 10+self.Regents[self.Regents['Regent']==Regent]['Regency Bonus'].values[0], 'Regency Bonus')
+                        save = False  # if no Regent, no protection
+                        if Reg != '':
+                            save_, _ = self.make_roll(Reg, 10+self.Regents[self.Regents['Regent']==Regent]['Regency Bonus'].values[0], 'Regency Bonus')
                         if save_ == False:
                             self.change_loyalty(Provence, -1)
                         if self.Regents[self.Regents['Regent']==Reg]['Gold Bars'].values[0] >= 1:
@@ -5785,6 +5758,8 @@ class Regency(object):
         GB = self.Regents[self.Regents['Regent']==Regent]['Gold Bars'].values[0]
         Level = self.Regents[self.Regents['Regent']==Regent]['Level'].values[0]
         Limits = [1,5,11,17]
+        tcols = ['Regent', 'Provence', 'Type', 'Cost', 'CR', 'Garrisoned', 'Home', 'Injury']
+        pcols = ['Regent', 'Project Type', 'Details', 'Gold Bars Left']
         if temp.shape[0] > 0 and RP >= 4 and GB >= 1:
             N = 0
             for lim in Limits:
@@ -5792,10 +5767,12 @@ class Regency(object):
                     RP = RP - 4
                     GB = GB - 1
                     N += 1
-                    self.Troops = self.Troops.append(pd.DataFrame([[Regent, Provence, 'Undead Troops', 0, 2, 0, '', 0]], columns=self.Troops.keys()))
+                    self.Troops = self.Troops.append(pd.DataFrame([[Regent, Provence, 'Undead Troops', 0, 2, 0, '', 0]], columns=tcols))
                     self.Troops = self.Troops.reset_index(drop=True)
-                    self.Projects = self.Projects.append(pd.DataFrame([[Regent, 'Undead Troops', '', np.random.randint(2,4,1)[0]]], columns=self.Projects.keys()))
+                    self.Troops = self.Troops[tcols]
+                    self.Projects = self.Projects.append(pd.DataFrame([[Regent, 'Undead Troops', '', np.random.randint(2,4,1)[0]]], columns=pcols))
                     self.Projects = self.Projects.reset_index(drop=True)
+                    self.Projects = self.Projects[pcols]
             self.change_regent(Regent, Gold_Bars=GB, Regency_Points=RP)
             message = "{} Cast 'Legion of the Dead', summong {} Undead Troops in {}".format(self.Regents[self.Regents['Regent']==Regent]['Full Name'].values[0], N, Provence)
             reward = N
