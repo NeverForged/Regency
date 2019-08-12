@@ -41,6 +41,7 @@ class Regency(object):
         Birthright is Default.
         '''
         
+        
         self.game_year = 1524
         self.jupyter = jupyter
         self.random_override = {}
@@ -2416,7 +2417,7 @@ class Regency(object):
                                         self.agent.train_short_memory(state, action, reward, self.agent.get_action_state(row['Regent'], self, None)[0], 'Action', invalid)
                                         # self.agent.remember(state, decision,0, self.agent.get_action_state(row['Regent'], self, None)[0], 'Action', invalid)
                                         self.Seasons[self.Season]['Actions'][self.Action].loc[index] = [Regent, Actor, Action_Type, action, Decision, Target_Regent, Provence, Target_Provence, Target_Holding, Success, reward, State, invalid, Message, self.agent.get_action_state(row['Regent'], self, None)[0]]
-                                        with open('worlds/' + self.GameName + '.pickle', 'wb') as handle:
+                                        with open('games/' + self.GameName +'_' + str(self.Season) + '_' + str(self.Action) + '.pickle', 'wb') as handle:
                                             pickle.dump(self, handle, protocol=pickle.HIGHEST_PROTOCOL)
                                     
                         self.Bonus = 0
@@ -2451,7 +2452,7 @@ class Regency(object):
                                 self.agent.train_short_memory(state, action, reward, next_state, 'Action', invalid)
                             else:  # update action vector
                                 self.Seasons[self.Season]['Actions'][self.Action].loc[index] = [Regent, Actor, Action_Type, action, Decision, Target_Regent, Provence, Target_Provence, Target_Holding, Success, reward, State, invalid, Message, self.agent.get_action_state(row['Regent'], self, None)[0]]
-                                with open('worlds/' + self.GameName + '.pickle', 'wb') as handle:
+                                with open('games/' + self.GameName + '_' + str(self.Season) + '_' + str(self.Action) +'.pickle', 'wb') as handle:
                                     pickle.dump(self, handle, protocol=pickle.HIGHEST_PROTOCOL)
                             
                         
