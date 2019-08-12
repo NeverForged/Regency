@@ -4788,23 +4788,28 @@ class Regency(object):
         dc = 10
         reward = 0
         reg_name = self.Regents[self.Regents['Regent']==Regent]['Full Name'].values[0]
-        tar_name = self.Regents[self.Regents['Regent']==Target]['Full Name'].values[0]
+        try:
+            tar_name = self.Regents[self.Regents['Regent']==Target]['Full Name'].values[0]
+        except:
+            tar_name = ''
         hostile = False
         change_dc = True
         # get diplomacy levels
         Diplomacy = [0,0]
-        temp = self.Relationships[self.Relationships['Regent']==Regent]
-        temp = temp[temp['Other']==Target]
-        try:
-            Diplomacy[0] = temp.iloc[0]['Diplomacy']
-        except:
-            Diplomacy[0] = 0
-        temp = self.Relationships[self.Relationships['Regent']==Target]
-        temp = temp[temp['Other']==Regent]
-        try:
-            Diplomacy[1] = temp.iloc[0]['Diplomacy']
-        except:
-            Diplomacy[1] = 0
+        if Target != None:
+            temp = self.Relationships[self.Relationships['Regent']==Regent]
+            temp = temp[temp['Other']==Target]
+            try:
+                Diplomacy[0] = temp.iloc[0]['Diplomacy']
+            except:
+                Diplomacy[0] = 0
+            
+            temp = self.Relationships[self.Relationships['Regent']==Target]
+            temp = temp[temp['Other']==Regent]
+            try:
+                Diplomacy[1] = temp.iloc[0]['Diplomacy']
+            except:
+                Diplomacy[1] = 0
         # set things...
         if Type == 'form_alliance':
             message_s = '{} formed an alliance with {}'.format(reg_name, tar_name)
@@ -4826,7 +4831,7 @@ class Regency(object):
             dc = 15
             change_dc=False
             message_s = '{} has negotiated with Brigands.'.format(reg_name)
-            message_f = "{} failed tonegotiate with Brigands".format(reg_name)
+            message_f = "{} failed to negotiate with Brigands".format(reg_name)
         if Type == 'handle_unrest':
             dc = 15
             change_dc=False
@@ -5594,7 +5599,7 @@ class Regency(object):
                         # gold increase for Provence itself.
                         Reg = self.Provences[self.Provences['Provence']==Provence]['Regent'].values[0]
                         # The province may also lose a grade of loyalty
-                        save = False  # if no Regent, no protection
+                        save_ = False  # if no Regent, no protection
                         if Reg != '':
                             save_, _ = self.make_roll(Reg, 10+self.Regents[self.Regents['Regent']==Regent]['Regency Bonus'].values[0], 'Regency Bonus')
                         if save_ == False:
