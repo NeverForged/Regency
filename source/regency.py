@@ -3011,6 +3011,8 @@ class Regency(object):
                             if len(troops) <= animosity:
                                 troops.append(row['Type'])
                                 provences.append(row['Provence'])
+                    if Target_Provence == '':
+                        return [Regent, actor, Type, 'move_troops_into_enemy_terrirtory', decision, enemy, '', '', '',  False, -1, state, True, '']
                     success, reward, message = self.bonus_action_move_troops(Regent, troops, provences, Target_Provence)
                     reward = animosity + 5*state[87] + 5*state[43]
                     return [Regent, actor, Type, 'move_troops_into_enemy_terrirtory', decision, '', Target_Provence, '',"", success, reward, state, False, message]
