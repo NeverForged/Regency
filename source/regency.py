@@ -3113,7 +3113,7 @@ class Regency(object):
                     return [Regent, actor, Type, 'contest_holding', decision, enemy, Target, '', target_type,  success, reward, state, False, message]
             # contest_provence
             elif decision[27] == 1:  # 27, enemy, [Target]
-                if state[3] == 1 or state[77] == 0 or state[95] == 1:
+                if state[3] == 1 or state[77] == 0 or state[95] == 1 or state[116]==0:
                     return [Regent, actor, Type, 'contest_provence', decision, '', '', '', '',  False, -1, state, True, '']
                 else:
                     if Target==None:

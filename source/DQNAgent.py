@@ -686,7 +686,19 @@ class DQNAgent(object):
         temp = pd.merge(temp_[['Provence']], temp, on='Provence', how='left')
         if temp.shape[0]>0:
             state[115] = 1  # I can recruit levies
-        
+            
+        temp = self.Provences[self.Provences['Regent'] == enemy]
+        temp = temp[temp['Contested'] == False]
+        temp = temp[temp['Loyalty'] != 'High']
+        temp = temp[temp['Loyalty'] != 'Average']
+        temp_ =  self.Holdings[self.Holdings['Type']=='Law']
+        temp_ = temp_[temp_['Regent'] == enemy]
+        temp_ = temp_[temp_['Contested'] == False]
+        temp = pd.merge(temp, temp_, on='Provence', how='left').fillna(0)
+        temp = temp[temp['Level']==0]
+        if temp.shape[0]>0:
+            state[116] = 1  #enemy_has_provences_I_can_contest
+                
         # save last memory with no reward
         if Game.Train == True and (Game.Season!=0 or Game.Action!=1):
             season = Game.Season
