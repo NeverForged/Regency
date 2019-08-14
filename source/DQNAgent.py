@@ -698,11 +698,11 @@ class DQNAgent(object):
         temp = temp[temp['Level']==0]
         if temp.shape[0]>0:
             state[116] = 1  #enemy_has_provinces_I_can_contest
-			
-		temp = pd.merge(Game.Troops[Game.Troops['Regent']==Regent], Game.Provinces[Game.Provinces['Regent']==''], on='Province',how='inner')['Province']
-		if temp.shape[0] > 0:
-			state[117] = 1  # I can claim a nearby province
-			
+            
+        temp = pd.merge(Game.Troops[Game.Troops['Regent']==Regent], Game.Provinces[Game.Provinces['Regent']==''], on='Province',how='inner')['Province']
+        if temp.shape[0] > 0:
+            state[117] = 1  # I can claim a nearby province
+            
         # save last memory with no reward
         if Game.Train == True and (Game.Season!=0 or Game.Action!=1):
             season = Game.Season
