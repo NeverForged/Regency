@@ -5606,13 +5606,15 @@ class Regency(object):
                             save_, _ = self.make_roll(Reg, 10+self.Regents[self.Regents['Regent']==Regent]['Regency Bonus'].values[0], 'Regency Bonus')
                         if save_ == False:
                             self.change_loyalty(Provence, -1)
-                        if self.Regents[self.Regents['Regent']==Reg]['Gold Bars'].values[0] >= 1:
-                            self.change_regent(Reg, Gold_Bars = self.Regents[self.Regents['Regent']==Reg]['Gold Bars'].values[0] - 1 )
+                        if Reg != '':
+                            if self.Regents[self.Regents['Regent']==Reg]['Gold Bars'].values[0] >= 1:
+                                self.change_regent(Reg, Gold_Bars = self.Regents[self.Regents['Regent']==Reg]['Gold Bars'].values[0] - 1 )
                         temp = self.Holdings[self.Holdings['Provence']==Provence]
                         for Reg in list(temp[temp['Type'] != 'Source']['Regent']):
-                            if  self.Regents[self.Regents['Regent']==Reg].shape[0] > 0:
-                                if self.Regents[self.Regents['Regent']==Reg]['Gold Bars'].values[0] > 0:
-                                    self.change_regent(Reg, Gold_Bars = self.Regents[self.Regents['Regent']==Reg]['Gold Bars'].values[0] - 1 )
+                            if Reg != '':
+                                if  self.Regents[self.Regents['Regent']==Reg].shape[0] > 0:
+                                    if self.Regents[self.Regents['Regent']==Reg]['Gold Bars'].values[0] > 0:
+                                        self.change_regent(Reg, Gold_Bars = self.Regents[self.Regents['Regent']==Reg]['Gold Bars'].values[0] - 1 )
             message = message + ', '.join(lst) + '.'
         return success, reward, message
       
