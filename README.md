@@ -9,7 +9,7 @@ Network Modeling and other machine learning uses aimed towards a system for addi
   
 
 ## Basis
--  * **Birthright** AD&D 2nd Edition Boxed Set* was used to set the Provences/Regents/etc. for the default campaign.
+-  * **Birthright** AD&D 2nd Edition Boxed Set* was used to set the Provinces/Regents/etc. for the default campaign.
 - * [**Birthright** 5e Conversion](https://www.gmbinder.com/share/-L4h_QHUKh2NeYhgD96A)* was used for the bulk of the work, in order to have a stable (and accessable) system that was more compatable with 5e (and my ultimate plans to use this for my own world)
 - *[maurock/snake-ga](https://github.com/maurock/snake-ga)* is where I lifted the *Agent* class from.
 
@@ -22,10 +22,10 @@ Based on the 5e Conversion of the Regency system from Birthright,
 	
 **DataFrames:**
 
-- **Provences:** *['Provence', 'Domain', 'Region', 'Regent', 'Terrain', 'Loyalty',
+- **Provinces:** *['Province', 'Domain', 'Region', 'Regent', 'Terrain', 'Loyalty',
        'Taxation', 'Population', 'Magic', 'Castle', 'Castle Name', 'Capital',
        'Position', 'Contested', 'Waterway', 'Brigands']*
-- **Holdings:** *['Provence', 'Regent', 'Type', 'Level', 'Contested']*
+- **Holdings:** *['Province', 'Regent', 'Type', 'Level', 'Contested']*
 - **Regents:**  *['Regent', 'Full Name', 'Bloodline', 'Culture', 'Player', 'Class',
        'Level', 'Alignment', 'Race', 'Str', 'Dex', 'Con', 'Int', 'Wis', 'Cha',
        'Insight', 'Deception', 'Persuasion', 'Regency Points', 'Gold Bars',

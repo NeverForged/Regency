@@ -26,7 +26,7 @@ class DQNAgent(object):
         self.agent_predict = 0
         self.learning_rate = 0.0005
         
-        self.action_size = 116
+        self.action_size = 120
         self.action_choices = 76
         
         # different models for different decisions
@@ -127,18 +127,18 @@ class DQNAgent(object):
         '''
         
         # get nearby regents
-        temp = Game.Provences[Game.Provences['Regent'] == Regent]['Provence']
-        temp = pd.concat([temp, Game.Holdings[Game.Holdings['Regent'] == Regent]['Provence']])
+        temp = Game.Provinces[Game.Provinces['Regent'] == Regent]['Province']
+        temp = pd.concat([temp, Game.Holdings[Game.Holdings['Regent'] == Regent]['Province']])
         rtemp = Game.Relationships[Game.Relationships['Other']==Regent].copy()
         rtemp = rtemp[rtemp['Vassalage']>0]
         for reg in list(rtemp['Regent']): # include the list for my vassals
-            pd.concat([temp, Game.Provences[Game.Provences['Regent'] == reg]['Provence']])
-            pd.concat([temp, Game.Holdings[Game.Holdings['Regent'] == Regent]['Provence']])
-        # temp is a regent/provence list for nearby players
-        temp = pd.merge(temp, Game.Geography[Game.Geography['Border']==1][['Provence','Neighbor', 'Border']], on='Provence', how='left')
-        temp['Provence'] = temp['Neighbor']
-        temp1 = pd.merge(temp[['Provence']], Game.Provences[['Provence', 'Regent']].copy(), on='Provence', how='left')
-        temp2 = pd.merge(temp[['Provence']], Game.Holdings[['Provence', 'Regent']].copy(), on='Provence', how='left')
+            pd.concat([temp, Game.Provinces[Game.Provinces['Regent'] == reg]['Province']])
+            pd.concat([temp, Game.Holdings[Game.Holdings['Regent'] == Regent]['Province']])
+        # temp is a regent/province list for nearby players
+        temp = pd.merge(temp, Game.Geography[Game.Geography['Border']==1][['Province','Neighbor', 'Border']], on='Province', how='left')
+        temp['Province'] = temp['Neighbor']
+        temp1 = pd.merge(temp[['Province']], Game.Provinces[['Province', 'Regent']].copy(), on='Province', how='left')
+        temp2 = pd.merge(temp[['Province']], Game.Holdings[['Province', 'Regent']].copy(), on='Province', how='left')
         temp = pd.concat([temp1, temp2])
         
         prov_regent_list = temp.copy()
@@ -202,37 +202,37 @@ class DQNAgent(object):
         if 'C' in list(regent['Alignment'].values[0]):  # 11
             state[22] = 1  # i_am_chaotic
             '''
-                i_have_provences  10
+                i_have_provinces  10
                 i_have_a_brigand_problem
-                i_have_contested_provence
+                i_have_contested_province
                 capital_has_castle
                 highpop_has_castle
                 lowpop_has_castle
             '''
-        my_provences = Game.Provences[Game.Provences['Regent'] == Regent].copy()
+        my_provinces = Game.Provinces[Game.Provinces['Regent'] == Regent].copy()
         capital = None
         high_pop = None
         low_pop = None
-        # 23-33 all imply that the Regent has provences
-        if my_provences.shape[0] > 0:
-            state[23] = 1  # i_have_provences
-            if my_provences[my_provences['Brigands'] == True].shape[0] > 0:
+        # 23-33 all imply that the Regent has provinces
+        if my_provinces.shape[0] > 0:
+            state[23] = 1  # i_have_provinces
+            if my_provinces[my_provinces['Brigands'] == True].shape[0] > 0:
                 state[24] = 1  # i_have_brigands
-            if my_provences[my_provences['Contested'] == True].shape[0] > 0:
-                state[25] = 1  # i_have_contested_provence
+            if my_provinces[my_provinces['Contested'] == True].shape[0] > 0:
+                state[25] = 1  # i_have_contested_province
             # get three cities to look at
-            my_provences['roll'] = np.random.randint(1,100,my_provences.shape[0])
+            my_provinces['roll'] = np.random.randint(1,100,my_provinces.shape[0])
             try:
-                capital = my_provences[my_provences['Capital']==True].sort_values('Population', ascending=False).iloc[0]['Provence'] 
+                capital = my_provinces[my_provinces['Capital']==True].sort_values('Population', ascending=False).iloc[0]['Province'] 
             except:
-                capital = my_provences[my_provences['Capital']==False].sort_values('Population', ascending=False).iloc[0]['Provence']
+                capital = my_provinces[my_provinces['Capital']==False].sort_values('Population', ascending=False).iloc[0]['Province']
             try:
-                high_pop = my_provences[my_provences['Capital']==False].sort_values('Population', ascending=False).iloc[0]['Provence']
-                low_pop = my_provences[my_provences['Capital']==False].sort_values('Population').iloc[0]['Provence']
-            except:  # only one provence!
+                high_pop = my_provinces[my_provinces['Capital']==False].sort_values('Population', ascending=False).iloc[0]['Province']
+                low_pop = my_provinces[my_provinces['Capital']==False].sort_values('Population').iloc[0]['Province']
+            except:  # only one province!
                 high_pop = capital
                 low_pop = capital
-            provences_i_care_about = [capital, high_pop, low_pop]
+            provinces_i_care_about = [capital, high_pop, low_pop]
             if over != None:  # Override!
                 if over[1] != None:
                     capital = over[1]
@@ -240,29 +240,29 @@ class DQNAgent(object):
                     high_pop = over[2]
                 if over[3] != None:
                     low_pop = over[3]
-                provences_i_care_about = [capital, high_pop, low_pop]
-            for i, prov in enumerate(provences_i_care_about):
-                if my_provences[my_provences['Provence'] == prov]['Castle'].values[0] == 0:
+                provinces_i_care_about = [capital, high_pop, low_pop]
+            for i, prov in enumerate(provinces_i_care_about):
+                if my_provinces[my_provinces['Province'] == prov]['Castle'].values[0] == 0:
                     state[26+i] = 1  # capital_no_castle, hih_pop_no_castle, low_pop_no_castle
             '''
                 capital_can_have_road
                 highpop_can_have_road  30
                 lowpop_can_have_road
                 my_waterways_can_have_routes
-                my_provences_can_have_routes
+                my_provinces_can_have_routes
             '''
-            my_geography = pd.merge(my_provences, Game.Geography.copy(), on='Provence', how='left')
+            my_geography = pd.merge(my_provinces, Game.Geography.copy(), on='Province', how='left')
             my_geography = my_geography[my_geography['Border']==1]
-            for i, prov in enumerate(provences_i_care_about):  
-                temp = my_geography[my_geography['Provence']==prov]
+            for i, prov in enumerate(provinces_i_care_about):  
+                temp = my_geography[my_geography['Province']==prov]
                 temp = temp[temp['Road'] == 0]
                 if temp.shape[0] > 0:
                     state[29+i] = 1  # capital_can_has_road, high_pop_can_has_road, low_pop_can_has_road
-            temp = my_geography[['Provence', 'Waterway', 'Population', 'Caravan', 'Shipping']].groupby(['Provence', 'Waterway', 'Population']).sum().reset_index()
+            temp = my_geography[['Province', 'Waterway', 'Population', 'Caravan', 'Shipping']].groupby(['Province', 'Waterway', 'Population']).sum().reset_index()
             temp['Routes Allowed'] = ((temp['Population']+2)/3).astype(int)
             temp = temp[temp['Routes Allowed']>(temp['Caravan']+temp['Shipping'])].copy()
             if temp.shape[0] > 0:
-                state[32] = 1  # provences_can_have_trade_routes
+                state[32] = 1  # provinces_can_have_trade_routes
             if temp[temp['Waterway']==True].shape[0] > 0:
                 state[33] = 1  # waterways_can_have_trade_routes
         # Need regents now
@@ -327,9 +327,9 @@ class DQNAgent(object):
             for i, type in enumerate(lst):
                 if my_holdings[my_holdings['Type'] == type].shape[0] > 0:
                     state[34+i] = 1  # i_have_law, i_have_temple, i_have_guild, i_have_source
-            temp = Game.Provences[['Regent', 'Provence']].copy()
+            temp = Game.Provinces[['Regent', 'Province']].copy()
             temp['Other'] = temp['Regent']
-            my_holdings = pd.merge(my_holdings, temp[['Provence','Other']], on='Provence', how='left')
+            my_holdings = pd.merge(my_holdings, temp[['Province','Other']], on='Province', how='left')
             temp = my_holdings[my_holdings['Type']=='Temple']
             if temp[temp['Other'] == friend].shape[0] > 0:
                 state[38] = 1  # i_have_temple_in_friend
@@ -340,26 +340,26 @@ class DQNAgent(object):
                 state[40] = 1  # i_have_law_in_enemy
             if my_holdings[my_holdings['Contested']==1].shape[0] > 0:
                 state[41] = 1  # i_have_contested_holdings
-            shared_holdings = pd.merge(my_holdings[['Provence']], Game.Holdings.copy(), on='Provence', how='left')
+            shared_holdings = pd.merge(my_holdings[['Province']], Game.Holdings.copy(), on='Province', how='left')
             temp = Game.Holdings[Game.Holdings['Regent']==Regent]
             temp = temp[temp['Contested']==0]  # can't rule if contested
             
             # get pop by type...
-            pop = pd.merge(temp[['Provence']].drop_duplicates(), Game.Holdings.copy(), on='Provence', how='left')
-            pop = pop[['Provence', 'Type', 'Level']].groupby(['Provence', 'Type']).sum().reset_index()
+            pop = pd.merge(temp[['Province']].drop_duplicates(), Game.Holdings.copy(), on='Province', how='left')
+            pop = pop[['Province', 'Type', 'Level']].groupby(['Province', 'Type']).sum().reset_index()
             try:
-                pop = pd.merge(pop, Game.Provences.copy(), on='Provence', how='left')
+                pop = pd.merge(pop, Game.Provinces.copy(), on='Province', how='left')
                 pop = pop[pop['Contested']==0]  # allow ruling holdings where others are contested
                 pop1 = pop[pop['Type']!='Source']
                 pop2 = pop[pop['Type']=='Source']
                 pop1['Limit']=pop1['Population']
                 pop2['Limit']=pop2['Magic']
                 pop=pd.concat([pop1, pop2])
-                pop[pop['Level']<pop['Limit']][['Provence', 'Type', 'Level', 'Limit']]
+                pop[pop['Level']<pop['Limit']][['Province', 'Type', 'Level', 'Limit']]
                 pop['Raise'] = pop['Limit']-pop['Level']
                 
                 # get the holdings I can improve...
-                temp = pd.merge(pop[['Provence', 'Type', 'Raise']], temp, on=['Provence','Type'], how='left').fillna(-1)
+                temp = pd.merge(pop[['Province', 'Type', 'Raise']], temp, on=['Province','Type'], how='left').fillna(-1)
                 temp = temp[temp['Level']>-1]
                 
                 if temp.shape[0] > 0:
@@ -398,8 +398,8 @@ class DQNAgent(object):
         if temp.shape[0] > 0:
             state[48] = 1  # i_have_leylines
             temp['Neighbor'] = temp['Other']
-            temp = pd.merge(temp[['Provence','Neighbor']], Game.Geography[['Provence', 'Neighbor', 'Border']], on=['Provence','Neighbor'], how='left')
-            G = nx.from_pandas_edgelist(temp, 'Provence', 'Neighbor', ['Border'])
+            temp = pd.merge(temp[['Province','Neighbor']], Game.Geography[['Province', 'Neighbor', 'Border']], on=['Province','Neighbor'], how='left')
+            G = nx.from_pandas_edgelist(temp, 'Province', 'Neighbor', ['Border'])
             num = len(list(nx.connected_components(G)))
             if num >= 2:
                 state[49] = 1  # i_have_disconnected_ley_lines
@@ -484,7 +484,7 @@ class DQNAgent(object):
                 enemy_has_guild_holding_in_my_lands  80
                 enemy_has_same_type_of_holding_as_me_somewhere_i_have_holding
                 enemy_has_contested_holding
-                enemy_has_contested_provence
+                enemy_has_contested_province
                 enemy_has_no_law_holdings_and_rebellious_or_poor_loyalty_in_a_province
                 contested_all_enemy_provinces
                 all_enemy_castles_neutralized
@@ -509,39 +509,39 @@ class DQNAgent(object):
             state[69] = 1  # enemy_alive
         temp = Game.Holdings[Game.Holdings['Regent'] == enemy].copy()
         temp['Enemy'] = temp['Regent']
-        temp = pd.merge(temp[['Enemy', 'Provence', 'Type']], my_provences, on='Provence', how='left')
+        temp = pd.merge(temp[['Enemy', 'Province', 'Type']], my_provinces, on='Province', how='left')
         for i, a in enumerate(['Law', 'Temple', 'Guild', 'Source']):
             if temp[temp['Type'] == a].shape[0] > 0:
-                state[70+i] = 1  # enemy_has_law_in_my_provence, _temple_, _guild_, _source_
-        if pd.merge(Game.Holdings[Game.Holdings['Regent'] == enemy], Game.Holdings[Game.Holdings['Regent'] == Regent], on=['Provence', 'Type'], how='inner').shape[0] > 0:
+                state[70+i] = 1  # enemy_has_law_in_my_province, _temple_, _guild_, _source_
+        if pd.merge(Game.Holdings[Game.Holdings['Regent'] == enemy], Game.Holdings[Game.Holdings['Regent'] == Regent], on=['Province', 'Type'], how='inner').shape[0] > 0:
             state[74] = 1  # enemy_has_same_type_of_holding_as_me_somewhere_i_have_holding
         temp = Game.Holdings[Game.Holdings['Regent'] == enemy]
         if temp[temp['Contested'] == 1].shape[0] > 0:
             state[75] = 1  # enemy_has_contested_holding
-        temp = Game.Provences[Game.Provences['Regent'] == enemy]
+        temp = Game.Provinces[Game.Provinces['Regent'] == enemy]
         if temp[temp['Contested'] == 1].shape[0] > 0:
-            state[76] = 1  # enemy_has_contested_provence
+            state[76] = 1  # enemy_has_contested_province
         temp = temp[temp['Loyalty'] != 'High']
         temp = temp[temp['Loyalty'] != 'Average']
         if temp.shape[0] > 0:  # we have the requisite loyalty issue
             temp_ =  Game.Holdings[Game.Holdings['Type']=='Law']
             temp_ = temp_[temp_['Regent'] == enemy]
             temp_ = temp_[temp_['Contested'] == 0]
-            temp = pd.merge(temp, temp_, on='Provence', how='left').fillna(0)
+            temp = pd.merge(temp, temp_, on='Province', how='left').fillna(0)
             temp = temp[temp['Level']==0]
             if temp.shape[0] >= 1:
                 state[77] = 1  # enemy_has_no_law_holdings_and_rebellious_or_poor_loyalty_in_a_province
         
-        temp = Game.Provences[Game.Provences['Regent'] == enemy]
+        temp = Game.Provinces[Game.Provinces['Regent'] == enemy]
         check = temp.shape[0]
         temp_ = pd.concat([Game.Troops[Game.Troops['Regent']==a] for a in regents_i_care_about])
         temp_ = temp_[temp_['Regent'] != enemy]
-        temp_ = pd.merge(temp[['Provence']], temp_, on='Provence', how='left').fillna(0)
-        temp_ = temp_[temp_['Type'].astype(str) != '0'][['Provence', 'Type']].groupby('Provence').count().reset_index()
+        temp_ = pd.merge(temp[['Province']], temp_, on='Province', how='left').fillna(0)
+        temp_ = temp_[temp_['Type'].astype(str) != '0'][['Province', 'Type']].groupby('Province').count().reset_index()
         temp_['Occupying Troops'] = temp_['Type']
-        temp = pd.merge(temp, temp_[['Provence', 'Occupying Troops']], on='Provence', how='left').fillna(0)
+        temp = pd.merge(temp, temp_[['Province', 'Occupying Troops']], on='Province', how='left').fillna(0)
         if temp[temp['Contested'] == True].shape[0] == check and check > 0:
-            state[78] = 1  # all_enemy_provences_contested
+            state[78] = 1  # all_enemy_provinces_contested
         if np.sum(temp['Castle']) == 0 or np.sum(1.0*(temp['Castle']>temp['Occupying Troops'])) == 0:
             state[79] = 1  # enemy_has_no_castles_or_all_neutralized
         allies, enemies = Game.allies_enemies(Regent)
@@ -552,18 +552,18 @@ class DQNAgent(object):
             etroops = etroops[etroops['Type'] != 0]           
         else:               
             etroops = Game.Troops[Game.Troops['Regent'] == enemy].copy()
-        check = pd.merge(my_provences, etroops, on='Provence', how='left').fillna(0)
+        check = pd.merge(my_provinces, etroops, on='Province', how='left').fillna(0)
         check = check[check['Type']!=0]
         if check.shape[0] > 0:
             state[80] = 1  # enemy has troops in my domain
-        temp = Game.Provences[Game.Provences['Regent'] == friend]  # my friend's provences
+        temp = Game.Provinces[Game.Provinces['Regent'] == friend]  # my friend's provinces
         # does any enemy of my friend have troops in their domain
         ctroops = Game.Troops.copy()
         ctroops = ctroops[ctroops['Regent']!=Regent]
         ctroops = ctroops[ctroops['Regent']!=friend]
         fally, fenemy = Game.allies_enemies(friend)
         ctroops = pd.merge(fenemy, ctroops)
-        check = pd.merge(temp, ctroops, on='Provence', how='left').fillna(0)
+        check = pd.merge(temp, ctroops, on='Province', how='left').fillna(0)
         check = check[check['Type']!=0]
         if check.shape[0] > 0:
             state[81] = 1  # enemy_has_troops_in_friends_domain
@@ -601,20 +601,20 @@ class DQNAgent(object):
             state[94] = 1  # Broke
         if Game.Regents[Game.Regents['Regent'] == Regent]['Regency Points'].fillna(0).values[0] <= 0:
             state[95] = 1  # Powerless
-        if pd.merge(Game.Troops[Game.Troops['Regent']==Regent], Game.Provences[Game.Provences['Regent']==''], on='Provence',how='inner').shape[0]>0:
-            state[96] = 1  # Empty Provence I occupy
+        if pd.merge(Game.Troops[Game.Troops['Regent']==Regent], Game.Provinces[Game.Provinces['Regent']==''], on='Province',how='inner').shape[0]>0:
+            state[96] = 1  # Empty Province I occupy
         enemy_capital = None
-        temp = Game.Provences[Game.Provences['Regent']==enemy]
+        temp = Game.Provinces[Game.Provinces['Regent']==enemy]
         temp = temp[temp['Capital']==True]
         if temp.shape[0] > 0:
-             enemy_capital = temp.iloc[0]['Provence']
+             enemy_capital = temp.iloc[0]['Province']
         if over != None:
             if over[7] != None:
                 enemy_capital = over[7]
-        if Game.Provences[Game.Provences['Regent']==friend].shape[0]>0:
-            state[97] = 1  # friend_has_provences
-        if Game.Provences[Game.Provences['Regent']==enemy].shape[0]>0:
-            state[98] = 1  # enemy_has_provences
+        if Game.Provinces[Game.Provinces['Regent']==friend].shape[0]>0:
+            state[97] = 1  # friend_has_provinces
+        if Game.Provinces[Game.Provinces['Regent']==enemy].shape[0]>0:
+            state[98] = 1  # enemy_has_provinces
         
         if Game.Regents[Game.Regents['Regent']==Regent]['Divine'].values[0] == True:
             state[99] = 1 # i_have_divine_magic
@@ -633,8 +633,8 @@ class DQNAgent(object):
         if Game.Regents[Game.Regents['Regent']==rando]['Arcane'].values[0] == True:
             state[104] = 1 # rando_has_arcane_magic
             
-        if Game.Provences[Game.Provences['Regent']==rando].shape[0]>0:
-            state[105] = 1  # rando_has_provences
+        if Game.Provinces[Game.Provinces['Regent']==rando].shape[0]>0:
+            state[105] = 1  # rando_has_provinces
             
         if Game.Troops[Game.Troops['Regent']==enemy].shape[0]>0:
             state[106]= 1  # enemy_has_troops
@@ -642,37 +642,37 @@ class DQNAgent(object):
             state[107]=1 # enemy_has_ships
             
         temp = Game.Holdings[Game.Holdings['Regent'] == Regent].copy()
-        temp = temp[temp['Type']=='Source'][['Type', 'Level', 'Provence']]
+        temp = temp[temp['Type']=='Source'][['Type', 'Level', 'Province']]
         temp = temp[temp['Level']>=5]
-        temp = pd.concat([temp[['Provence']], Game.LeyLines[Game.LeyLines['Regent']==Regent][['Provence']]])
-        temp = pd.merge(temp, Game.Troops[['Regent', 'Provence']][Game.Troops['Regent']==Regent], on='Provence', how='inner').fillna(0)
-        temp = pd.merge(temp[['Provence']], Game.Provences[Game.Provences['Regent']==enemy][['Provence', 'Castle']], on='Provence', how='inner')
+        temp = pd.concat([temp[['Province']], Game.LeyLines[Game.LeyLines['Regent']==Regent][['Province']]])
+        temp = pd.merge(temp, Game.Troops[['Regent', 'Province']][Game.Troops['Regent']==Regent], on='Province', how='inner').fillna(0)
+        temp = pd.merge(temp[['Province']], Game.Provinces[Game.Provinces['Regent']==enemy][['Province', 'Castle']], on='Province', how='inner')
         if temp.shape[0]>0:
             state[108] = 1  # I_am_seiging_a_castle_i_can_raze
             
             
         temp = Game.Holdings[Game.Holdings['Regent'] == Regent].copy()
-        temp = temp[temp['Type']=='Source'][['Type', 'Level', 'Provence']]
+        temp = temp[temp['Type']=='Source'][['Type', 'Level', 'Province']]
         temp = temp[temp['Level']>=7]
-        temp = pd.concat([temp[['Provence']], Game.LeyLines[Game.LeyLines['Regent']==Regent][['Provence']]])
-        if temp[temp['Provence']==capital].shape[0]>0:
+        temp = pd.concat([temp[['Province']], Game.LeyLines[Game.LeyLines['Regent']==Regent][['Province']]])
+        if temp[temp['Province']==capital].shape[0]>0:
             state[109] = 1  # can stronghold spell capital
-        if temp[temp['Provence']==high_pop].shape[0]>0:
+        if temp[temp['Province']==high_pop].shape[0]>0:
             state[110] = 1 # can stronghold spell high_pop
-        if temp[temp['Provence']==low_pop].shape[0]>0:
+        if temp[temp['Province']==low_pop].shape[0]>0:
             state[111] = 1 # can stronghold spell low_pop
             
         if state[23] > 0:
-            temp = pd.merge(Game.Provences[Game.Provences['Regent']==Regent][Game.Provences['Castle']>0]
-                    , Game.Troops[Game.Troops['Regent']==Regent], on='Provence', how='left')
-            temp = temp[['Provence','Castle','Type','Garrisoned']]
-            temp = temp.groupby(['Provence','Castle']).sum().reset_index()
+            temp = pd.merge(Game.Provinces[Game.Provinces['Regent']==Regent][Game.Provinces['Castle']>0]
+                    , Game.Troops[Game.Troops['Regent']==Regent], on='Province', how='left')
+            temp = temp[['Province','Castle','Type','Garrisoned']]
+            temp = temp.groupby(['Province','Castle']).sum().reset_index()
             if temp.shape[0]>0:
                 temp['Garrison Space'] = temp['Castle'] - temp['Garrisoned']
                 temp = temp[temp['Garrison Space']>0]
                 if temp.shape[0]>0:
                     for i, a in enumerate([capital, high_pop, low_pop]):
-                        if temp[temp['Provence']==a].shape[0]>0:
+                        if temp[temp['Province']==a].shape[0]>0:
                             state[112+i] = 1  # capital/high_pop/low_pop has space for Garrisoned Troops
                             
         temp = pd.merge(Game.Holdings[Game.Holdings['Regent']==Regent].copy()
@@ -681,24 +681,28 @@ class DQNAgent(object):
                         , how='left').fillna(0)
         temp = temp[temp['Requirements Level']<=temp['Level']]
         temp = temp[temp['Unit Type'] != 0]
-        temp_ = pd.merge(temp[['Regent', 'Provence']], Game.Provences[['Provence', 'Regent', 'Population']], on=['Provence', 'Regent'], how='left')
+        temp_ = pd.merge(temp[['Regent', 'Province']], Game.Provinces[['Province', 'Regent', 'Population']], on=['Province', 'Regent'], how='left')
         temp_ = temp_[temp_['Population'] > 0]
-        temp = pd.merge(temp_[['Provence']], temp, on='Provence', how='left')
+        temp = pd.merge(temp_[['Province']], temp, on='Province', how='left')
         if temp.shape[0]>0:
             state[115] = 1  # I can recruit levies
             
-        temp = self.Provences[self.Provences['Regent'] == enemy]
+        temp = Game.Provinces[Game.Provinces['Regent'] == enemy]
         temp = temp[temp['Contested'] == False]
         temp = temp[temp['Loyalty'] != 'High']
         temp = temp[temp['Loyalty'] != 'Average']
-        temp_ =  self.Holdings[self.Holdings['Type']=='Law']
+        temp_ =  Game.Holdings[Game.Holdings['Type']=='Law']
         temp_ = temp_[temp_['Regent'] == enemy]
         temp_ = temp_[temp_['Contested'] == False]
-        temp = pd.merge(temp, temp_, on='Provence', how='left').fillna(0)
+        temp = pd.merge(temp, temp_, on='Province', how='left').fillna(0)
         temp = temp[temp['Level']==0]
         if temp.shape[0]>0:
-            state[116] = 1  #enemy_has_provences_I_can_contest
-                
+            state[116] = 1  #enemy_has_provinces_I_can_contest
+			
+		temp = pd.merge(Game.Troops[Game.Troops['Regent']==Regent], Game.Provinces[Game.Provinces['Regent']==''], on='Province',how='inner')['Province']
+		if temp.shape[0] > 0:
+			state[117] = 1  # I can claim a nearby province
+			
         # save last memory with no reward
         if Game.Train == True and (Game.Season!=0 or Game.Action!=1):
             season = Game.Season

@@ -17,18 +17,18 @@ class Regency(object):
     found here: https://www.gmbinder.com/share/-L4h_QHUKh2NeYhgD96A
     
     DataFrames:
-    Provences: [Provence, Domain, Region, Regent, Terrain, Loyalty, Taxation, 
+    Provinces: [Province, Domain, Region, Regent, Terrain, Loyalty, Taxation, 
                 Population, Magic, Castle, Capital, Position, Waterway]
-    Holdings: [Provence, Domain, Regent, Type, Level]
+    Holdings: [Province, Domain, Regent, Type, Level]
     Regents: [Regent, Full Name, Player, Class, Level, Alignment, Race, 
                 Str, Dex, Con, Int, Wis, Cha, Insight, Deception, Persuasion, 
                 Regency Points, Gold Bars, Regency Bonus, Attitude, Alive]
-    Geography: [Provence, Neighbor, Border, Road, Caravan, Shipping, RiverChasm]
+    Geography: [Province, Neighbor, Border, Road, Caravan, Shipping, RiverChasm]
     Relationships: [Regent, Other, Diplomacy, Payment, Vassalage, At War, Trade Permission]
-    Troops: [Regent, Provence, Type, Cost, CR, Garrisoned, Home]
+    Troops: [Regent, Province, Type, Cost, CR, Garrisoned, Home]
     Seasons: A dctionary of season-dataframes (to keep track of waht happened)
     Lieutenants: A List of regent lieutenant pairs, with a marker for 'busy'
-    LeyLines: [Regent, Provence, Other]
+    LeyLines: [Regent, Province, Other]
     Projects: ['Regent', 'Project Type', 'Details', 'Gold Bars Left']
     '''
     
@@ -56,13 +56,13 @@ class Regency(object):
         self.GameName = GameName
 
 
-        # Provence Taxation Table
+        # Province Taxation Table
         dct = {}
         dct['Population'] = [a for a in range(11)]
         dct['Light'] = [(-1,0), (-1,1), (0,1), (1,3), (1,4), (2,5), (2,7), (2,9), (2,11), (2,13), (2,16)]
         dct['Moderate'] = [(-1,0), (0,2), (1,3), (1,4), (2,5), (2,7), (2,9), (2,11), (2,13), (2,16), (4,18)]
         dct['Severe'] =  [(-1,1), (1,3), (1,4), (2,5), (2,7), (2,9), (2,11), (2,13), (2,16), (4,18), (4,22)]
-        self.provence_taxation = pd.DataFrame(dct)
+        self.province_taxation = pd.DataFrame(dct)
         
         # troops
         dct = {}
@@ -428,8 +428,8 @@ class Regency(object):
         
         try:
             dct = pickle.load( open( 'worlds/' + world + '.pickle', "rb" ) )
-            lst = ['Provences', 'Holdings', 'Regents', 'Geography', 'Relationships', 'Troops', 'Seasons', 'Lieutenants', 'LeyLines', 'Projects', 'Espionage', 'War', 'Navy']
-            self.Provences, self.Holdings, self.Regents, self.Geography, self.Relationships, self.Troops, self.Seasons, self.Lieutenants, self.LeyLines, self.Projects, self.Espionage, self.War, self.Navy = [dct[a] for a in lst]
+            lst = ['Provinces', 'Holdings', 'Regents', 'Geography', 'Relationships', 'Troops', 'Seasons', 'Lieutenants', 'LeyLines', 'Projects', 'Espionage', 'War', 'Navy']
+            self.Provinces, self.Holdings, self.Regents, self.Geography, self.Relationships, self.Troops, self.Seasons, self.Lieutenants, self.LeyLines, self.Projects, self.Espionage, self.War, self.Navy = [dct[a] for a in lst]
         except (OSError, IOError) as e:
             self.new_world(world)
 
@@ -462,30 +462,30 @@ class Regency(object):
                 move =  to_categorical(np.argmax(prediction[0]), num_classes=N)
         return move
     
-    def set_override(self, Regent, action, bonus=False, capital=None, high_pop=None, low_pop=None, enemy=None, friend=None, rando=None, enemy_capital=None, troops=list(), provences=list(), Number=None, Name=None, Target=None, Type=None, holdings=list()):
+    def set_override(self, Regent, action, bonus=False, capital=None, high_pop=None, low_pop=None, enemy=None, friend=None, rando=None, enemy_capital=None, troops=list(), provinces=list(), Number=None, Name=None, Target=None, Type=None, holdings=list()):
         if bonus == True:
-            self.bonus_override[Regent] = [action, capital, high_pop, low_pop, enemy, friend, rando, enemy_capital, troops, provences, Number, Name, Target, Type, holdings]
+            self.bonus_override[Regent] = [action, capital, high_pop, low_pop, enemy, friend, rando, enemy_capital, troops, provinces, Number, Name, Target, Type, holdings]
         else:
-            self.override[Regent] = [action, capital, high_pop, low_pop, enemy, friend, rando, enemy_capital, troops, provences, Number, Name, Target, Type, holdings]
+            self.override[Regent] = [action, capital, high_pop, low_pop, enemy, friend, rando, enemy_capital, troops, provinces, Number, Name, Target, Type, holdings]
     
     # World Building
     def new_world(self, world):
         # Holdings
-        cols= ['Provence', 'Regent', 'Type', 'Level', 'Contested']
+        cols= ['Province', 'Regent', 'Type', 'Level', 'Contested']
         self.Holdings = pd.DataFrame(columns=cols)
         
-        # Provences
-        cols = ['Provence', 'Domain', 'Region', 'Regent', 'Terrain', 'Loyalty', 'Taxation',
+        # Provinces
+        cols = ['Province', 'Domain', 'Region', 'Regent', 'Terrain', 'Loyalty', 'Taxation',
                 'Population', 'Magic', 'Castle', 'Castle Name','Capital', 'Position', 'Contested'
                 , 'Waterway', 'Brigands']
-        self.Provences = pd.DataFrame(columns=cols)
+        self.Provinces = pd.DataFrame(columns=cols)
         
         # Regents
         cols = ['Regent', 'Full Name', 'Bloodline', 'Culture', 'Player', 'Class', 'Level', 'Alignment', 'Race', 'Str', 'Dex', 'Con', 'Int', 'Wis', 'Cha', 'Insight', 'Deception', 'Persuasion', 'Regency Points', 'Gold Bars', 'Regency Bonus', 'Attitude', 'Alive', 'Divine', 'Arcane']
         self.Regents = pd.DataFrame(columns=cols)
         
         # Geography
-        cols = ['Provence', 'Neighbor', 'Border', 'Road', 'Caravan', 'Shipping', 'RiverChasm']
+        cols = ['Province', 'Neighbor', 'Border', 'Road', 'Caravan', 'Shipping', 'RiverChasm']
         self.Geography = pd.DataFrame(columns=cols)
         
         # Relationships
@@ -493,7 +493,7 @@ class Regency(object):
         self.Relationships = pd.DataFrame(columns=cols)
         
         # Troops
-        cols = ['Regent', 'Provence', 'Type', 'Cost', 'CR', 'Garrisoned', 'Home', 'Injury']
+        cols = ['Regent', 'Province', 'Type', 'Cost', 'CR', 'Garrisoned', 'Home', 'Injury']
         self.Troops = pd.DataFrame(columns=cols)
         
         # Lieutenants
@@ -501,7 +501,7 @@ class Regency(object):
         self.Lieutenants = pd.DataFrame(columns=cols)
         
         #Ley Lines
-        cols = ['Regent', 'Provence', 'Other']
+        cols = ['Regent', 'Province', 'Other']
         self.LeyLines = pd.DataFrame(columns=cols)
         
         # Seasons
@@ -519,7 +519,7 @@ class Regency(object):
         self.War = pd.DataFrame(columns=['Year','Location','Event','Notes'])
         
         # Navy
-        self.Navy = pd.DataFrame(columns=['Regent', 'Provence','Ship','Hull','Troop Capacity', 'Seaworthiness', 'Name'])
+        self.Navy = pd.DataFrame(columns=['Regent', 'Province','Ship','Hull','Troop Capacity', 'Seaworthiness', 'Name'])
         
         # Save it...
         self.save_world(world)
@@ -529,7 +529,7 @@ class Regency(object):
         Saves it as a pickled dictionary of DataFrames
         '''
         dct = {}
-        dct['Provences'] = self.Provences
+        dct['Provinces'] = self.Provinces
         dct['Holdings'] = self.Holdings
         dct['Regents'] = self.Regents
         dct['Geography'] = self.Geography
@@ -559,24 +559,24 @@ class Regency(object):
             index=0
         return index
 
-    def add_holding(self, Provence, Regent, Type='Law', Level=0, Contested=0):
+    def add_holding(self, Province, Regent, Type='Law', Level=0, Contested=0):
         '''
-         Provence: match to provence
+         Province: match to province
          Regent: match to regent
          Type: 'Law', 'Guild', 'Temple', 'Source' 
          Level: 1 to Population (or Magic for source)
          
         '''
-        cols = ['Provence', 'Regent', 'Type', 'Level', 'Contested']
-        self.Holdings = self.Holdings.append(pd.DataFrame([[Provence, Regent, Type, Level, Contested]], columns=cols))
+        cols = ['Province', 'Regent', 'Type', 'Level', 'Contested']
+        self.Holdings = self.Holdings.append(pd.DataFrame([[Province, Regent, Type, Level, Contested]], columns=cols))
         self.Holdings = self.Holdings.reset_index(drop=True)
         self.Holdings = self.Holdings[cols]
 
-    def change_holding(self, Provence, Regent, Type, Level=None, Contested=None, new_Regent = None, mult_level=1):
+    def change_holding(self, Province, Regent, Type, Level=None, Contested=None, new_Regent = None, mult_level=1):
         '''
         '''
         
-        Holding = self.Holdings[self.Holdings['Provence']==Provence].copy()
+        Holding = self.Holdings[self.Holdings['Province']==Province].copy()
         Holding = Holding[Holding['Regent']==Regent]
         Holding = Holding[Holding['Type']==Type]
         
@@ -590,29 +590,29 @@ class Regency(object):
         df = self.Holdings.copy()
         df1 = df[df['Regent'] != Regent].copy()
         df = df[df['Regent']==Regent]
-        df2 = df[df['Provence']!=Provence].copy()
-        df3 = df[df['Provence']==Provence].copy()
+        df2 = df[df['Province']!=Province].copy()
+        df3 = df[df['Province']==Province].copy()
         df3 = df3[df['Type'] != Type]
         # remove it
         self.Holdings = pd.concat([df1, df2, df3], sort=True)
         # add it back in
-        self.add_holding(Provence, new_Regent, Type, Level, Contested)
-        self.Holdings = self.Holdings.groupby(['Provence','Regent','Type','Contested']).sum().reset_index()
-        self.Holdings = self.Holdings[['Provence','Regent','Type','Level','Contested']]
+        self.add_holding(Province, new_Regent, Type, Level, Contested)
+        self.Holdings = self.Holdings.groupby(['Province','Regent','Type','Contested']).sum().reset_index()
+        self.Holdings = self.Holdings[['Province','Regent','Type','Level','Contested']]
         self.Holdings['Level']=self.Holdings['Level'].astype(int)
         
         
-    def remove_holding(self, Provence, Regent, Type):
+    def remove_holding(self, Province, Regent, Type):
         '''
-        Remove all rows where Regent, Provence, Type are
+        Remove all rows where Regent, Province, Type are
         equakl to those set.
         '''
         # Holdings
         df = self.Holdings.copy()
         
-        temp = df[df['Provence']==Provence] # just the provence in question
-        df = df[df['Provence'] != Provence] # all others are safe
-        # add back all other regents in that provence
+        temp = df[df['Province']==Province] # just the province in question
+        df = df[df['Province'] != Province] # all others are safe
+        # add back all other regents in that province
         df = pd.concat(df, temp[temp['Regent'] != Regent], sort=False) 
         # isolate regent
         temp = temp[temp['Regent'] == Regent]
@@ -622,12 +622,12 @@ class Regency(object):
         #done
         self.Holdings = df
 
-    def add_provence(self, Provence, Domain, Region, Regent, x, y
+    def add_province(self, Province, Domain, Region, Regent, x, y
                      , Population=0, Magic=1, Law=None
                      , Capital=False, Terrain='Plains', Loyalty='Average', Taxation='Moderate'
                      , Castle=0, Castle_Name = '', Contested=False, Waterway=False):
         '''
-        Provence: pkey, Name
+        Province: pkey, Name
         Domain: Name 
         Regent: Name, foreign key on Regents 
         Terrain: 'Desert', 'Tundra', 'Forest', 'Mountain', 'Glacier', 'Hills', 
@@ -641,29 +641,29 @@ class Regency(object):
         x,y: x and y position
         Troops: String Values of type(subtype), comma seperated
         '''
-        # Provences
-        df = self.Provences.copy()
-        # print(Provence, df[df['Provence'] == Provence].shape[0], x, y)
-        if df[df['Provence'] == Provence].shape[0] > 0:
+        # Provinces
+        df = self.Provinces.copy()
+        # print(Province, df[df['Province'] == Province].shape[0], x, y)
+        if df[df['Province'] == Province].shape[0] > 0:
             # Already exists!
-            self.change_provence(Provence=Provence, Regent=Regent, Region=Region, Domain=Domain, Terrain=Terrain, Loyalty=Loyalty, Taxation=Taxation, Castle=Castle, Castle_Name=Castle_Name, Capital=Capital, x=x, y=y, Contested=Contested, Waterway=Waterway, Brigands=False)
+            self.change_province(Province=Province, Regent=Regent, Region=Region, Domain=Domain, Terrain=Terrain, Loyalty=Loyalty, Taxation=Taxation, Castle=Castle, Castle_Name=Castle_Name, Capital=Capital, x=x, y=y, Contested=Contested, Waterway=Waterway, Brigands=False)
         else:
-            temp = df.index[df['Provence'] == Provence].tolist()
+            temp = df.index[df['Province'] == Province].tolist()
             index = self.get_my_index(df, temp)
                     
-            df.loc[df.shape[0]] = [Provence, Domain, Region, Regent, Terrain, Loyalty, Taxation, Population, Magic, Castle, Castle_Name, Capital, np.array([x, y]), Contested, Waterway, False]
+            df.loc[df.shape[0]] = [Province, Domain, Region, Regent, Terrain, Loyalty, Taxation, Population, Magic, Castle, Castle_Name, Capital, np.array([x, y]), Contested, Waterway, False]
             df['Magic'] = df['Magic'].astype(int)
             df['Population'] = df['Population'].astype(int)
             df['Castle'] = df['Castle'].astype(int)
-            # df = df.drop_duplicates(subset='Provence', keep="last")
+            # df = df.drop_duplicates(subset='Province', keep="last")
             
-            self.Provences = df
+            self.Provinces = df
 
-    def change_provence(self, Provence, Regent=None, Region=None, Domain=None, Population_Change=0, Terrain=None, Loyalty=None, Taxation=None, Castle=None, Castle_Name=None, Capital=None, x=None, y=None, Contested=None, Waterway=None, Brigands=False):
+    def change_province(self, Province, Regent=None, Region=None, Domain=None, Population_Change=0, Terrain=None, Loyalty=None, Taxation=None, Castle=None, Castle_Name=None, Capital=None, x=None, y=None, Contested=None, Waterway=None, Brigands=False):
         '''
         None = not changed
         '''
-        old = self.Provences[self.Provences['Provence'] == Provence]
+        old = self.Provinces[self.Provinces['Province'] == Province]
         if old.shape[0]>0:
             if Regent == None:
                 Regent = old['Regent'].values[0]
@@ -747,11 +747,11 @@ class Regency(object):
                 # change Holding Levels
                 for i, a in enumerate(['Law', 'Guild', 'Temple', 'Source']):
                     against = [Population, Population, Population, Magic][i]
-                    temp = self.Holdings[self.Holdings['Provence']==Provence].copy()
+                    temp = self.Holdings[self.Holdings['Province']==Province].copy()
                     temp = temp[temp['Type']==a][temp['Level']>0]
                     check = np.sum(temp['Level'])
                     while check > against and check > 0 and temp.shape[0]>0:
-                        temp = self.Holdings[self.Holdings['Provence']==Provence].copy()
+                        temp = self.Holdings[self.Holdings['Province']==Province].copy()
                         temp = temp[temp['Type']==a].copy()
                         temp = temp[temp['Level']>0].copy()  # no point adjusting 0-level holdings  
                         check = np.sum(temp['Level'])
@@ -761,7 +761,7 @@ class Regency(object):
                         if check > against and temp.shape[0]>0:      
                             temp['Roll'] = np.random.randint(1,check+temp.shape[0],temp.shape[0]) + temp['Level']
                             temp = temp.sort_values(['Contested', 'Roll'], ascending=False)
-                            self.change_holding(Provence, temp['Regent'].values[0], a, Level=temp['Level'].values[0]-1)
+                            self.change_holding(Province, temp['Regent'].values[0], a, Level=temp['Level'].values[0]-1)
             if Taxation == None:
                 Taxation = old['Taxation'].values[0]
             if Magic <= 0:
@@ -777,33 +777,33 @@ class Regency(object):
                 pos = old['Position'].values[0]
             else:
                 pos = np.array([x, y])
-            self.Provences = pd.concat([self.Provences[self.Provences['Provence']!=Provence], 
-                                        pd.DataFrame([[Provence, Domain, Region, Regent, Terrain, Loyalty, Taxation,
+            self.Provinces = pd.concat([self.Provinces[self.Provinces['Province']!=Province], 
+                                        pd.DataFrame([[Province, Domain, Region, Regent, Terrain, Loyalty, Taxation,
                                                     Population, Magic, Castle, Castle_Name, Capital, pos, Contested
                                                     , Waterway, Brigands]]
-                                                    , columns=['Provence', 'Domain', 'Region', 'Regent', 'Terrain', 'Loyalty', 'Taxation',
+                                                    , columns=['Province', 'Domain', 'Region', 'Regent', 'Terrain', 'Loyalty', 'Taxation',
                                                                 'Population', 'Magic', 'Castle', 'Castle Name','Capital', 'Position', 'Contested'
-                                                               , 'Waterway', 'Brigands'])], sort=True).reset_index(drop=True)[['Provence', 'Domain', 'Region', 'Regent', 'Terrain', 'Loyalty', 'Taxation',
+                                                               , 'Waterway', 'Brigands'])], sort=True).reset_index(drop=True)[['Province', 'Domain', 'Region', 'Regent', 'Terrain', 'Loyalty', 'Taxation',
                                                                 'Population', 'Magic', 'Castle', 'Castle Name','Capital', 'Position', 'Contested'
                                                                , 'Waterway', 'Brigands']]
         else:
-            print('ERROR', [Provence, Domain, Region, Regent, Terrain, Loyalty, Taxation,
+            print('ERROR', [Province, Domain, Region, Regent, Terrain, Loyalty, Taxation,
                                                     Population_Change, Castle, Castle_Name, Capital, x, y, Contested
                                                     , Waterway, Brigands])
             
-    def change_loyalty(self, Provence, Change):
-        temp = self.Provences[self.Provences['Provence'] == Provence].copy()
+    def change_loyalty(self, Province, Change):
+        temp = self.Provinces[self.Provinces['Province'] == Province].copy()
         temp['Loyalty'] = temp['Loyalty'].str.replace('Rebellious','0').replace('Poor','1').replace('Average','2').replace('High','3').astype(int)
         temp['Loyalty'] = temp['Loyalty'] + Change
         N = temp.iloc[0]['Loyalty']
         if N <= 0:
-            self.change_provence(Provence, Loyalty='Rebellious')
+            self.change_province(Province, Loyalty='Rebellious')
         elif N == 1:
-            self.change_provence(Provence, Loyalty='Poor')
+            self.change_province(Province, Loyalty='Poor')
         elif N == 2:
-            self.change_provence(Provence, Loyalty='Average')
+            self.change_province(Province, Loyalty='Average')
         else:
-            self.change_provence(Provence, Loyalty='High')
+            self.change_province(Province, Loyalty='High')
             
     def add_lieutenant(self, Regent, Lieutenant, busy=False):
         '''
@@ -909,7 +909,7 @@ class Regency(object):
             self.Holdings = self.Holdings[self.Holdings['Regent'] != Regent]
             self.Relationships = self.Relationships[self.Relationships['Regent'] != Regent]
             self.Relationships = self.Relationships[self.Relationships['Other'] != Regent]
-            self.Provences['Regent'] = self.Provences['Regent'].str.replace('Regent','')
+            self.Provinces['Regent'] = self.Provinces['Regent'].str.replace('Regent','')
         elif Alive == None:
             Alive = old['Alive'].values[0]
         
@@ -929,7 +929,7 @@ class Regency(object):
     def kill_regent(self, Regent):
         '''
         Remove the regent from regents, Relationships, and holdings
-        clear the regent from provences
+        clear the regent from provinces
         '''
         # memory thing...
         if self.Train==True:
@@ -948,7 +948,7 @@ class Regency(object):
             # -100 for being dead.
             self.agent.remember(temp['State'].values[-1], temp['Decision'].values[-1], -100, temp['Next State'].values[-1], 'Action', True)
         self.Holdings = self.Holdings[self.Holdings['Regent'] != Regent]  # just gone
-        self.Provences['Regent'] = self.Provences['Regent'].str.replace(Regent, '')
+        self.Provinces['Regent'] = self.Provinces['Regent'].str.replace(Regent, '')
         self.Relationships = self.Relationships[self.Relationships['Regent'] != Regent]
         self.Relationships = self.Relationships[self.Relationships['Other'] != Regent]
               
@@ -1006,16 +1006,16 @@ class Regency(object):
         else:
             return 'Noble', 2, 0, 1, 0, 1, 2, 3, 4, 5, 5, False, False
         
-    def add_geo(self, Provence, Neighbor, Border=0, Road=0, Caravan=0, Shipping=0, RiverChasm=0):
+    def add_geo(self, Province, Neighbor, Border=0, Road=0, Caravan=0, Shipping=0, RiverChasm=0):
         '''
         Geography Connection
         
         RiverChasm -> this is for bridges, determines cost of getting a road between the two
         '''
-        cols = ['Provence', 'Neighbor', 'Border', 'Road', 'Caravan', 'Shipping', 'RiverChasm']
-        self.Geography = self.Geography.append(pd.DataFrame([[Provence, Neighbor, Border, Road, Caravan, Shipping, RiverChasm]], columns=cols))
-        self.Geography = self.Geography.append(pd.DataFrame([[Neighbor, Provence, Border, Road, Caravan, Shipping, RiverChasm]], columns=cols))
-        self.Geography = self.Geography.groupby(['Provence', 'Neighbor']).sum().reset_index()
+        cols = ['Province', 'Neighbor', 'Border', 'Road', 'Caravan', 'Shipping', 'RiverChasm']
+        self.Geography = self.Geography.append(pd.DataFrame([[Province, Neighbor, Border, Road, Caravan, Shipping, RiverChasm]], columns=cols))
+        self.Geography = self.Geography.append(pd.DataFrame([[Neighbor, Province, Border, Road, Caravan, Shipping, RiverChasm]], columns=cols))
+        self.Geography = self.Geography.groupby(['Province', 'Neighbor']).sum().reset_index()
         self.Geography = self.Geography[cols]
        
         # fix to zeroes and ones...
@@ -1023,8 +1023,8 @@ class Regency(object):
             self.Geography[col] = (1*(self.Geography[col]>=1)).astype(int)
 
         
-    def change_geography(self, Provence, Neighbor, Border=None, Road=None, Caravan=None, Shipping=None, RiverChasm=None, repeat=True):
-        temp = self.Geography[self.Geography['Provence']==Provence]
+    def change_geography(self, Province, Neighbor, Border=None, Road=None, Caravan=None, Shipping=None, RiverChasm=None, repeat=True):
+        temp = self.Geography[self.Geography['Province']==Province]
         index = temp.index[temp['Neighbor'] == Neighbor].tolist()[0]
         old = self.Geography.loc[index]
         if Border == None:
@@ -1038,10 +1038,10 @@ class Regency(object):
         if RiverChasm == None:
             RiverChasm = old['RiverChasm']
             
-        self.Geography.loc[index] = [Neighbor, Provence, Border, Road, Caravan, Shipping, RiverChasm]
+        self.Geography.loc[index] = [Neighbor, Province, Border, Road, Caravan, Shipping, RiverChasm]
         
         if repeat == True:
-            self.change_geography(Provence=Neighbor, Neighbor=Provence, Border=Border, Road=Road, Caravan=Caravan, Shipping=Shipping, RiverChasm=RiverChasm, repeat=False)
+            self.change_geography(Province=Neighbor, Neighbor=Province, Border=Border, Road=Road, Caravan=Caravan, Shipping=Shipping, RiverChasm=RiverChasm, repeat=False)
         
     def add_relationship(self, Regent, Other, Diplomacy=0, Payment=0, Vassalage=0, At_War=0, Trade_Permission=0):
         '''
@@ -1057,24 +1057,24 @@ class Regency(object):
         self.Relationships['At War'] = 1*(self.Relationships['At War']>=1)
         self.Relationships['Trade Permission'] = 1*(self.Relationships['Trade Permission']>=1)
        
-    def add_troops(self, Regent, Provence, Type, Home='', Garrisoned=0, Injury=0):
+    def add_troops(self, Regent, Province, Type, Home='', Garrisoned=0, Injury=0):
         '''
         This is fired after a decision to buy a troop is made
         OR for setting up troops in the begining
         '''
         
         temp = self.troop_units[self.troop_units['Unit Type'] == Type]
-        self.Troops = self.Troops.append(pd.DataFrame([[Regent, Provence, Type, temp['Maintenance Cost'].values[0], temp['BCR'].values[0], Garrisoned, Home, Injury]]
-                                                      , columns=['Regent', 'Provence', 'Type', 'Cost', 'CR', 'Garrisoned', 'Home', 'Injury']), ignore_index=True)
+        self.Troops = self.Troops.append(pd.DataFrame([[Regent, Province, Type, temp['Maintenance Cost'].values[0], temp['BCR'].values[0], Garrisoned, Home, Injury]]
+                                                      , columns=['Regent', 'Province', 'Type', 'Cost', 'CR', 'Garrisoned', 'Home', 'Injury']), ignore_index=True)
         self.Troops = self.Troops.reset_index()
-        self.Troops = self.Troops[['Regent', 'Provence', 'Type', 'Cost', 'CR', 'Garrisoned', 'Home', 'Injury']]
+        self.Troops = self.Troops[['Regent', 'Province', 'Type', 'Cost', 'CR', 'Garrisoned', 'Home', 'Injury']]
         
-    def disband_troops(self, Regent, Provence, Type, Killed=False, Real=True):
+    def disband_troops(self, Regent, Province, Type, Killed=False, Real=True):
         '''
         '''
         # disband the troop
         temp = self.Troops[self.Troops['Regent'] == Regent].copy()
-        temp = temp[temp['Provence'] == Provence].copy()
+        temp = temp[temp['Province'] == Province].copy()
         temp = temp.index[temp['Type'] == Type].tolist()
         if len(temp) > 0:
             # start disbanding
@@ -1082,14 +1082,14 @@ class Regency(object):
                 # oh no, potential Brigands!
                 success, _ = self.make_roll(Regent, 10, 'Persuasion', adj=False, dis=False, player_gbid=None)
                 if success == False:
-                    self.change_provence(Provence, Brigands=True)
+                    self.change_province(Province, Brigands=True)
             if 'Levies' in Type.split() and Killed == False and Real == True:  # disbanded, so go back to their stuff.
-                self.change_provence(self.Troops.loc[temp[0]]['Home'], Population_Change=1)
+                self.change_province(self.Troops.loc[temp[0]]['Home'], Population_Change=1)
             self.Troops.drop(temp[0], inplace=True)
   
-    def add_ship(self, Regent, Provence, Ship, Name=None, Seaworthiness=None, Hull=None):
+    def add_ship(self, Regent, Province, Ship, Name=None, Seaworthiness=None, Hull=None):
         '''
-        self.Navy = pd.DataFrame(columns=['Provence','Ship','Hull','Troop Capacity'])
+        self.Navy = pd.DataFrame(columns=['Province','Ship','Hull','Troop Capacity'])
         '''
         temp = self.ship_units[self.ship_units['Ship']==Ship]
         if Name==None:
@@ -1101,8 +1101,8 @@ class Regency(object):
             temp = pd.merge(temp, t2, on='X', how='left')
             temp['Name'] = temp['Name']+temp['End']
             temp['Name'] = temp['Name'].str.replace('_', ' ')
-            temp['Name'] = temp['Name'].str.replace('PPP', Provence)
-            temp['Name'] = temp['Name'].str.replace('DDD', self.Provences[self.Provences['Provence']==Provence]['Domain'].values[0])
+            temp['Name'] = temp['Name'].str.replace('PPP', Province)
+            temp['Name'] = temp['Name'].str.replace('DDD', self.Provinces[self.Provinces['Province']==Province]['Domain'].values[0])
             temp['Name'] = temp['Name'].str.replace('RRR', self.name_generator(self.Regents[self.Regents['Regent']==Regent]['Culture'].values[0]))
             temp['Name'] = temp['Name'].str.title()
             temp['Name'] = temp['Name'].str.replace("'S","'s")
@@ -1111,11 +1111,11 @@ class Regency(object):
             Hull=temp['Hull'].values[0]
         if Seaworthiness == None:
             temp['Seaworthiness'].values[0]
-        self.Navy = self.Navy.append(pd.DataFrame([[Regent, Provence, Ship, temp['Hull'].values[0], temp['Troop Capacity'].values[0], temp['Seaworthiness'].values[0], Name]],
-                                        columns=['Regent', 'Provence','Ship','Hull','Troop Capacity', 'Seaworthiness', 'Name'])).reset_index(drop=True)[['Regent', 'Provence','Ship','Hull','Troop Capacity', 'Seaworthiness', 'Name']]
+        self.Navy = self.Navy.append(pd.DataFrame([[Regent, Province, Ship, temp['Hull'].values[0], temp['Troop Capacity'].values[0], temp['Seaworthiness'].values[0], Name]],
+                                        columns=['Regent', 'Province','Ship','Hull','Troop Capacity', 'Seaworthiness', 'Name'])).reset_index(drop=True)[['Regent', 'Province','Ship','Hull','Troop Capacity', 'Seaworthiness', 'Name']]
         
     
-    def remove_ship(self, Regent, Provence, Ship, Name=None):
+    def remove_ship(self, Regent, Province, Ship, Name=None):
         '''
         Remove a ship from a give place
         '''
@@ -1136,7 +1136,7 @@ class Regency(object):
         '''
         Moves a ship from From to To
         '''
-        if self.Provences[self.Provences['Provence']==To]['Waterway'].values[0] == True:
+        if self.Provinces[self.Provinces['Province']==To]['Waterway'].values[0] == True:
             # ships can only go on water
             temp = self.ship_units[self.ship_units['Ship']==Ship]
             Name, Hull, Seaworthiness = self.remove_ship(Regent, From, Ship)
@@ -1176,8 +1176,8 @@ class Regency(object):
             
             # filter to Regions
             if Regions != None:
-                filter = pd.concat([self.Provences[self.Provences['Region']==Region].copy() for Region in Regions], sort=False)[['Regent', 'Provence']].copy()
-                filter_ = pd.merge(filter, self.Holdings.copy(), on='Provence', how='left')[['Regent', 'Provence']].copy()
+                filter = pd.concat([self.Provinces[self.Provinces['Region']==Region].copy() for Region in Regions], sort=False)[['Regent', 'Province']].copy()
+                filter_ = pd.merge(filter, self.Holdings.copy(), on='Province', how='left')[['Regent', 'Province']].copy()
                 filter = pd.concat([filter, filter_], sort=False)[['Regent', 'Player']].copy()
                 temp = pd.merge(filter, temp, on='Regent', how='left')
                 
@@ -1282,11 +1282,11 @@ class Regency(object):
         df_copy = df.copy()        
         df = pd.merge(df, self.Relationships.copy(), on='Regent', how='left').fillna(0)
         
-        # neighbors by provence
-        ptemp = pd.concat([self.Provences[self.Provences['Regent']==reg][['Regent', 'Provence']].copy() for reg in set(df['Regent'])], sort=False)
+        # neighbors by province
+        ptemp = pd.concat([self.Provinces[self.Provinces['Regent']==reg][['Regent', 'Province']].copy() for reg in set(df['Regent'])], sort=False)
         ptemp['Other'] = ptemp['Regent']
-        ptemp['Neighbor'] = ptemp['Provence']
-        rand_temp = pd.merge(self.Geography.copy(),ptemp[['Regent', 'Provence']],on='Provence',how='left')
+        ptemp['Neighbor'] = ptemp['Province']
+        rand_temp = pd.merge(self.Geography.copy(),ptemp[['Regent', 'Province']],on='Province',how='left')
         rand_temp = pd.merge(rand_temp,ptemp[['Other', 'Neighbor']], on='Neighbor', how='left' )
         df2 = pd.merge(df_copy, rand_temp[['Regent','Other']], on='Regent', how='left').fillna(0)
         df2 = df2[df2['Other'] != 0].copy()
@@ -1298,16 +1298,16 @@ class Regency(object):
         temph = self.Holdings.copy()
         
         temph['Other'] = temph['Regent']
-        temph = pd.merge(temph[['Regent', 'Provence', 'Type']], temph[['Other', 'Provence', 'Type']], on='Provence')
+        temph = pd.merge(temph[['Regent', 'Province', 'Type']], temph[['Other', 'Province', 'Type']], on='Province')
         temph['Rivals'] = 1*(temph['Type_x'] == temph['Type_y'])
         temph = temph[temph['Regent'] != temph['Other']]
 
         # nearby
         temph_ = self.Holdings.copy()
-        temph_ = pd.merge(temph_,self.Geography[['Provence', 'Neighbor', 'Border']].copy(),on='Provence', how='left')
+        temph_ = pd.merge(temph_,self.Geography[['Province', 'Neighbor', 'Border']].copy(),on='Province', how='left')
         temph_ = temph_[temph_['Border']==1].copy()
         temph__ = self.Holdings.copy()
-        temph__['Neighbor'] = temph__['Provence']
+        temph__['Neighbor'] = temph__['Province']
         temph__['Other'] = temph__['Regent']
         temph_ = pd.merge(temph_, temph__[['Neighbor', 'Other', 'Type']], on='Neighbor', how='left')
         temph_['Rivals'] = temph_['Type_x'] == temph_['Type_y']
@@ -1400,27 +1400,27 @@ class Regency(object):
         or dispatch units of troops to deal with the threat.   
 
         - Monster -> Lieutenant [Lietenant is marked busy the entire season]
-        - Brigandage -> Troops need to be moved to the provence
-        - Ignore if Regent does not have a provence.
+        - Brigandage -> Troops need to be moved to the province
+        - Ignore if Regent does not have a province.
         
         brigandage
         '''
         # Start with Brigands
         dfb = df[df['Random Event']=='Brigandage']
-        # see if there are provences...
-        dfb = pd.merge(dfb, self.Provences[self.Provences['Brigands']==False][['Provence', 'Regent']].copy(), on='Regent', how='inner')
+        # see if there are provinces...
+        dfb = pd.merge(dfb, self.Provinces[self.Provinces['Brigands']==False][['Province', 'Regent']].copy(), on='Regent', how='inner')
         dfb['Roll'] = np.random.randint(1,100,dfb.shape[0])
         df1 = dfb[['Regent','Roll']].groupby('Regent').max().reset_index()
         dfb = pd.merge(df1, dfb, on=['Regent','Roll'], how='left')
 
         # add brigands...
         for i, row in dfb.iterrows():
-            self.change_provence(row['Provence'], Brigands=True)
+            self.change_province(row['Province'], Brigands=True)
         
         # Monsters!
         dfm = df[df['Random Event']=='Monsters']
-        # see if there are provences...
-        dfm = pd.merge(dfm, self.Provences[['Provence', 'Regent']].copy(), on='Regent', how='inner')
+        # see if there are provinces...
+        dfm = pd.merge(dfm, self.Provinces[['Province', 'Regent']].copy(), on='Regent', how='inner')
 
         dfmn = dfm[dfm['Player'] == False].copy()
         dfmp = dfm[dfm['Player'] == True].copy()
@@ -1490,7 +1490,7 @@ class Regency(object):
         df = df.copy()
         temp = pd.merge(self.Regents[['Regent']].copy(), df, on='Regent', how='outer').fillna(0)
         temp = temp[temp['Random Event'] == 0].copy()
-        # temp = pd.merge(self.Provences.copy(), temp, on='Regent', how='left')
+        # temp = pd.merge(self.Provinces.copy(), temp, on='Regent', how='left')
         lst = list(set(temp['Regent']))
         num = len(lst)
 
@@ -1529,14 +1529,14 @@ class Regency(object):
         
         NPCs spend it if they have 10+ GB.
         
-        If spent, random provence increases in Loyalty by 1.
+        If spent, random province increases in Loyalty by 1.
         '''
         # roll 1d4
         df = pd.merge(df, self.Regents[['Regent', 'Gold Bars']], on='Regent', how='left')
         # df = df[df['Gold Bars']>10]
         df['Cost'] = np.random.randint(1,4,df.shape[0])
-        # get provences
-        temp = pd.merge(df['Regent'], self.Provences[['Provence', 'Regent', 'Loyalty']].copy(), on='Regent', how='left').fillna('High')
+        # get provinces
+        temp = pd.merge(df['Regent'], self.Provinces[['Province', 'Regent', 'Loyalty']].copy(), on='Regent', how='left').fillna('High')
         temp = temp[temp['Loyalty']!='High'].copy()  # pointless
         # where it would help
         temp['Loyalty'] = temp['Loyalty'].str.replace('Rebellious','1').replace('Poor','2').replace('Average',3).astype(int)
@@ -1552,7 +1552,7 @@ class Regency(object):
                 if row['Player'] == False:
                     if row['Gold Bars'] > 10:
                         self.change_regent(row['Regent'], Gold_Bars = row['Gold Bars'] - row['Cost'])
-                        self.change_provence(row['Provence'], Loyalty=row['Loyalty'])
+                        self.change_province(row['Province'], Loyalty=row['Loyalty'])
                         lst.append(row['Regent'])
                 else:  # Players get a choice
                     ans = 'hi'
@@ -1562,7 +1562,7 @@ class Regency(object):
                         ans = imput('[y/n]')
                         if ans == 'y':
                             self.change_regent(row['Regent'], Gold_Bars = row['Gold Bars'] - row['Cost'])
-                            self.change_provence(row['Provence'], Loyalty=row['Loyalty'])
+                            self.change_province(row['Province'], Loyalty=row['Loyalty'])
                             lst.append(row['Regent'])
                     
     def random_event_feud(self, df):
@@ -1575,7 +1575,7 @@ class Regency(object):
         party or the other causes strain between the regent that the party that is ruled against. This party 
         may become a future thorn in their side.
         
-        for NPCs, just -1d6 GB and drop loyalty in a provence by 1 if chosen provence is Average or High.
+        for NPCs, just -1d6 GB and drop loyalty in a province by 1 if chosen province is Average or High.
         (same for PCs...)
         '''
         df = pd.merge(df, self.Regents[['Regent', 'Gold Bars']], on='Regent', how='left')
@@ -1587,14 +1587,14 @@ class Regency(object):
         df2['Cost'] = df2['Gold Bars']
         df = pd.concat([df1, df2], sort=False)
 
-        temp = pd.merge(df['Regent'], self.Provences[['Provence', 'Regent', 'Loyalty']].copy(), on='Regent', how='left').fillna('Rebellious')
+        temp = pd.merge(df['Regent'], self.Provinces[['Province', 'Regent', 'Loyalty']].copy(), on='Regent', how='left').fillna('Rebellious')
         temp = temp[temp['Loyalty']!='Rebellious'].copy()  # pointless
         temp['Loyalty'] = temp['Loyalty'].str.replace('Poor','1').replace('Average','2').replace('High','3').astype(int)
         temp = pd.merge(temp[['Regent', 'Loyalty']].groupby('Regent').min().reset_index(),temp,on=['Regent', 'Loyalty'], how='left')
 
 
         df = pd.merge(temp, df, on='Regent', how='left')
-        df = df[df['Provence']!='High'].copy()
+        df = df[df['Province']!='High'].copy()
 
 
         
@@ -1603,7 +1603,7 @@ class Regency(object):
             if row['Regent'] not in lst:
                 if row['Player'] == False:
                     self.change_regent(row['Regent'], Gold_Bars = row['Gold Bars'] - row['Cost'])
-                    self.change_loyalty(row['Provence'],-1)
+                    self.change_loyalty(row['Province'],-1)
                     lst.append(row['Regent'])
                 else:
                     ans = '0'
@@ -1616,7 +1616,7 @@ class Regency(object):
                             lst.append(row['Regent'])
                         elif ans == '2':
                             self.change_regent(row['Regent'], Gold_Bars = row['Gold Bars'] - row['Cost'])
-                            self.change_loyalty(row['Provence'],-1)
+                            self.change_loyalty(row['Province'],-1)
                             lst.append(row['Regent'])
                         
     def random_event_great_captain_or_heresy(self, df):
@@ -1704,8 +1704,8 @@ class Regency(object):
         '''
          # Stole code from Monsters!
         dfm = df.copy()
-        # see if there are provences...
-        dfm = pd.merge(dfm, self.Provences[['Provence', 'Regent']].copy(), on='Regent', how='inner')
+        # see if there are provinces...
+        dfm = pd.merge(dfm, self.Provinces[['Province', 'Regent']].copy(), on='Regent', how='inner')
 
         dfmn = dfm[dfm['Player'] == False].copy()
         dfmp = dfm[dfm['Player'] == True].copy()
@@ -1772,8 +1772,8 @@ class Regency(object):
         
         NPCs make 1 lieutenant busy or lose 1d4 Gold Bars
         '''
-        # see if there are provences...
-        df = pd.merge(df, self.Provences[['Provence', 'Regent', 'Loyalty']].copy(), on='Regent', how='inner')
+        # see if there are provinces...
+        df = pd.merge(df, self.Provinces[['Province', 'Regent', 'Loyalty']].copy(), on='Regent', how='inner')
         df = pd.merge(df, self.Regents[['Regent', 'Gold Bars', 'Attitude']].copy(), on='Regent', how='left')
         # in case they cheap out
         df['Loyalty'] = df['Loyalty'].str.replace('Poor','Rebellious').replace('Average', 'Poor').replace('High','Average')
@@ -1790,23 +1790,23 @@ class Regency(object):
             elif row['Cost'] >= row['Gold Bars'] and row['Attitude'] != 'Aggressive':
                 self.change_regent(row['Regent'],Gold_Bars = row['Gold Bars'] - row['Cost'])
             else:
-                self.change_provence(row['Provence'], Loyalty=row['Loyalty'])
+                self.change_province(row['Province'], Loyalty=row['Loyalty'])
         for i, row in dfp.iterrows():
             temp = list(self.Lieutenants[self.Lieutenants['Regent'] == row['Regent']]['Lieutenant'].copy())
             ans = 0
             while ans == 0:
                 self.clear_screen()
                 print('   --- Natural Disaster ---  ')
-                print('A Natural disaster has struck in {}.  How will {} respond?'.format(row['Provence'], self.Regents[self.Regents['Regent']==row['Regent']]['Full Name']))
+                print('A Natural disaster has struck in {}.  How will {} respond?'.format(row['Province'], self.Regents[self.Regents['Regent']==row['Regent']]['Full Name']))
                 print()
-                print('[1] Ignore it and let {} fall to {} loyalty.'.format(row['Provence'], row['Loyalty']))
+                print('[1] Ignore it and let {} fall to {} loyalty.'.format(row['Province'], row['Loyalty']))
                 if row['Cost'] <= row['Gold Bars']:
                     print('[2] Pay {} Gold Bars in relief aid.'.format(row['Cost']))
                 if len(temp) > 0:
                     print('[3] Send a Lieutenant to deal with the disaster.')
                 ans = input()
                 if ans == '1':
-                    self.change_provence(row['Provence'], Loyalty=row['Loyalty'])
+                    self.change_province(row['Province'], Loyalty=row['Loyalty'])
                 elif ans == '2' and row['Cost'] <= row['Gold Bars']:
                     self.change_regent(reg,Gold_Bars = row['Gold Bars'] - row['Cost'])
                 elif ans == '3' and len(temp) > 0:
@@ -1828,11 +1828,11 @@ class Regency(object):
         '''
         df2 = df.copy()
         # get guilds
-        df1 = pd.merge(df, self.Holdings[self.Holdings['Type']=='Guild'][['Regent', 'Provence', 'Type']], on='Regent', how='left').fillna(0)
-        df1 = df1[df1['Provence'] != 0].copy()
+        df1 = pd.merge(df, self.Holdings[self.Holdings['Type']=='Guild'][['Regent', 'Province', 'Type']], on='Regent', how='left').fillna(0)
+        df1 = df1[df1['Province'] != 0].copy()
         # get trade routes
-        df2 = pd.merge(df2, self.Provences[['Regent', 'Provence']].copy(), on='Regent', how='left')
-        df2 = pd.merge(df2, pd.concat([self.Geography[self.Geography['Caravan']==1].copy(),self.Geography[self.Geography['Shipping']==1].copy()], sort=False), on='Provence', how='left')               
+        df2 = pd.merge(df2, self.Provinces[['Regent', 'Province']].copy(), on='Regent', how='left')
+        df2 = pd.merge(df2, pd.concat([self.Geography[self.Geography['Caravan']==1].copy(),self.Geography[self.Geography['Shipping']==1].copy()], sort=False), on='Province', how='left')               
          
         df = pd.concat([df1, df2], sort=False).fillna(0)
         df['roll'] = np.random.randint(1,100,df.shape[0])
@@ -1841,12 +1841,12 @@ class Regency(object):
         for i, row in df.iterrows():
             if row['Regent'] not in lst:
                 if row['Type'] == 'Law':
-                    self.change_holding(row['Regent'], row['Provence'], Contested = 1)
+                    self.change_holding(row['Regent'], row['Province'], Contested = 1)
                     lst.append(row['Regent'])
                 if row['Caravan'] == 1:
-                    self.change_geography(row['Provence'], row['Neighbor'], Caravan=0)
+                    self.change_geography(row['Province'], row['Neighbor'], Caravan=0)
                 if row['Shipping'] == 1:
-                    self.change_geography(row['Provence'], row['Neighbor'], Shipping=0)
+                    self.change_geography(row['Province'], row['Neighbor'], Shipping=0)
         
     def random_event_unrest(self, df):
         '''
@@ -1861,9 +1861,9 @@ class Regency(object):
         state of affairs.
         
         New regent Created, gains population in levies in the target's domain if rebellious hit....all levies have that
-        provence set to home.
+        province set to home.
         '''
-        df = pd.merge(df, self.Provences[['Regent', 'Provence', 'Loyalty', 'Population']].copy(), on='Regent')
+        df = pd.merge(df, self.Provinces[['Regent', 'Province', 'Loyalty', 'Population']].copy(), on='Regent')
         df['Roll'] = np.random.randint(1, 1000, df.shape[0])
         df = df.sort_values('Roll')
 
@@ -1872,16 +1872,16 @@ class Regency(object):
             if row['Regent'] not in lst:
                 lst.append(row['Regent'])
                 if row['Loyalty'] == 'High' or row['Loyalty'] == 'Average':
-                    self.change_loyalty(row['Provence'], -2)
+                    self.change_loyalty(row['Province'], -2)
                 else:
                     check = self.Regents[self.Regents['Regent'] == Regent+'_rebel'].copy()
                     if check.shape[0] == 0:
-                        self.add_regent(Regent+'_rebel', Name=self.name_generator(self.Regents[self.Regents['Regent']==Regent]['Culture'].values[0], row['Provence']), Archetype='Commoner')
+                        self.add_regent(Regent+'_rebel', Name=self.name_generator(self.Regents[self.Regents['Regent']==Regent]['Culture'].values[0], row['Province']), Archetype='Commoner')
                     enemy = Regent+'_rebel'
                     self.add_relationship(enemy, Regent, Diplomacy = -3, At_War=1)
-                    self.change_provence(row['Provence'], Loyalty='Rebellious', Population_Change=-1*row['Population'])
+                    self.change_province(row['Province'], Loyalty='Rebellious', Population_Change=-1*row['Population'])
                     for a in range(row['Population']):
-                        self.add_troops(enemy, row['Provence'], 'Levies', home_provence=row['Provence'])
+                        self.add_troops(enemy, row['Province'], 'Levies', home_province=row['Province'])
         
     # 2. DOMAIN INITIATIVE  
     def domain_initiative(self):
@@ -1912,7 +1912,7 @@ class Regency(object):
             Season = pd.merge(self.Seasons[self.Season]['Season'], temp[['Regent', 'Initiative']], on='Regent', how='left')
             self.Seasons[self.Season]['Season'] = Season.sort_values('Initiative', ascending=False)
             self.Seasons[self.Season]['Actions'] = {}
-            cols = ['Regent', 'Actor', 'Action Type', 'Action', 'Decision', 'Target Regent', 'Provence', 'Target Provence', 'Target Holding', 'Success?', 'Base Reward', 'State', 'Invalid', 'Message', 'Next State']
+            cols = ['Regent', 'Actor', 'Action Type', 'Action', 'Decision', 'Target Regent', 'Province', 'Target Province', 'Target Holding', 'Success?', 'Base Reward', 'State', 'Invalid', 'Message', 'Next State']
             self.Seasons[self.Season]['Actions'][1] = pd.DataFrame(columns=cols)
             self.Seasons[self.Season]['Actions'][2] = pd.DataFrame(columns=cols)
             self.Seasons[self.Season]['Actions'][3] = pd.DataFrame(columns=cols)
@@ -1934,7 +1934,7 @@ class Regency(object):
             keys = list(regents.copy().keys())
 
             # Provinces
-            df = self.Provences.copy()
+            df = self.Provinces.copy()
             df = df[df['Contested'] == False]  # no rp from contested holding
             df['Regency Points Add'] = df['Population']
             df = df[['Regent', 'Regency Points Add']]
@@ -1975,8 +1975,8 @@ class Regency(object):
         except:
             cols = self.Regents.copy().keys()
             
-            # 4.1 & 4.2 Taxation From Provences
-            df = pd.DataFrame(columns=['Regent', 'Revenue', 'Provence'])
+            # 4.1 & 4.2 Taxation From Provinces
+            df = pd.DataFrame(columns=['Regent', 'Revenue', 'Province'])
             
             # set taxtation
             temp = self.Regents[self.Regents['Player']==True]
@@ -1990,78 +1990,78 @@ class Regency(object):
                     self.clear_screen()
                     print('Taxation Settings for {}'.format(row['Full Name']))
                     print('-'*33)
-                    temp_ = self.Provences[self.Provences['Regent']==row['Regent']][['Provence','Population', 'Loyalty', 'Taxation']]
-                    temp_ = pd.merge(temp_, law[law['Regent']==row['Regent']][['Provence', 'Type']].copy(), on='Provence', how='left').fillna('')
-                    p = input('Type a Provence name, or "DONE" if done:  ')
+                    temp_ = self.Provinces[self.Provinces['Regent']==row['Regent']][['Province','Population', 'Loyalty', 'Taxation']]
+                    temp_ = pd.merge(temp_, law[law['Regent']==row['Regent']][['Province', 'Type']].copy(), on='Province', how='left').fillna('')
+                    p = input('Type a Province name, or "DONE" if done:  ')
                     if p.lower() == 'done':
                         check = 1
                     else:
-                        if p in list(temp_['Provence']):
+                        if p in list(temp_['Province']):
                             tax = input('Change Taxation to: [0]None, [1]Light, [2]Moderate, [3]Severe:  ') 
                             
                             if int(tax) == 0:
-                                self.change_provence(Provence=p, Taxation='None', Loyalty='1')
+                                self.change_province(Province=p, Taxation='None', Loyalty='1')
                             elif int(tax) == 1:
-                                self.change_provence(Provence=p, Taxation='Light')
+                                self.change_province(Province=p, Taxation='Light')
                             elif int(tax) == 2:
-                                if p in list(temp_[temp_['Type']=='Law']['Provence']):
-                                    self.change_provence(Provence=p, Taxation='Moderate')
+                                if p in list(temp_[temp_['Type']=='Law']['Province']):
+                                    self.change_province(Province=p, Taxation='Moderate')
                                 else:
-                                    self.change_provence(Provence=p, Taxation='Moderate', Loyalty='-1')
+                                    self.change_province(Province=p, Taxation='Moderate', Loyalty='-1')
                             elif int(tax) == 3:
                                 input('severe')
-                                self.change_provence(Provence=p, Taxation='Severe', Loyalty='-1')
+                                self.change_province(Province=p, Taxation='Severe', Loyalty='-1')
             
             # Agents need to pick now...
             temp = self.Regents[self.Regents['Player']==False].copy()
             costs = self.maintenance_costs(Update=False)
-            provences_owned = self.Provences[self.Provences['Contested']==False][['Regent', 'Provence']].copy().groupby('Regent').count().reset_index()
-            costs = pd.merge(costs, provences_owned, on='Regent', how='left').fillna(1)
-            costs['Cost'] = (costs['Cost']/costs['Provence']).replace('','0').astype(int).fillna(0)
+            provinces_owned = self.Provinces[self.Provinces['Contested']==False][['Regent', 'Province']].copy().groupby('Regent').count().reset_index()
+            costs = pd.merge(costs, provinces_owned, on='Regent', how='left').fillna(1)
+            costs['Cost'] = (costs['Cost']/costs['Province']).replace('','0').astype(int).fillna(0)
             temp = pd.merge(temp, costs, on='Regent', how='left').fillna(0)
-            save_states = pd.DataFrame(columns=['Regent', 'Provence', 'state', 'action'])
+            save_states = pd.DataFrame(columns=['Regent', 'Province', 'state', 'action'])
             for i, row in temp.iterrows():
-                temp_ = self.Provences[self.Provences['Regent']==row['Regent']][['Provence','Population', 'Loyalty', 'Taxation']]
-                temp_ = pd.merge(temp_, law[law['Regent']==row['Regent']][['Provence', 'Type']].copy(), on='Provence', how='left').fillna('')
+                temp_ = self.Provinces[self.Provinces['Regent']==row['Regent']][['Province','Population', 'Loyalty', 'Taxation']]
+                temp_ = pd.merge(temp_, law[law['Regent']==row['Regent']][['Province', 'Type']].copy(), on='Province', how='left').fillna('')
                 # pick for each... this can likely be more efficient
                 temp_['Cost'] = row['Cost']
                 for j, row_ in temp_.iterrows():
                     state = self.agent.get_tax_state(self, row_, row['Regent'])
                     tax = self.make_decision(row['Attitude'], 4, 'Taxes', state, row['Regent'])
-                    p = row_['Provence']
+                    p = row_['Province']
                     if tax[0] == 1:
-                        self.change_provence(Provence=p, Taxation='None', Loyalty='1')
+                        self.change_province(Province=p, Taxation='None', Loyalty='1')
                     elif tax[1] == 1:
-                        self.change_provence(Provence=p, Taxation='Light')
+                        self.change_province(Province=p, Taxation='Light')
                     elif tax[2] == 1:
-                        if p in list(temp_[temp_['Type']=='Law']['Provence']):
-                            self.change_provence(Provence=p, Taxation='Moderate')
+                        if p in list(temp_[temp_['Type']=='Law']['Province']):
+                            self.change_province(Province=p, Taxation='Moderate')
                         else:
-                            self.change_provence(Provence=p, Taxation='Moderate', Loyalty='-1')
+                            self.change_province(Province=p, Taxation='Moderate', Loyalty='-1')
                     elif tax[3] == 1:
-                        self.change_provence(Provence=p, Taxation='Severe', Loyalty='-1')
-                    save_states.loc[save_states.shape[0]] = [row['Regent'], row_['Provence'], state, tax]       
+                        self.change_province(Province=p, Taxation='Severe', Loyalty='-1')
+                    save_states.loc[save_states.shape[0]] = [row['Regent'], row_['Province'], state, tax]       
             # collect taxes
             for p in range(11):
-                temp = self.Provences[self.Provences['Population'] == p].copy()
+                temp = self.Provinces[self.Provinces['Population'] == p].copy()
                 temp = temp[temp['Contested']==False]  # no gb from contested holdings
                 if temp.shape[0] > 0:
                     for t in ['Light', 'Moderate', 'Severe']:
                         temp_ = temp[temp['Taxation'] == t].copy()
                         if temp_.shape[0] > 0:
-                            a,b = self.provence_taxation[self.provence_taxation['Population'] == p][t].values[0]
+                            a,b = self.province_taxation[self.province_taxation['Population'] == p][t].values[0]
                             temp_['Revenue'] = np.random.randint(a,b,temp_.shape[0])
-                            df = pd.concat((df, temp_[['Regent', 'Revenue', 'Provence']].copy()), sort=False)
+                            df = pd.concat((df, temp_[['Regent', 'Revenue', 'Province']].copy()), sort=False)
                             # print(df.shape[0])
             # make reward vector
-            temp = self.Provences.copy()
+            temp = self.Provinces.copy()
             temp = pd.merge(temp, costs[['Regent', 'Cost']], on='Regent', how='left')
-            temp = pd.merge(temp, self.Holdings[self.Holdings['Type'] == 'Law'][['Provence', 'Type', 'Regent']], on=['Provence', 'Regent'], how='left').fillna('')
+            temp = pd.merge(temp, self.Holdings[self.Holdings['Type'] == 'Law'][['Province', 'Type', 'Regent']], on=['Province', 'Regent'], how='left').fillna('')
             temp['Relative'] = temp['Loyalty'].str.replace('Rebellious','4').replace('Poor','3').replace('Average','2').replace('High','1').astype(int)
             temp['Cost'] = temp['Cost'].astype(str).str.replace('','0').fillna('0').astype(float).astype(int)
             temp['Tax Effect'] = temp['Relative']*(-1)*((temp['Taxation']=='Severe') + (temp['Type'] != 'Law')*(temp['Taxation']=='Moderate')) + temp['Relative']*(temp['Taxation']=='None') + (-10)*(temp['Loyalty']=='Rebellious') - temp['Cost']
-            temp = temp[['Tax Effect', 'Provence']]
-            reward = pd.merge(df, temp, on='Provence', how='left')  # skips players
+            temp = temp[['Tax Effect', 'Province']]
+            reward = pd.merge(df, temp, on='Province', how='left')  # skips players
             reward = pd.merge(reward, self.Regents[self.Regents['Player']==False][['Regent', 'Attitude']].copy(), on='Regent', how='left')
             reward = reward.dropna()
             # Aggro Regents don't care if the people are unhappy as much as peaceful Regents
@@ -2079,16 +2079,16 @@ class Regency(object):
                     reward['rm'] = reward['rm'].str.replace(Attitude,'2')
             reward['Reward'] = reward['Revenue']*reward['rm'].astype(int) + reward['Tax Effect']*reward['tm'].astype(int)
             # update memory
-            save_states = pd.merge(save_states, reward[['Provence', 'Reward']], on='Provence', how='left').fillna(0)
+            save_states = pd.merge(save_states, reward[['Province', 'Reward']], on='Province', how='left').fillna(0)
             lst = []
             for i, row in save_states.iterrows():
                 # hate having to iterrow, but here we are
                 Attitude = self.Regents[self.Regents['Regent'] == row['Regent']]['Attitude'].values[0]
-                temp = self.Provences.copy()
+                temp = self.Provinces.copy()
                 temp = pd.merge(temp, costs[['Regent','Cost']], on='Regent', how='left').fillna(0)
                 temp = temp[temp['Regent'] == row['Regent']].copy()
-                temp = temp[temp['Provence'] == row['Provence']].copy()
-                temp = pd.merge(temp, law[law['Regent']==row['Regent']][['Provence', 'Type']].copy(), on='Provence', how='left').fillna('')
+                temp = temp[temp['Province'] == row['Province']].copy()
+                temp = pd.merge(temp, law[law['Regent']==row['Regent']][['Province', 'Type']].copy(), on='Province', how='left').fillna('')
                 new_state = self.agent.get_tax_state(self, list(temp.iterrows())[0][1], row['Regent'])
                 self.agent.remember(row['state'], row['action'], row['Reward'], new_state, 'Taxes')
                 self.agent.train_short_memory(row['state'], row['action'], row['Reward'], new_state, 'Taxes')
@@ -2111,7 +2111,7 @@ class Regency(object):
                     df = pd.concat([df, temp_[['Regent', 'Revenue']].copy()], sort=False)
             
             # 4.4 Claims from Law Holdings
-            temp = pd.merge(self.Holdings[self.Holdings['Contested']==0].copy(),self.Provences.copy(), on='Provence')
+            temp = pd.merge(self.Holdings[self.Holdings['Contested']==0].copy(),self.Provinces.copy(), on='Province')
             temp = temp[temp['Type']=='Law'].copy()
             temp = temp[temp['Regent_x'] != temp['Regent_y']].copy()
             temp['Level'] = (temp['Level']/2).astype(int)
@@ -2126,15 +2126,15 @@ class Regency(object):
             df = pd.concat([df, temp[['Regent', 'Revenue']].copy()], sort=False)
             
             # 4.5 Trade Routes - Caravans
-            temp = self.Provences[['Provence', 'Regent', 'Population']].copy()
+            temp = self.Provinces[['Province', 'Regent', 'Population']].copy()
             df_ = pd.concat([self.Geography[self.Geography['Caravan']==1].copy(), self.Geography[self.Geography['Shipping']==1].copy()], sort=False)
             temp['A'] = temp['Population']
             temp['B'] = temp['Population']
-            df_ = pd.merge(df_, temp[['Provence', 'A']], on='Provence', how='left')
-            df_ = pd.merge(df_, temp[['Provence', 'B']], right_on='Provence', left_on='Neighbor', how='left').fillna(1)
-            df_['Provence'] = df_['Provence_x']
+            df_ = pd.merge(df_, temp[['Province', 'A']], on='Province', how='left')
+            df_ = pd.merge(df_, temp[['Province', 'B']], right_on='Province', left_on='Neighbor', how='left').fillna(1)
+            df_['Province'] = df_['Province_x']
             df_['Revenue'] = ((df_['A']+df_['B']+2*df_['Shipping'])/2).astype(int)
-            df_ = pd.merge(df_, self.Provences.copy(), on='Provence', how='left')
+            df_ = pd.merge(df_, self.Provinces.copy(), on='Province', how='left')
             df = pd.concat([df, df_[['Regent', 'Revenue']]], sort=False)
             
             # 4.6 Tribute (the greatest code in the world)
@@ -2177,7 +2177,7 @@ class Regency(object):
             cols = self.Regents.copy().keys()
             
             # 5.1 Domain Expenses - 1 per 5 holdings, up to nearest gb
-            temp = self.Provences.copy()
+            temp = self.Provinces.copy()
             temp['Domain'] = 1
             df = temp[['Regent','Domain']]
             temp = temp[temp['Castle']>0]
@@ -2209,7 +2209,7 @@ class Regency(object):
                             _temp = _temp.sort_values('CR')  # want to dump levies first to get them back to work
                             for j, _row in _temp.iterrows():
                                 if cost > gb and _temp.shape[0]>0:
-                                    self.disband_troops(_row['Regent'], _row['Provence'], _row['Type'])
+                                    self.disband_troops(_row['Regent'], _row['Province'], _row['Type'])
                                     cost = cost - _row['Cost']  # make sure only the single troop cost
                     else:
                         while cost > gb:
@@ -2402,7 +2402,7 @@ class Regency(object):
                                     decision = self.make_decision('', self.agent.action_choices, 'Action', state, row['Regent'], over)
                                     # translate into action...
                                     index = self.Seasons[self.Season]['Actions'][self.Action].shape[0]
-                                    Regent, Actor, Action_Type, action, Decision, Target_Regent, Provence, Target_Provence, Target_Holding, Success, reward, State, invalid, Message = self.take_action(decision, Regent, actor, type, state, capital, high_pop, low_pop, friend, enemy, rando, enemy_capital)
+                                    Regent, Actor, Action_Type, action, Decision, Target_Regent, Province, Target_Province, Target_Holding, Success, reward, State, invalid, Message = self.take_action(decision, Regent, actor, type, state, capital, high_pop, low_pop, friend, enemy, rando, enemy_capital)
                                     # update memory if invalid
                                     if invalid == True:
                                         next_state = state
@@ -2416,7 +2416,7 @@ class Regency(object):
                                         # minor rewards are short-term trained...
                                         self.agent.train_short_memory(state, action, reward, self.agent.get_action_state(row['Regent'], self, None)[0], 'Action', invalid)
                                         # self.agent.remember(state, decision,0, self.agent.get_action_state(row['Regent'], self, None)[0], 'Action', invalid)
-                                        self.Seasons[self.Season]['Actions'][self.Action].loc[index] = [Regent, Actor, Action_Type, action, Decision, Target_Regent, Provence, Target_Provence, Target_Holding, Success, reward, State, invalid, Message, self.agent.get_action_state(row['Regent'], self, None)[0]]
+                                        self.Seasons[self.Season]['Actions'][self.Action].loc[index] = [Regent, Actor, Action_Type, action, Decision, Target_Regent, Province, Target_Province, Target_Holding, Success, reward, State, invalid, Message, self.agent.get_action_state(row['Regent'], self, None)[0]]
                                         with open('games/' + self.GameName +'_' + str(self.Season) + '_' + str(self.Action) + '.pickle', 'wb') as handle:
                                             pickle.dump(self, handle, protocol=pickle.HIGHEST_PROTOCOL)
                                     
@@ -2441,7 +2441,7 @@ class Regency(object):
                            
                             # translate into action...
                             index = self.Seasons[self.Season]['Actions'][self.Action].shape[0]
-                            Regent, Actor, Action_Type, action, Decision, Target_Regent, Provence, Target_Provence, Target_Holding, Success, reward, State, invalid, Message = self.take_action(decision, Regent, actor, Type, state, capital, high_pop, low_pop, friend, enemy, rando, enemy_capital)
+                            Regent, Actor, Action_Type, action, Decision, Target_Regent, Province, Target_Province, Target_Holding, Success, reward, State, invalid, Message = self.take_action(decision, Regent, actor, Type, state, capital, high_pop, low_pop, friend, enemy, rando, enemy_capital)
                             # update memory if invalid
                             tries += 1
                             if invalid == True and (self.Train == True or self.Train_Short == True):
@@ -2451,7 +2451,7 @@ class Regency(object):
                                         self.agent.remember(state, decision, -50, next_state, 'Action', invalid)
                                 self.agent.train_short_memory(state, action, reward, next_state, 'Action', invalid)
                             else:  # update action vector
-                                self.Seasons[self.Season]['Actions'][self.Action].loc[index] = [Regent, Actor, Action_Type, action, Decision, Target_Regent, Provence, Target_Provence, Target_Holding, Success, reward, State, invalid, Message, self.agent.get_action_state(row['Regent'], self, None)[0]]
+                                self.Seasons[self.Season]['Actions'][self.Action].loc[index] = [Regent, Actor, Action_Type, action, Decision, Target_Regent, Province, Target_Province, Target_Holding, Success, reward, State, invalid, Message, self.agent.get_action_state(row['Regent'], self, None)[0]]
                                 with open('games/' + self.GameName + '_' + str(self.Season) + '_' + str(self.Action) +'.pickle', 'wb') as handle:
                                     pickle.dump(self, handle, protocol=pickle.HIGHEST_PROTOCOL)
                             
@@ -2479,7 +2479,7 @@ class Regency(object):
     def take_action(self, decision, Regent, actor, Type, state, capital, high_pop, low_pop, friend, enemy, rando, enemy_capital):
         '''
         
-        ['Regent', 'Actor', 'Action Type', 'Action', 'Target Regent', 'Provence', 'Target Provence', 'Target Holding', 'Success?', 'Base Reward', 'State', invalid, message]
+        ['Regent', 'Actor', 'Action Type', 'Action', 'Target Regent', 'Province', 'Target Province', 'Target Holding', 'Success?', 'Base Reward', 'State', invalid, message]
         '''
         try:
             invalid = False
@@ -2490,7 +2490,7 @@ class Regency(object):
             try:
                 if Type == 'Action':
                     troops = self.override[Regent][8]
-                    provences = self.override[Regent][9]
+                    provinces = self.override[Regent][9]
                     Number = self.override[Regent][10]
                     Name = self.override[Regent][11]
                     Target = self.override[Regent][12]
@@ -2499,7 +2499,7 @@ class Regency(object):
                     del self.override[Regent]
                 else:
                     troops = self.bonus_override[Regent][8]
-                    provences = self.bonus_override[Regent][9]
+                    provinces = self.bonus_override[Regent][9]
                     Number = self.bonus_override[Regent][10]
                     Name = self.bonus_override[Regent][11]
                     Target = self.bonus_override[Regent][12]
@@ -2508,7 +2508,7 @@ class Regency(object):
                     del self.bonus_override[Regent]
             except:
                 troops = []
-                provences = []
+                provinces = []
                 Number = None
                 Name = None
                 Target = None
@@ -2520,20 +2520,20 @@ class Regency(object):
                 if state[23]==0 or state[94]==1:
                     return [Regent, actor, Type, 'build_road', decision, '', '', '', '', False, -10, state, True, '']
                 else:
-                    # builds a road from capital to high_pop... or any provence to any provence 
-                    temp = pd.merge(self.Provences[['Provence']][self.Provences['Regent'] == Regent], self.Geography, on='Provence', how='left')
+                    # builds a road from capital to high_pop... or any province to any province 
+                    temp = pd.merge(self.Provinces[['Province']][self.Provinces['Regent'] == Regent], self.Geography, on='Province', how='left')
                     temp = temp[temp['Border'] == 1]
                     temp = temp[temp['Road'] == 0]
                     # will build from capital if valid...
-                    if temp[temp['Provence']==capital].shape[0] > 0:
-                        temp = temp[temp['Provence']==capital]
+                    if temp[temp['Province']==capital].shape[0] > 0:
+                        temp = temp[temp['Province']==capital]
                     # will build a random road from capital if high-pop no valid
                     if temp[temp['Neighbor']==high_pop].shape[0]>0:
                         temp[temp['Neighbor']==high_pop]
                     temp['Roll'] = np.random.randint(1,100,temp.shape[0]) + 10*temp['RiverChasm']
                     temp = temp.sort_values('Roll')                
-                    success, reward, message = self.bonus_action_build(Regent, temp.iloc[0]['Provence'], temp.iloc[0]['Neighbor'])
-                    return [Regent, actor, Type, 'build_road', decision, '', temp.iloc[0]['Provence'], temp.iloc[0]['Neighbor'], '', success, reward, state, invalid, message]
+                    success, reward, message = self.bonus_action_build(Regent, temp.iloc[0]['Province'], temp.iloc[0]['Neighbor'])
+                    return [Regent, actor, Type, 'build_road', decision, '', temp.iloc[0]['Province'], temp.iloc[0]['Neighbor'], '', success, reward, state, invalid, message]
             #decree_general
             elif decision[1] == 1:  # 1
                 if state[94]==1 or state[4] + state[5] + state[6] == 0:  # Dormant Court, not a valid action
@@ -2561,7 +2561,7 @@ class Regency(object):
                     message = message.replace('!Regent', actor)
                     return [Regent, actor, Type, 'decree_asset_seizure', decision, '', '', '', '', success, reward, state, invalid, message]
             # disband_army  
-            elif decision[3] == 1:  #3, troops=[], provences=[]  -optional, otherwise all below half strength or just a single random unit
+            elif decision[3] == 1:  #3, troops=[], provinces=[]  -optional, otherwise all below half strength or just a single random unit
                 if state[44] == 0:
                     invalid = True
                     return [Regent, actor, Type, 'disband_army', decision, '', '', '', '', False, -1, state, invalid, '']
@@ -2576,11 +2576,11 @@ class Regency(object):
                         temp = self.Troops[self.Troops['Regent'] == Regent].copy()
                         if temp[temp['Injury']<=-2].shape[0] > 0:
                             temp = temp[temp['Injury']<=-2]
-                            success, reward, message = self.bonus_action_disband(Regent, temp['Type'].values, temp['Provence'].values)
+                            success, reward, message = self.bonus_action_disband(Regent, temp['Type'].values, temp['Province'].values)
                         else:
                             temp['target'] = temp['CR'] - temp['Cost'] + temp['Injury']
                             temp = temp.sort_values('target')
-                            success, reward, message = self.bonus_action_disband(Regent, [temp['Type'].values[0]], [temp['Provence'].values[0]])
+                            success, reward, message = self.bonus_action_disband(Regent, [temp['Type'].values[0]], [temp['Province'].values[0]])
                     reward = 0
                     if state[87] == 1:  #Aggressive
                         reward = -3
@@ -2593,11 +2593,11 @@ class Regency(object):
                     temp = self.Troops[self.Troops['Regent'] == Regent].copy()
                     temp = temp[temp['Type'].str.lower().str.contains('levies')]
                     units = []
-                    provences = []
+                    provinces = []
                     for i, row in temp.iterrows():
                         units.append(row['Type'])
-                        provences.append(row['Provence'])
-                    success, reward, message = self.bonus_action_disband(Regent, units, provences)
+                        provinces.append(row['Province'])
+                    success, reward, message = self.bonus_action_disband(Regent, units, provinces)
                     if state[87] == 1:  #Aggressive
                         reward = reward -3
                     return [Regent, actor, Type, 'disband_levies', decision, '', '', '', '', True, reward, state, invalid, message.replace('!Regent!',actor) ]
@@ -2610,15 +2610,15 @@ class Regency(object):
                     temp = self.Troops[self.Troops['Regent'] == Regent].copy()
                     temp = temp[temp['Type'].str.lower().str.contains('mercenary')]
                     units = []
-                    provences = []
+                    provinces = []
                     reward = int(len(units)/3)
                     if state[87] == 1:  #Aggressive
                         reward = reward -3
                     for i, row in temp.iterrows():
                         units.append(row['Type'])
-                        provences.append(row['Provence'])
-                        self.bonus_action_disband(Regent, [row['Type']], [row['Provence']])
-                    return [Regent, actor, Type, 'disband_mercenaries', decision, '', ', '.join(provences), '', '', True, reward, state, invalid, '{} disbanded all mercenaries'.format(actor)]
+                        provinces.append(row['Province'])
+                        self.bonus_action_disband(Regent, [row['Type']], [row['Province']])
+                    return [Regent, actor, Type, 'disband_mercenaries', decision, '', ', '.join(provinces), '', '', True, reward, state, invalid, '{} disbanded all mercenaries'.format(actor)]
             # agitate_for_friend
             elif decision[6] == 1:  #6, friend
                 if state[35] == 0 and state[4] == 1 or state[34]+state[35]+state[36]+state[37] == 0 or state[94]==1 or state[97]==0:
@@ -2631,12 +2631,12 @@ class Regency(object):
                     if state[4] == 1:  # bonus action, temple only
                         temp = temp[temp['Type'] == 'Temple'].copy()
                         limit = 1
-                    temp = pd.merge(temp, self.Provences[self.Provences['Regent'] == friend].copy(), on='Provence', how='left').fillna(-1)
+                    temp = pd.merge(temp, self.Provinces[self.Provinces['Regent'] == friend].copy(), on='Province', how='left').fillna(-1)
                     temp = temp[temp['Population']>=0]
                     targets = []
                     for i, row in temp.iterrows():
                         if len(targets) <= limit:
-                            targets.append(row['Provence'])
+                            targets.append(row['Province'])
                     success, reward, message = self.domain_action_agitate(Regent, friend, False, targets)
                     
                     if state[92] == 0 and state[90] == 1:  # xenophobic penalty
@@ -2654,12 +2654,12 @@ class Regency(object):
                     if state[4] == 1:  # bonus action, temple only
                         temp = temp[temp['Type'] == 'Temple'].copy()
                         limit = 1
-                    temp = pd.merge(temp, self.Provences[self.Provences['Regent'] == enemy].copy(), on='Provence', how='left').fillna(-1)
+                    temp = pd.merge(temp, self.Provinces[self.Provinces['Regent'] == enemy].copy(), on='Province', how='left').fillna(-1)
                     temp = temp[temp['Population']>=0]
                     targets = []
                     for i, row in temp.iterrows():
                         if len(targets) <= limit:
-                            targets.append(row['Provence'])
+                            targets.append(row['Province'])
                     success, reward, message = self.domain_action_agitate(Regent, enemy, True, targets)
                     if state[89] == 1 or  (state[92] == 1 and state[90] == 1):  # Agressive bonus/Xenophobic bonus
                         reward = 2*reward
@@ -2678,12 +2678,12 @@ class Regency(object):
                     if state[4] == 1:  # bonus action, temple only
                         temp = temp[temp['Type'] == 'Temple'].copy()
                         limit = 1
-                    temp = pd.merge(temp, self.Provences[self.Provences['Regent'] == rando].copy(), on='Provence', how='left').fillna(-1)
+                    temp = pd.merge(temp, self.Provinces[self.Provinces['Regent'] == rando].copy(), on='Province', how='left').fillna(-1)
                     temp = temp[temp['Population']>=0]
                     targets = []
                     for i, row in temp.iterrows():
                         if len(targets) <= limit:
-                            targets.append(row['Provence'])
+                            targets.append(row['Province'])
                     success, reward, message = self.domain_action_agitate(Regent, rando, False, targets)
                     if state[92] == 0 and state[90] == 1:  # xenophobic penalty
                         reward = reward - 5
@@ -2700,12 +2700,12 @@ class Regency(object):
                     if state[4] == 1:  # bonus action, temple only
                         temp = temp[temp['Type'] == 'Temple'].copy()
                         limit = 1
-                    temp = pd.merge(temp, self.Provences[self.Provences['Regent'] == rando].copy(), on='Provence', how='left').fillna(-1)
+                    temp = pd.merge(temp, self.Provinces[self.Provinces['Regent'] == rando].copy(), on='Province', how='left').fillna(-1)
                     temp = temp[temp['Population']>=0]
                     targets = []
                     for i, row in temp.iterrows():
                         if len(targets) <= limit:
-                            targets.append(row['Provence'])
+                            targets.append(row['Province'])
                     success, reward, message = self.domain_action_agitate(Regent, rando, True, targets)
                     if state[89] == 1 or  (state[92] == 1 and state[90] == 1):  # Agressive bonus/Xenophobic bonus
                         reward = 2*reward
@@ -2717,147 +2717,147 @@ class Regency(object):
                 if (state[3] == 1 and state[36] == 0) or state[94]==1:
                     return [Regent, actor, Type, 'espionage_assassination', decision, '', '', '', '', False, -1, state, True, '']
                 else:
-                    # get enemy provences
-                    temp = self.Provences[self.Provences['Regent'] == enemy].copy()
-                    # if bonus action, must have a Guild in that provence
+                    # get enemy provinces
+                    temp = self.Provinces[self.Provinces['Regent'] == enemy].copy()
+                    # if bonus action, must have a Guild in that province
                     if state[3] == 1:
                         check = self.Holdings[self.Holdings['Regent']==Regent]
-                        temp = pd.merge(check[check['Type']=='Guild'][['Provence']], temp, on='Provence', how='left')
+                        temp = pd.merge(check[check['Type']=='Guild'][['Province']], temp, on='Province', how='left')
                     if temp.shape[0] == 0:  # no valid targets
                         invalid = True
                         return [Regent, actor, Type, 'espionage_assassination', decision, '', '', '', '', False, -10, state, True, '']
                     if temp[temp['Capital']==True].shape[0] == 0:
                         temp = temp.sort_values('Population', ascending=False)
-                        Provence = temp.iloc[0]['Provence']  # hardest one to hit
+                        Province = temp.iloc[0]['Province']  # hardest one to hit
                     else:
-                        Provence = temp[temp['Capital']==True]['Provence'].values[0]
-                    success, reward, message = self.domain_action_espionage(Regent, enemy, Provence, 'Assassination')
-                    return [Regent, actor, Type, 'espionage_assassination', decision, enemy, '', Provence, '', success, reward, state, False, message]
+                        Province = temp[temp['Capital']==True]['Province'].values[0]
+                    success, reward, message = self.domain_action_espionage(Regent, enemy, Province, 'Assassination')
+                    return [Regent, actor, Type, 'espionage_assassination', decision, enemy, '', Province, '', success, reward, state, False, message]
             # espionage_discover_troop_movements
             elif decision[11] == 1:  # 11, enemy
                 if (state[3] == 1 and state[36] == 0) or state[94] == 1:
                     return [Regent, actor, Type, 'espionage_discover_troop_movements', decision, '', '', '', '', False, -1, state, True, '']
                 else:
-                    # get enemy provences
-                    temp = self.Provences[self.Provences['Regent'] == enemy].copy()
-                    # if bonus action, must have a Guild in that provence
+                    # get enemy provinces
+                    temp = self.Provinces[self.Provinces['Regent'] == enemy].copy()
+                    # if bonus action, must have a Guild in that province
                     if state[3] == 1:
                         check = self.Holdings[self.Holdings['Regent']==Regent]
-                        temp = pd.merge(check[check['Type']=='Guild'][['Provence']], temp, on='Provence', how='left')
+                        temp = pd.merge(check[check['Type']=='Guild'][['Province']], temp, on='Province', how='left')
                     if temp.shape[0] == 0:  # no valid targets
                         invalid = True
                         return [Regent, actor, Type, 'espionage_discover_troop_movements', decision, '', '', '', '', False, -10, state, invalid, '']
                     if temp[temp['Capital']==True].shape[0] == 0:
                         temp = temp.sort_values('Population', ascending=False)
-                        Provence = temp.iloc[0]['Provence']  # hardest one to hit
+                        Province = temp.iloc[0]['Province']  # hardest one to hit
                     else:
-                        Provence = temp[temp['Capital']==True]['Provence'].values[0]
-                    success, reward, message = self.domain_action_espionage(Regent, enemy, Provence, 'Troops')
-                    return [Regent, actor, Type, 'espionage_discover_troop_movements', decision, enemy, '', Provence, '', success, reward, state, invalid, message]     
+                        Province = temp[temp['Capital']==True]['Province'].values[0]
+                    success, reward, message = self.domain_action_espionage(Regent, enemy, Province, 'Troops')
+                    return [Regent, actor, Type, 'espionage_discover_troop_movements', decision, enemy, '', Province, '', success, reward, state, invalid, message]     
             # espionage_diplomatic_details
             elif decision[12] == 1:  # 12, enemy
                 if (state[3] == 1 and state[36] == 0) or state[94]==1:
                     return [Regent, actor, Type, 'espionage_diplomatic_details', decision, '', '', '', '', False, -1, state, True, '']
                 else:
-                    # get enemy provences
-                    temp = self.Provences[self.Provences['Regent'] == enemy].copy()
-                    # if bonus action, must have a Guild in that provence
+                    # get enemy provinces
+                    temp = self.Provinces[self.Provinces['Regent'] == enemy].copy()
+                    # if bonus action, must have a Guild in that province
                     if state[3] == 1:
                         check = self.Holdings[self.Holdings['Regent']==Regent]
-                        temp = pd.merge(check[check['Type']=='Guild'][['Provence']], temp, on='Provence', how='left')
+                        temp = pd.merge(check[check['Type']=='Guild'][['Province']], temp, on='Province', how='left')
                     if temp.shape[0] == 0:  # no valid targets
                         invalid = True
                         return [Regent, actor, Type, 'espionage_diplomatic_details', decision, '', '', '', '', False, -10, state, invalid, '']
                     if temp[temp['Capital']==True].shape[0] == 0:
                         temp = temp.sort_values('Population', ascending=False)
-                        Provence = temp.iloc[0]['Provence']  # hardest one to hit
+                        Province = temp.iloc[0]['Province']  # hardest one to hit
                     else:
-                        Provence = temp[temp['Capital']==True]['Provence'].values[0]
-                    success, reward, message = self.domain_action_espionage(Regent, enemy, Provence, 'Trade')
-                    return [Regent, actor, Type, 'espionage_diplomatic_details', decision, enemy, '', Provence, '', success, reward, state, invalid, message]
+                        Province = temp[temp['Capital']==True]['Province'].values[0]
+                    success, reward, message = self.domain_action_espionage(Regent, enemy, Province, 'Trade')
+                    return [Regent, actor, Type, 'espionage_diplomatic_details', decision, enemy, '', Province, '', success, reward, state, invalid, message]
             # espionage_intrigue 
             elif decision[13] == 1:  #13, enemy
                 if (state[3] == 1 and state[36] == 0) or state[94] == 1 or state[98] == 0:
                     return [Regent, actor, Type, 'espionage_intrigue', decision, '', '', '', '', False, -1, state, True, '']
                 else:
-                    # get enemy provences
-                    temp = self.Provences[self.Provences['Regent'] == enemy].copy()
-                    # if bonus action, must have a Guild in that provence
+                    # get enemy provinces
+                    temp = self.Provinces[self.Provinces['Regent'] == enemy].copy()
+                    # if bonus action, must have a Guild in that province
                     if state[3] == 1:
                         check = self.Holdings[self.Holdings['Regent']==Regent]
-                        temp = pd.merge(check[check['Type']=='Guild'][['Provence']], temp, on='Provence', how='left')
+                        temp = pd.merge(check[check['Type']=='Guild'][['Province']], temp, on='Province', how='left')
                     if temp.shape[0] == 0:  # no valid targets
                         return [Regent, actor, Type, 'espionage_intrigue', decision, '', '', '', '', False, -1, state, True, '']
                     if temp[temp['Capital']==True].shape[0] == 0:
                         temp = temp.sort_values('Population', ascending=False)
-                        Provence = temp.iloc[0]['Provence']  # hardest one to hit
+                        Province = temp.iloc[0]['Province']  # hardest one to hit
                     else:
-                        Provence = temp[temp['Capital']==True]['Provence'].values[0]
-                    success, reward, message = self.domain_action_espionage(Regent, enemy, Provence, 'Intrigue')
-                    return [Regent, actor, Type, 'espionage_intrigue', decision, enemy, '', Provence, '', success, reward, state, invalid, message]
+                        Province = temp[temp['Capital']==True]['Province'].values[0]
+                    success, reward, message = self.domain_action_espionage(Regent, enemy, Province, 'Intrigue')
+                    return [Regent, actor, Type, 'espionage_intrigue', decision, enemy, '', Province, '', success, reward, state, invalid, message]
             # espionage_corruption 
             elif decision[14] == 1:  # 14, enemy
                 if (state[3] == 1 and state[36] == 0) or state[94]==1 or state[98] == 0:
                     return [Regent, actor, Type, 'espionage_corruption', decision, '', '', '', '', False, -1, state, True, '']
                 else:
-                    # get enemy provences
-                    temp = self.Provences[self.Provences['Regent'] == enemy].copy()
-                    # if bonus action, must have a Guild in that provence
+                    # get enemy provinces
+                    temp = self.Provinces[self.Provinces['Regent'] == enemy].copy()
+                    # if bonus action, must have a Guild in that province
                     if state[3] == 1:
                         check = self.Holdings[self.Holdings['Regent']==Regent]
-                        temp = pd.merge(check[check['Type']=='Guild'][['Provence']], temp, on='Provence', how='left')
+                        temp = pd.merge(check[check['Type']=='Guild'][['Province']], temp, on='Province', how='left')
                     if temp.shape[0] == 0:  # no valid targets
                         return [Regent, actor, Type, 'espionage_corruption', decision, '', '', '', '', False, -1, state, True, '']
                     if temp[temp['Capital']==True].shape[0] == 0:
                         temp = temp.sort_values('Population', ascending=False)
-                        Provence = temp.iloc[0]['Provence']  # hardest one to hit
+                        Province = temp.iloc[0]['Province']  # hardest one to hit
                     else:
-                        Provence = temp[temp['Capital']==True]['Provence'].values[0]
-                    success, reward, message = self.domain_action_espionage(Regent, enemy, Provence, 'Corruption')
-                    return [Regent, actor, Type, 'espionage_corruption', decision, enemy, '', Provence, '', success, reward, state, invalid, message]
+                        Province = temp[temp['Capital']==True]['Province'].values[0]
+                    success, reward, message = self.domain_action_espionage(Regent, enemy, Province, 'Corruption')
+                    return [Regent, actor, Type, 'espionage_corruption', decision, enemy, '', Province, '', success, reward, state, invalid, message]
             # espionage_heresy 
             elif decision[15] == 1:  # 15, enemy
                 if (state[3] == 1 and state[36] == 0) or state[94]==1 or state[98]==0:
                     return [Regent, actor, Type, 'espionage_heresy', decision, '', '', '', '', False, -1, state, True, '']
                 else:
-                    # get enemy provences
-                    temp = self.Provences[self.Provences['Regent'] == enemy].copy()
-                    # if bonus action, must have a Guild in that provence
+                    # get enemy provinces
+                    temp = self.Provinces[self.Provinces['Regent'] == enemy].copy()
+                    # if bonus action, must have a Guild in that province
                     if state[3] == 1:
                         check = self.Holdings[self.Holdings['Regent']==Regent]
-                        temp = pd.merge(check[check['Type']=='Guild'][['Provence']], temp, on='Provence', how='left')
+                        temp = pd.merge(check[check['Type']=='Guild'][['Province']], temp, on='Province', how='left')
                     if temp.shape[0] == 0:  # no valid targets
                         invalid = True
                         return [Regent, actor, Type, 'espionage_heresy', decision, '', '', '', '', False, -10, state, invalid, '']
                     if temp[temp['Capital']==True].shape[0] == 0:
                         temp = temp.sort_values('Population', ascending=False)
-                        Provence = temp.iloc[0]['Provence']  # hardest one to hit
+                        Province = temp.iloc[0]['Province']  # hardest one to hit
                     else:
-                        Provence = temp[temp['Capital']==True]['Provence'].values[0]
-                    success, reward, message = self.domain_action_espionage(Regent, enemy, Provence, 'Heresy')
-                    return [Regent, actor, Type, 'espionage_heresy', decision, enemy, '', Provence, '', success, reward, state, invalid, message]
+                        Province = temp[temp['Capital']==True]['Province'].values[0]
+                    success, reward, message = self.domain_action_espionage(Regent, enemy, Province, 'Heresy')
+                    return [Regent, actor, Type, 'espionage_heresy', decision, enemy, '', Province, '', success, reward, state, invalid, message]
             # espionage_trace_espionage: 
             elif decision[16] == 1:  #16, enemy
                 if (state[3] == 1 and state[36] == 0) or state[94]==1:
                     invalid = True
                     return [Regent, actor, Type, 'espionage_trace_espionage', decision, '', '', '', '', False, -1, state, True, '']
                 else:
-                    # get enemy provences
-                    temp = self.Provences[self.Provences['Regent'] == enemy].copy()
-                    # if bonus action, must have a Guild in that provence
+                    # get enemy provinces
+                    temp = self.Provinces[self.Provinces['Regent'] == enemy].copy()
+                    # if bonus action, must have a Guild in that province
                     if state[3] == 1:
                         check = self.Holdings[self.Holdings['Regent']==Regent]
-                        temp = pd.merge(check[check['Type']=='Guild'][['Provence']], temp, on='Provence', how='left')
+                        temp = pd.merge(check[check['Type']=='Guild'][['Province']], temp, on='Province', how='left')
                     if temp.shape[0] == 0 or state[50] == 0:  # no valid targets
                         invalid = True
                         return [Regent, actor, Type, 'espionage_trace_espionage', decision, '', '', '', '', False, -10, state, invalid, '']
                     if temp[temp['Capital']==True].shape[0] == 0:
                         temp = temp.sort_values('Population', ascending=False)
-                        Provence = temp.iloc[0]['Provence']  # hardest one to hit
+                        Province = temp.iloc[0]['Province']  # hardest one to hit
                     else:
-                        Provence = temp[temp['Capital']==True]['Provence'].values[0]
-                    success, reward, message = self.domain_action_espionage(Regent, enemy, Provence, 'Investigate')
-                    return [Regent, actor, Type, 'espionage_trace_espionage', decision, enemy, '', Provence, '', success, reward, state, invalid, message]
+                        Province = temp[temp['Capital']==True]['Province'].values[0]
+                    success, reward, message = self.domain_action_espionage(Regent, enemy, Province, 'Investigate')
+                    return [Regent, actor, Type, 'espionage_trace_espionage', decision, enemy, '', Province, '', success, reward, state, invalid, message]
             # bonus_action_grant_rando 
             elif decision[17] == 1:  #17, rando, [Number]
                 if state[94] == 1:
@@ -2886,65 +2886,65 @@ class Regency(object):
                         del self.random_override[Regent]
                         reward = reward + 5
                     return [Regent, actor, Type, 'Lieutenant', decision, '', '', '', '',  success, reward, state, False, message]
-            # move_troops_defend_provence
-            elif decision[20] == 1:  #20, [troops, provence, Target]
+            # move_troops_defend_province
+            elif decision[20] == 1:  #20, [troops, province, Target]
                 if state[44] == 0 or state[23]==0 or state[80] == 0 or state[94]==1:  # no defense needed/able to be done
-                    return [Regent, actor, Type, 'move_troops_defend_provence', decision, '', '', '', '',  False, -1, state, True, '']
+                    return [Regent, actor, Type, 'move_troops_defend_province', decision, '', '', '', '',  False, -1, state, True, '']
                 else:
                     if Target == None:
-                        temp = pd.merge(self.Provences[self.Provences['Regent']==Regent][['Regent', 'Provence']].copy(), self.Troops.copy(), on='Provence', how='left').fillna(0)
+                        temp = pd.merge(self.Provinces[self.Provinces['Regent']==Regent][['Regent', 'Province']].copy(), self.Troops.copy(), on='Province', how='left').fillna(0)
                         temp = temp[temp['Type'] != 0]
                         temp = temp[temp['Regent_x'] != temp['Regent_y']]
                     
-                        temp = temp[['Provence', 'CR']].groupby('Provence').sum().reset_index()
+                        temp = temp[['Province', 'CR']].groupby('Province').sum().reset_index()
                         temp['roll'] = np.random.randint(1, 100,temp.shape[0])+temp['CR']
                         temp = temp.sort_values('roll', ascending=False)
-                        Target = temp.iloc[0]['Provence']
+                        Target = temp.iloc[0]['Province']
                     else:
                         # recalc for target only
-                        temp = pd.merge(self.Provences[self.Provences['Provence']==Target][['Regent', 'Provence']].copy(), self.Troops.copy(), on='Provence', how='left').fillna(0)
+                        temp = pd.merge(self.Provinces[self.Provinces['Province']==Target][['Regent', 'Province']].copy(), self.Troops.copy(), on='Province', how='left').fillna(0)
                         temp = temp[temp['Type'] != 0]
                         temp = temp[temp['Regent_x'] != temp['Regent_y']]
-                        temp = temp[['Provence', 'CR']].groupby('Provence').sum().reset_index()
+                        temp = temp[['Province', 'CR']].groupby('Province').sum().reset_index()
                     Target_CR = temp.iloc[0]['CR']
-                    if len(troops) == 0 or len(provences) == 0:
+                    if len(troops) == 0 or len(provinces) == 0:
                         my_troops = self.Troops[self.Troops['Regent']==Regent]
                         my_troops = my_troops[my_troops['Garrisoned']==0]
                         if my_troops.shape[0]>0:
                             my_troops['roll'] = np.random.randint(1, 100,my_troops.shape[0])+my_troops['CR']
                             my_troops = my_troops.sort_values('roll', ascending=False)
                             troops = []
-                            provences = []
+                            provinces = []
                             i = 0
                             cr = 0
                             for i, row in my_troops.iterrows():     
                                 if row['CR'] + cr < Target_CR:
                                     troops.append(row['Type'])
-                                    provences.append(row['Provence'])
+                                    provinces.append(row['Province'])
                                     i += 1
                                     cr = cr + row['CR']
-                    success, reward, message = self.bonus_action_move_troops(Regent, troops, provences, Target)
+                    success, reward, message = self.bonus_action_move_troops(Regent, troops, provinces, Target)
                     reward = Target_CR
-                    return [Regent, actor, Type, 'move_troops_defend_provence',decision, '', '', Target, '', success, reward, state, invalid, message]
+                    return [Regent, actor, Type, 'move_troops_defend_province',decision, '', '', Target, '', success, reward, state, invalid, message]
             # move_troops_defend_friend
-            elif decision[21] == 1:  # 21, [friend, troops, provence, Target]
+            elif decision[21] == 1:  # 21, [friend, troops, province, Target]
                 if state[44] == 0 or state[81] == 0 or state[94]==1 or state[97]==0:  # no defense needed/able to be done
                     return [Regent, actor, Type, 'move_troops_defend_friend', decision, friend, '', '', '',  False, -1, state, True, '']
                 else:
                     if Target == None:
-                        temp = pd.merge(self.Provences[self.Provences['Regent']==friend][['Regent', 'Provence']].copy(), self.Troops.copy(), on='Provence', how='left').fillna(0)
+                        temp = pd.merge(self.Provinces[self.Provinces['Regent']==friend][['Regent', 'Province']].copy(), self.Troops.copy(), on='Province', how='left').fillna(0)
                     else:
-                        temp = pd.merge(self.Provences[self.Provences['Provence']==Target][['Regent', 'Provence']].copy(), self.Troops.copy(), on='Provence', how='left').fillna(0)
+                        temp = pd.merge(self.Provinces[self.Provinces['Province']==Target][['Regent', 'Province']].copy(), self.Troops.copy(), on='Province', how='left').fillna(0)
                     temp = temp[temp['Type'] != 0]
                     temp = temp[temp['Regent_x'] != temp['Regent_y']]
-                    temp = temp[['Provence', 'CR']].groupby('Provence').sum().reset_index()
+                    temp = temp[['Province', 'CR']].groupby('Province').sum().reset_index()
                     temp['roll'] = np.random.randint(1, 10,temp.shape[0])+temp['CR']
                     temp = temp.sort_values('roll', ascending=False)
-                    Target = temp.iloc[0]['Provence']
+                    Target = temp.iloc[0]['Province']
                     Target_CR = int(2*temp.iloc[0]['CR']/3)
-                    if len(troops) == 0 or len(provences) == 0:
+                    if len(troops) == 0 or len(provinces) == 0:
                         temp = self.Troops[self.Troops['Regent']==Regent].copy()
-                        temp = temp[temp['Provence'] != Target]
+                        temp = temp[temp['Province'] != Target]
                         temp = temp[temp['Garrisoned']==0]
                         if temp.shape[0] == 0:
                             return [Regent, actor, Type, 'move_troops_defend_friend', decision, friend, '', '', '',  False, -1, state, True, '']
@@ -2952,20 +2952,20 @@ class Regency(object):
                             temp['roll'] = np.random.randint(1, 100,temp.shape[0])+temp['CR']
                             temp = temp.sort_values('roll', ascending=False)
                             troops = []
-                            provences = []
+                            provinces = []
                             i = 0
                             cr = 0
                             for i, row in temp.iterrows():
                                 if row['CR'] + cr <= Target_CR or len(troops) == 0:
                                     troops.append(row['Type'])
-                                    provences.append(row['Provence'])
+                                    provinces.append(row['Province'])
                                     i += 1
                                     cr = cr + row['CR']
-                    success, reward, message = self.bonus_action_move_troops(Regent, troops, provences, Target)
+                    success, reward, message = self.bonus_action_move_troops(Regent, troops, provinces, Target)
                     reward = Target_CR
-                    return [Regent, actor, Type, 'move_troops_defend_provence', '', '', "", Target, '', success, reward, state, invalid, message]
+                    return [Regent, actor, Type, 'move_troops_defend_province', '', '', "", Target, '', success, reward, state, invalid, message]
             # move_troops_into_enemy_territory 
-            elif decision[22] == 1:  # 22, [enemy, troops, provences, Target]
+            elif decision[22] == 1:  # 22, [enemy, troops, provinces, Target]
                 if state[43] == 0 or state[44]==0 or state[94]==1 or state[98]==0:  # not at war, or don't have troops, or enemy has no lands to move into
                     return [Regent, actor, Type, 'move_troops_into_enemy_terrirtory', decision, enemy, '', '', '',  False, -1, state, True, '']
                 else:
@@ -2982,46 +2982,46 @@ class Regency(object):
                     # which should I attack?
                     found = 0
                     if Target != None:
-                        Target_Provence = Target
+                        Target_Province = Target
                     else:  # find target
-                        Target_Provence = ''
+                        Target_Province = ''
                         s_dist = 9000
-                        temp = self.Provences[self.Provences['Regent']==enemy].copy()
-                        temp = pd.concat([temp[temp['Contested']==False][['Provence']], self.Troops[self.Troops['Regent']==enemy][['Provence']]], sort=False)
+                        temp = self.Provinces[self.Provinces['Regent']==enemy].copy()
+                        temp = pd.concat([temp[temp['Contested']==False][['Province']], self.Troops[self.Troops['Regent']==enemy][['Province']]], sort=False)
                         if temp.shape[0] == 0:
                             self.errors.append((Regent, 'Move-step2', self.Season, temp))
                             return [Regent, actor, Type, 'move_troops_into_enemy_terrirtory', decision, enemy, '', '', '',  False, -1, state, True, '']
                         else:
                             temp['roll'] = np.random.randint(1, 100, temp.shape[0])
                             temp = temp.sort_values('roll')
-                            for i, row in self.Provences[self.Provences['Regent']==enemy].copy().iterrows():
+                            for i, row in self.Provinces[self.Provinces['Regent']==enemy].copy().iterrows():
                                 try:
-                                    new_dist = self.get_travel_cost(Regent, self.Troops[self.Troops['Regent']==Regent].iloc[0]['Provence'], row['Provence'], 'test')
+                                    new_dist = self.get_travel_cost(Regent, self.Troops[self.Troops['Regent']==Regent].iloc[0]['Province'], row['Province'], 'test')
                                 except:
                                     new_dist = 9000
                                 if new_dist < s_dist*0.75:  # some randomness
                                     s_dist = new_dist
                                     found = 1
-                                    Target_Provence = row['Provence']
-                    if len(troops) == 0 or len(provences)==0:  # assign troops
+                                    Target_Province = row['Province']
+                    if len(troops) == 0 or len(provinces)==0:  # assign troops
                         temp = self.Troops[self.Troops['Regent']==Regent].copy()
                         troops = []
-                        provences = []
+                        provinces = []
                         for i, row in temp.iterrows():
                             if len(troops) <= animosity:
                                 troops.append(row['Type'])
-                                provences.append(row['Provence'])
-                    if Target_Provence == '':
+                                provinces.append(row['Province'])
+                    if Target_Province == '':
                         return [Regent, actor, Type, 'move_troops_into_enemy_terrirtory', decision, enemy, '', '', '',  False, -1, state, True, '']
-                    success, reward, message = self.bonus_action_move_troops(Regent, troops, provences, Target_Provence)
+                    success, reward, message = self.bonus_action_move_troops(Regent, troops, provinces, Target_Province)
                     reward = animosity + 5*state[87] + 5*state[43]
-                    return [Regent, actor, Type, 'move_troops_into_enemy_terrirtory', decision, '', Target_Provence, '',"", success, reward, state, False, message]
+                    return [Regent, actor, Type, 'move_troops_into_enemy_terrirtory', decision, '', Target_Province, '',"", success, reward, state, False, message]
             # muster_army
-            elif decision[23] == 1:  # 23, [troops, provences]
+            elif decision[23] == 1:  # 23, [troops, provinces]
                 if state[94] == 1:
                     return [Regent, actor, Type, 'muster_army', decision, '', '', '', '',  False, -1, state, True, '']
                 # what can I muster
-                if len(troops) == 0 or len(provences) == 0:
+                if len(troops) == 0 or len(provinces) == 0:
                     race = self.Regents[self.Regents['Regent']==Regent]['Race'].values[0]
                     temp = pd.merge(self.Holdings[self.Holdings['Regent']==Regent].copy()
                                     , self.troop_units[self.troop_units['Type'] == race].copy()
@@ -3038,61 +3038,61 @@ class Regency(object):
                     else:
                         temp['roll'] = np.random.randint(1,100,temp.shape[0])
                         temp = temp.sort_values('roll')
-                        provences = [temp.iloc[0]['Provence']]
-                        success, reward, message = self.bonus_action_muster_armies(Regent, [temp.iloc[0]['Unit Type']], [temp.iloc[0]['Provence']]) 
+                        provinces = [temp.iloc[0]['Province']]
+                        success, reward, message = self.bonus_action_muster_armies(Regent, [temp.iloc[0]['Unit Type']], [temp.iloc[0]['Province']]) 
                 else:
-                    success, reward, message = self.bonus_action_muster_armies(Regent, troops, provences)
+                    success, reward, message = self.bonus_action_muster_armies(Regent, troops, provinces)
                     reward = reward + 5*state[87] + state[43]
-                return [Regent, actor, Type, 'muster_army', decision, '',  provences[0], '', '',  success, reward, state, False, '']
+                return [Regent, actor, Type, 'muster_army', decision, '',  provinces[0], '', '',  success, reward, state, False, '']
             #  muster_levies
-            elif decision[24] == 1:  # 24, [provences (troop = Levies)]
+            elif decision[24] == 1:  # 24, [provinces (troop = Levies)]
                 if state[34] == 0 or state[115] == 0:
                     return [Regent, actor, Type, 'muster_levies', decision, '', '', '', '',  False, -1, state, True, '']
-                if len(provences) == 0:
+                if len(provinces) == 0:
                     temp = pd.merge(self.Holdings[self.Holdings['Regent']==Regent].copy()
                         , self.troop_units[self.troop_units['Unit Type'] == 'Levies'].copy()
                         , left_on='Type', right_on='Requirements Holdings'
                         , how='left').fillna(0)
                     temp = temp[temp['Requirements Level']<=temp['Level']]
                     temp = temp[temp['Unit Type'] != 0]
-                    temp_ = pd.merge(temp[['Regent', 'Provence']], self.Provences[['Provence', 'Regent', 'Population']], on=['Provence', 'Regent'], how='left')
+                    temp_ = pd.merge(temp[['Regent', 'Province']], self.Provinces[['Province', 'Regent', 'Population']], on=['Province', 'Regent'], how='left')
                     temp_ = temp_[temp_['Population'] > 0]
-                    temp = pd.merge(temp_[['Provence']], temp, on='Provence', how='left')
+                    temp = pd.merge(temp_[['Province']], temp, on='Province', how='left')
                     if temp.shape[0] < 1:
                         return [Regent, actor, Type, 'muster_levies', decision, '', '', '', '',  False, -1, state, True, '']  
                     
-                    temp = pd.merge(temp, self.Troops[self.Troops['Regent'] != Regent][['Provence', 'CR']].groupby('Provence').sum().reset_index(), on='Provence', how='left').fillna(0)
-                    temp = temp.sort_values('CR', ascending=False)  # raise levies in attacked provences if possible
-                    provences = [temp.iloc[0]['Provence'] for a in range(temp.iloc[0]['Level'])]
-                troops = ['Levies' for a in range(len(provences))]
-                success, reward, message = self.bonus_action_muster_armies(Regent, troops, provences)
-                reward = reward +len(provences)*state[43]
-                return [Regent, actor, Type, 'muster_levies', decision, '',  provences[0], '', '',  success, reward, state, False, '']
+                    temp = pd.merge(temp, self.Troops[self.Troops['Regent'] != Regent][['Province', 'CR']].groupby('Province').sum().reset_index(), on='Province', how='left').fillna(0)
+                    temp = temp.sort_values('CR', ascending=False)  # raise levies in attacked provinces if possible
+                    provinces = [temp.iloc[0]['Province'] for a in range(temp.iloc[0]['Level'])]
+                troops = ['Levies' for a in range(len(provinces))]
+                success, reward, message = self.bonus_action_muster_armies(Regent, troops, provinces)
+                reward = reward +len(provinces)*state[43]
+                return [Regent, actor, Type, 'muster_levies', decision, '',  provinces[0], '', '',  success, reward, state, False, '']
             # muster_mercenaries
-            elif decision[25] == 1:  # 25, [troops, provences]
+            elif decision[25] == 1:  # 25, [troops, provinces]
                 if state[94]==1:
                     return [Regent, actor, Type, 'muster_mercenaries', decision, '', '', '', '',  False, -1, state, True, '']
-                if len(troops) == 0 or len(provences) == 0:
-                    temp = pd.concat([self.Provences[self.Provences['Regent']==Regent][['Provence']]
-                                      , self.Holdings[self.Holdings['Regent']==Regent][['Provence']]], sort=False)
+                if len(troops) == 0 or len(provinces) == 0:
+                    temp = pd.concat([self.Provinces[self.Provinces['Regent']==Regent][['Province']]
+                                      , self.Holdings[self.Holdings['Regent']==Regent][['Province']]], sort=False)
                     mercs = self.troop_units[self.troop_units['Unit Type'].str.contains('Mercenary')]
                     gold = self.Regents[self.Regents['Regent'] == Regent]['Gold Bars'].values[0]
                     mercs = mercs[mercs['Muster Cost'] <= gold]
                     if temp.shape[0] < 1 or mercs.shape[0] < 1:
                         return [Regent, actor, Type, 'muster_mercenaries', decision, '', '', '', '',  False, -1, state, True, '']
                     else:
-                        temp = pd.merge(temp, self.Troops[self.Troops['Regent'] != Regent][['Provence', 'CR']].groupby('Provence').sum().reset_index(), on='Provence', how='left').fillna(0)
+                        temp = pd.merge(temp, self.Troops[self.Troops['Regent'] != Regent][['Province', 'CR']].groupby('Province').sum().reset_index(), on='Province', how='left').fillna(0)
                         temp['roll'] = np.random.randint(1,100,temp.shape[0])
                         temp = temp.sort_values(['CR', 'roll'], ascending=False)
                         race = self.Regents[self.Regents['Regent']==Regent]['Race'].values[0]
                         mercs['roll'] = np.random.randint(1,20,mercs.shape[0]) + mercs['BCR'] + 5*mercs['Unit Type'].str.contains(race) - mercs['Muster Cost']
                         mercs = mercs.sort_values('roll', ascending=False)
                         troops = [mercs.iloc[0]['Unit Type']]
-                        provences = [temp.iloc[0]['Provence']]
-                success, reward, message = self.bonus_action_muster_armies(Regent, troops, provences)
+                        provinces = [temp.iloc[0]['Province']]
+                success, reward, message = self.bonus_action_muster_armies(Regent, troops, provinces)
                 if success == True:
                     reward = -5 + 5*state[87] + 10*state[43]
-                return [Regent, actor, Type, 'muster_mercenaries', decision, '',  provences[0], '', '',  success, reward, state, False, message]
+                return [Regent, actor, Type, 'muster_mercenaries', decision, '',  provinces[0], '', '',  success, reward, state, False, message]
             # Domain Only
             #contest_holding
             elif decision[26] == 1:  # 26, enemy, [Target, target_type]
@@ -3101,37 +3101,37 @@ class Regency(object):
                 else:
                     if Target==None or target_type==None:
                         temp = pd.concat([self.Holdings[self.Holdings['Regent']==Regent]
-                              , self.Provences[self.Provences['Regent']==Regent][['Regent', 'Provence']]], sort=False).fillna(0)
-                        temp = pd.merge(temp, self.Holdings[self.Holdings['Regent']==enemy], on='Provence')
+                              , self.Provinces[self.Provinces['Regent']==Regent][['Regent', 'Province']]], sort=False).fillna(0)
+                        temp = pd.merge(temp, self.Holdings[self.Holdings['Regent']==enemy], on='Province')
                         temp['roll'] = 10*(temp['Type_x']==temp['Type_y']) +5*temp['Level_y'] + np.random.randint(1,20,temp.shape[0]) - 20*temp['Contested_y']
                         temp = temp.sort_values('roll', ascending=False) 
-                        Target = temp.iloc[0]['Provence']
+                        Target = temp.iloc[0]['Province']
                         target_type = temp.iloc[0]['Type_y']
                     success, reward, message = self.domain_action_contest(Regent, enemy, Target, target_type)
                     if success:
                          reward = reward + state[87]*3 + 2*state[74]
                     return [Regent, actor, Type, 'contest_holding', decision, enemy, Target, '', target_type,  success, reward, state, False, message]
-            # contest_provence
+            # contest_province
             elif decision[27] == 1:  # 27, enemy, [Target]
                 if state[3] == 1 or state[77] == 0 or state[95] == 1 or state[116]==0:
-                    return [Regent, actor, Type, 'contest_provence', decision, '', '', '', '',  False, -1, state, True, '']
+                    return [Regent, actor, Type, 'contest_province', decision, '', '', '', '',  False, -1, state, True, '']
                 else:
                     if Target==None:
-                        temp = self.Provences[self.Provences['Regent'] == enemy]
+                        temp = self.Provinces[self.Provinces['Regent'] == enemy]
                         temp = temp[temp['Contested'] == False]
                         temp = temp[temp['Loyalty'] != 'High']
                         temp = temp[temp['Loyalty'] != 'Average']
                         temp_ =  self.Holdings[self.Holdings['Type']=='Law']
                         temp_ = temp_[temp_['Regent'] == enemy]
                         temp_ = temp_[temp_['Contested'] == False]
-                        temp = pd.merge(temp, temp_, on='Provence', how='left').fillna(0)
+                        temp = pd.merge(temp, temp_, on='Province', how='left').fillna(0)
                         temp = temp[temp['Level']==0]
                         temp['roll'] = np.random.randint(1,100,temp.shape[0])
                         temp = temp.sort_values('roll')
-                        Target = temp.iloc[0]['Provence']
-                    success, reward, message = self.domain_action_contest(Regent, enemy, Target, 'Provence')
+                        Target = temp.iloc[0]['Province']
+                    success, reward, message = self.domain_action_contest(Regent, enemy, Target, 'Province')
                     reward = reward + state[87]*3
-                    return [Regent, actor, Type, 'contest_provence', decision, enemy, Target, '', '',  success, reward, state, False, message]
+                    return [Regent, actor, Type, 'contest_province', decision, enemy, Target, '', '',  success, reward, state, False, message]
             # create_law_holding, _guild_, _temple_, _source_
             elif decision[28] == 1 or decision[29] == 1 or decision[30] == 1 or decision[31]==1:  #28 law, 29 guild, 30 temple. 31 source, [Target]
                 hType = 'Source'
@@ -3149,43 +3149,43 @@ class Regency(object):
                         return [Regent, actor, Type, 'create_' + hType.lower() + '_holding', decision, '', '', '', '',  False, -1, state, True, '']
                 else:
                     if Target == None:
-                        temp = pd.concat([self.Provences[self.Provences['Regent']==Regent][['Provence']].copy()
-                                      ,self.Holdings[self.Holdings['Regent']==Regent][['Provence']].copy()], sort=False).drop_duplicates()
-                        # all neighboring provences to regent
-                        temp = pd.merge(temp, self.Geography.copy(), on='Provence', how='left').drop_duplicates()
+                        temp = pd.concat([self.Provinces[self.Provinces['Regent']==Regent][['Province']].copy()
+                                      ,self.Holdings[self.Holdings['Regent']==Regent][['Province']].copy()], sort=False).drop_duplicates()
+                        # all neighboring provinces to regent
+                        temp = pd.merge(temp, self.Geography.copy(), on='Province', how='left').drop_duplicates()
                         temp = temp[temp['Border']==1]
-                        temp['Provence'] = temp['Neighbor']
+                        temp['Province'] = temp['Neighbor']
 
-                        temp_ = pd.merge(temp[['Provence']], self.Holdings[self.Holdings['Type'] == Type].copy(), on='Provence', how='left')
+                        temp_ = pd.merge(temp[['Province']], self.Holdings[self.Holdings['Type'] == Type].copy(), on='Province', how='left')
                         dct = {}
-                        dct['Provence'] = []
-                        for p in set(temp_['Provence']):
+                        dct['Province'] = []
+                        for p in set(temp_['Province']):
                             temp__ = temp_[temp_['Regent']==Regent]
-                            if temp__[temp__['Provence']==p].shape[0]==0:
-                                dct['Provence'].append(p)
+                            if temp__[temp__['Province']==p].shape[0]==0:
+                                dct['Province'].append(p)
                         temp_check = pd.DataFrame(dct)
                         # Validity
                 
-                        temp_check = pd.merge(temp_check, self.Provences[['Provence', 'Population', 'Regent']].copy(), on='Provence', how='left')
+                        temp_check = pd.merge(temp_check, self.Provinces[['Province', 'Population', 'Regent']].copy(), on='Province', how='left')
                         temp_check = pd.merge(temp_check, self.Relationships[self.Relationships['Regent'] ==Regent][['Other', 'Diplomacy']], left_on='Regent', right_on='Other', how='left').fillna(0)
 
                         temp_check['Where'] = temp_check['Population'] - temp_check['Diplomacy']*decision[28]
-                        temp_check = pd.merge(temp_check[['Provence', 'Where', 'Population']], self.Holdings[self.Holdings['Type']==Type].copy(), on='Provence', how='left')
+                        temp_check = pd.merge(temp_check[['Province', 'Where', 'Population']], self.Holdings[self.Holdings['Type']==Type].copy(), on='Province', how='left')
                         temp_check = pd.merge(temp_check, self.Relationships[self.Relationships['Regent'] ==Regent][['Other', 'Diplomacy']], left_on='Regent', right_on='Other', how='left').fillna(0)
 
                         temp_check['Where'] = temp_check['Where'] - temp_check['Diplomacy']
                         temp_check = temp_check.sort_values('Where', ascending=False)
                         df = self.Holdings[self.Holdings['Regent']==Regent][self.Holdings['Type']==hType].copy()
                         df['Check'] = df['Type']
-                        temp_check = pd.merge(temp_check, df[['Provence','Check']], on='Provence', how='left').fillna(0)
+                        temp_check = pd.merge(temp_check, df[['Province','Check']], on='Province', how='left').fillna(0)
                         # temp_check = temp_check[temp_check['Check']==0]
                         # More likely to set up shop in rival area
                         if temp.shape[0]>0:
-                            Target = temp_check.iloc[0]['Provence']
+                            Target = temp_check.iloc[0]['Province']
                         else:
                             return [Regent, actor, Type, 'create_' + hType.lower() + '_holding', decision, '', '', '', '',  False, -1, state, True, '']
                     # make sure I'm not being redundent
-                    if self.Holdings[self.Holdings['Regent']==Regent][self.Holdings['Provence']==Target][self.Holdings['Type']==hType].shape[0] > 0:
+                    if self.Holdings[self.Holdings['Regent']==Regent][self.Holdings['Province']==Target][self.Holdings['Type']==hType].shape[0] > 0:
                         return [Regent, actor, Type, 'create_' + hType.lower() + '_holding', decision, '', '', '', '',  False, -1, state, True, '']
                     success, reward, message = self.domain_action_create_holding(Regent, Target, hType)
                     reward = reward -10 + 15*state[N]
@@ -3249,28 +3249,28 @@ class Regency(object):
                     reward = reward + state[24]*3
                     return [Regent, actor, Type, 'diplomacy_respond_to_unrest', decision, '', '', '', '',  success, reward, state, False, message]
             # forge_ley_lines
-            elif decision[39] == 1: # 39, [provences]
+            elif decision[39] == 1: # 39, [provinces]
                 if state[3]==1 or state[94]==1 or state[95]==1 or state[37]==0 or state[100]==0:  
                     return [Regent, actor, Type, 'forge_ley_lines', decision, '', '', '', '',  False, -1, state, True, '']
                 else:
-                    if len(provences) == 0:
+                    if len(provinces) == 0:
                         temp = self.Holdings[self.Holdings['Regent']==Regent].copy()
                         temp = temp[temp['Type']=='Source']
-                        temp['Other'] = temp['Provence']
-                        temp = pd.merge(temp[['Provence', 'Type','Level']], temp[['Other', 'Type']], on='Type', how='outer')
-                        temp = temp[temp['Provence'] != temp['Other']]
-                        temp = pd.merge(temp, self.LeyLines, on=['Provence', 'Other'], how='left').fillna(0)
+                        temp['Other'] = temp['Province']
+                        temp = pd.merge(temp[['Province', 'Type','Level']], temp[['Other', 'Type']], on='Type', how='outer')
+                        temp = temp[temp['Province'] != temp['Other']]
+                        temp = pd.merge(temp, self.LeyLines, on=['Province', 'Other'], how='left').fillna(0)
                         temp = temp[temp['Regent']==0]
                         temp['Roll'] = np.random.randint(1,10,temp.shape[0])+temp['Level']
                         temp=temp.sort_values('Roll', ascending=False)
                         if temp.shape[0] > 0:
-                           provences = []
-                           provences.append(temp.iloc[0]['Provence'])
-                           provences.append(temp.iloc[0]['Other'])
+                           provinces = []
+                           provinces.append(temp.iloc[0]['Province'])
+                           provinces.append(temp.iloc[0]['Other'])
                         else:
                             return [Regent, actor, Type, 'forge_ley_lines', decision, '', '', '', '',  False, 0, state, True, '']
-                    success, reward, message = self.domain_action_forge_ley_line(Regent, provences[0], provences[1])
-                    return [Regent, actor, Type, 'forge_ley_lines', decision, '', provences[0], provences[1], '',  success, reward, state, False, message]
+                    success, reward, message = self.domain_action_forge_ley_line(Regent, provinces[0], provinces[1])
+                    return [Regent, actor, Type, 'forge_ley_lines', decision, '', provinces[0], provinces[1], '',  success, reward, state, False, message]
             # adventuring
             elif decision[40] == 1: # 40
                 if state[3]==1:
@@ -3286,7 +3286,7 @@ class Regency(object):
                 else:
                     if Number == None:
                         if state[26] == 0:
-                            Number = 1 + np.random.randint(0,self.Provences[self.Provences['Provence']==capital]['Population'].values[0],1)[0] + state[7]+state[8]+state[9]+state[10]+2*state[11]
+                            Number = 1 + np.random.randint(0,self.Provinces[self.Provinces['Province']==capital]['Population'].values[0],1)[0] + state[7]+state[8]+state[9]+state[10]+2*state[11]
                         else:
                             Number = 1 + state[7]+state[8]+state[9]+state[10]+2*state[11]
                     success, reward, message = self.domain_action_fortify(Regent, capital, Number, Name)
@@ -3299,8 +3299,8 @@ class Regency(object):
                 else:
                     if Number == None:
                         if state[27] == 0:
-                            Number = Number = 1 + np.random.randint(0,self.Provences[self.Provences['Provence']==high_pop]['Population'].values[0],1)[0] + state[8]
-                            Number = 1 + np.random.randint(0,self.Provences[self.Provences['Provence']==high_pop]['Population'].values[0],1)[0]
+                            Number = Number = 1 + np.random.randint(0,self.Provinces[self.Provinces['Province']==high_pop]['Population'].values[0],1)[0] + state[8]
+                            Number = 1 + np.random.randint(0,self.Provinces[self.Provinces['Province']==high_pop]['Population'].values[0],1)[0]
                         else:
                             Number = 1 + state[7]
                 success, reward, message = self.domain_action_fortify(Regent, high_pop, Number, Name)
@@ -3313,29 +3313,29 @@ class Regency(object):
                 else:
                     if Number == None:
                         if state[28] == 0:
-                            Number = 1 + np.random.randint(0,self.Provences[self.Provences['Provence']==low_pop]['Population'].values[0],1)[0]
+                            Number = 1 + np.random.randint(0,self.Provinces[self.Provinces['Province']==low_pop]['Population'].values[0],1)[0]
                         else:
                             Number = 1 + state[8]
                 success, reward, message = self.domain_action_fortify(Regent, low_pop, Number, Name)
                 reward = reward + int(Number*(1-state[28])/3)
                 return [Regent, actor, Type, 'fortify_low_pop', decision, '', low_pop, '', '',  success, reward, state, False, message]        
             # investure_invest_friend
-            elif decision[44] == 1: #44, friend, [provences, holdings as (provence, type)]
+            elif decision[44] == 1: #44, friend, [provinces, holdings as (province, type)]
                 if state[3]==1 or state[95]==1 or (state[23]+state[34]+state[35]+state[36]+state[37])==0:  # must have something to give
                     return [Regent, actor, Type, 'investure_invest_friend', decision, friend, '', '', '',  False, -1, state, True, '']
                 else:
-                    if len(provences) == 0 and len(holdings) == 0:
-                        provences = list(self.Provences[self.Provences['Regent']==Regent]['Provence'])
-                        holdings = [(row['Provence'],row['Type']) for i, row in self.Holdings[self.Holdings['Regent']==Regent].iterrows()]
-                    success, reward, message = self.domain_action_investiture(Regent, Target=friend, Invest=True, provences=provences, holdings=holdings)
+                    if len(provinces) == 0 and len(holdings) == 0:
+                        provinces = list(self.Provinces[self.Provinces['Regent']==Regent]['Province'])
+                        holdings = [(row['Province'],row['Type']) for i, row in self.Holdings[self.Holdings['Regent']==Regent].iterrows()]
+                    success, reward, message = self.domain_action_investiture(Regent, Target=friend, Invest=True, provinces=provinces, holdings=holdings)
                     reward = reward - 20 + 15*state[18] + 10*state[58] + 5*state[57]  # bad idea, unless giving away a legacy
                     return [Regent, actor, Type, 'investure_invest_friend', decision, friend, '', '', '',  success, reward, state, False, message]
             # investure_divest_enemy
-            elif decision[45] == 1:  # 45, enemy, [provences, holdings as (provence, type)]
+            elif decision[45] == 1:  # 45, enemy, [provinces, holdings as (province, type)]
                 if state[3]==1 or state[95]==1 or (state[75]+state[76])==0:
                     return [Regent, actor, Type, 'investure_divest_enemy', decision, friend, '', '', '',  False, -10, state, True, '']
                 else:
-                    success, reward, message = self.domain_action_investiture(Regent, Target=enemy, Divest=True, provences=provences, holdings=holdings)
+                    success, reward, message = self.domain_action_investiture(Regent, Target=enemy, Divest=True, provinces=provinces, holdings=holdings)
                     reward = reward + state[87]*5
                     return [Regent, actor, Type, 'investure_divest_enemy', decision, enemy, '', '', '',  success, reward, state, False, message]
             # investiture_become_vassal_friend
@@ -3346,15 +3346,15 @@ class Regency(object):
                     success, reward, message = self.domain_action_investiture(Regent, Target=friend, Vassal=True)
                     reward = reward + state[51]*2 + state[52]*2 + state[53]*2 -10
                     return [Regent, actor, Type, 'investiture_become_vassal_friend', decision, friend, '', '', '',  success, reward, state, False, message]
-            # investiture_claim_provence
+            # investiture_claim_province
             elif decision[47] == 1:  # 47
                 if state[3]==1 or state[95]==1 or state[96]==0:
-                    return [Regent, actor, Type, 'investure_claim_provence', decision, '', '', '', '',  False, -1, state, True, '']
+                    return [Regent, actor, Type, 'investure_claim_province', decision, '', '', '', '',  False, -1, state, True, '']
                 else:
-                    Provence = pd.merge(self.Troops[self.Troops['Regent']==Regent], self.Provences[self.Provences['Regent']==''], on='Provence',how='inner')['Provence'].values[0]
-                    success, reward, message = self.domain_action_investiture(Regent, Target=Provence, Claim=True)
+                    Province = pd.merge(self.Troops[self.Troops['Regent']==Regent], self.Provinces[self.Provinces['Regent']==''], on='Province',how='inner')['Province'].values[0]
+                    success, reward, message = self.domain_action_investiture(Regent, Target=Province, Claim=True)
                     reward = reward + 10*state[97]
-                    return [Regent, actor, Type, 'investure_claim_provence', decision, '', Provence, '', '',  success, reward, state, False, message]
+                    return [Regent, actor, Type, 'investure_claim_provinces', decision, '', Province, '', '',  success, reward, state, False, message]
             # rule_holdings
             elif decision[48] == 1: # 48, [holdings]
                 if state[3]==1 or state[95]==1 or state[94]==1 or state[42]==0:
@@ -3367,43 +3367,43 @@ class Regency(object):
                 if state[3]==1 or state[95]==1 or state[94]==1 or state[23]==0:
                     return [Regent, actor, Type, 'rule_holdings', decision, friend, '', '', '',  False, -10, state, True, '']
                 else:
-                    success, reward, message = self.domain_action_rule(Regent, Holding=False, Provence=capital)
+                    success, reward, message = self.domain_action_rule(Regent, Holding=False, Province=capital)
                     return [Regent, actor, Type, 'rule_capital', decision, '', capital, '', '',  success, reward, state, False, message]
             # rule_high_pop
             elif decision[50] == 1: # 50, high_pop
                 if state[3]==1 or state[95]==1 or state[94]==1 or state[23]==0:
                     return [Regent, actor, Type, 'rule_high_pop', decision, friend, '', '', '',  False, -10, state, True, '']
                 else:
-                    success, reward, message = self.domain_action_rule(Regent, Holding=False, Provence=high_pop)
+                    success, reward, message = self.domain_action_rule(Regent, Holding=False, Province=high_pop)
                     return [Regent, actor, Type, 'rule_high_pop', decision, '', high_pop, '', '',  success, reward, state, False, message]
             # rule_low_pop
             elif decision[51] == 1:  # 51, low_pop
                 if state[3]==1 or state[95]==1 or state[94]==1 or state[23]==0:
                     return [Regent, actor, Type, 'rule_low_pop', decision, '', '', '', '',  False, -10, state, True, '']
                 else:
-                    success, reward, message = self.domain_action_rule(Regent, Holding=False, Provence=low_pop)
+                    success, reward, message = self.domain_action_rule(Regent, Holding=False, Province=low_pop)
                     return [Regent, actor, Type, 'rule_low_pop', decision, '', low_pop, '', '',  success, reward, state, False, message]
             # establish_trade_route_friend, establish_trade_route_rando
-            elif decision[52] == 1 or decision[53] == 1:  # 52, friend, [provences], 53, rando, [provences]
+            elif decision[52] == 1 or decision[53] == 1:  # 52, friend, [provinces], 53, rando, [provinces]
                 if decision[52] == 1 and (state[3]==1 or state[95]==1 or state[94]==1 or state[56]==0 or state[23]==0 or state[97]==0):
                     return [Regent, actor, Type, 'establish_trade_route_friend', decision, friend, '', '', '',  False, -1, state, True, '']
                 elif decision[53] == 1 and (state[3]==1 or state[95]==1 or state[94]==1 or state[56]==0 or state[23]==0 or state[98]==0):
                         return [Regent, actor, Type, 'establish_trade_route_rando', decision, rando, '', '', '',  False, -1, state, True, '']
                 else:
-                    if len(provences) == 0:
+                    if len(provinces) == 0:
                         lst = [Regent, friend]
                         if decision[53]==1:
                             lst = [Regent, rando]
                         for a in lst:
-                            temp = self.Provences[self.Provences['Regent']==a]
+                            temp = self.Provinces[self.Provinces['Regent']==a]
                             temp['roll'] = np.random.randint(1,4,temp.shape[0]) + temp['Population'] + 2*temp['Waterway']
                             temp = temp.sort_values('roll', ascending=False)
-                            provences.append(temp['Provence'].values[0])
-                success, reward, message = self.domain_action_trade_routes(Regent, provences[0], provences[1])
+                            provinces.append(temp['Province'].values[0])
+                success, reward, message = self.domain_action_trade_routes(Regent, provinces[0], provinces[1])
                 if decision[52]==1:
-                    return [Regent, actor, Type, 'establish_trade_route_friend', decision, friend, '', provences[0], provences[1],  success, reward, state, False, message]
+                    return [Regent, actor, Type, 'establish_trade_route_friend', decision, friend, '', provinces[0], provinces[1],  success, reward, state, False, message]
                 else:
-                    return [Regent, actor, Type, 'establish_trade_route_rando', decision, rando, '', provences[0], provences[1],  success, reward, state, False, message]
+                    return [Regent, actor, Type, 'establish_trade_route_rando', decision, rando, '', provinces[0], provinces[1],  success, reward, state, False, message]
             # Realm Magic - Alchemy-self
             elif decision[54] == 1:  # 54
                 if state[3]==1 or state[37]==0 or state[95]==1:
@@ -3435,37 +3435,37 @@ class Regency(object):
                     reward = reward + 5*state[52]
                     return [Regent, actor, Type, 'realm_magic_alchemy', decision, '', '', '', '',  success, reward, state, False, message]
             # realm_magic_bless_land
-            elif decision[56] == 1: #56, provences
+            elif decision[56] == 1: #56, provinces
                 if state[3]==1 or state[35]==0 or state[94]==1 or state[95]==1 or state[99]==0:
                     return [Regent, actor, Type, 'realm_magic_bless_land', decision, friend, '', '', '',  False, -1, state, True, '']
                 else:
                     # get Targets
-                    if len(provences) == 0:
+                    if len(provinces) == 0:
                         temp = self.Holdings[self.Holdings['Regent']==Regent]
                         temp = temp[temp['Type']=='Temple']
                         temp['Roll'] = np.random.randint(1,6,temp.shape[0]) + temp['Level']
                         temp = temp.sort_values('Roll', ascending=False)
-                        provences = list(set(temp['Provence']))
-                    if len(provences) > 4:
-                        provences = provences[:4]
-                    success, reward, message = self.realm_magic_bless_land(Regent, provences)
-                    return [Regent, actor, Type, 'realm_magic_bless_land', decision, '', '', ', '.join(provences), '',  success, reward, state, False, message]
+                        provinces = list(set(temp['Province']))
+                    if len(provinces) > 4:
+                        provinces = provinces[:4]
+                    success, reward, message = self.realm_magic_bless_land(Regent, provinces)
+                    return [Regent, actor, Type, 'realm_magic_bless_land', decision, '', '', ', '.join(provinces), '',  success, reward, state, False, message]
             # realm_magic_blight
-            elif decision[57] == 1: #57, enemy, [provences]
+            elif decision[57] == 1: #57, enemy, [provinces]
                 if state[3]==1 or state[35]==0 or state[94]==1 or state[95]==1 or state[99]==0:
                     return [Regent, actor, Type, 'realm_magic_blight', decision, enemy, '', '', '',  False, -1, state, True, '']
                 else:
                     # get Targets
-                    if len(provences) == 0:
-                        temp = pd.concat([self.Provences[self.Provences['Regent']==enemy][['Provence']]
-                                      , self.Holdings[self.Holdings['Regent']==enemy][['Provence', 'Level']]], sort=False).fillna(10)
-                        temp = temp.groupby('Provence').sum().reset_index()
+                    if len(provinces) == 0:
+                        temp = pd.concat([self.Provinces[self.Provinces['Regent']==enemy][['Province']]
+                                      , self.Holdings[self.Holdings['Regent']==enemy][['Province', 'Level']]], sort=False).fillna(10)
+                        temp = temp.groupby('Province').sum().reset_index()
                         temp = temp.sort_values('Level', ascending=False)
-                        provences = list(temp['Provence'])
-                    if len(provences) > 4:
-                        provences = provences[:4]
-                    success, reward, message = self.realm_magic_blight(Regent, provences)
-                    return [Regent, actor, Type, 'realm_magic_blight', decision, enemy, '', ', '.join(provences), '',  success, reward, state, False, message]
+                        provinces = list(temp['Province'])
+                    if len(provinces) > 4:
+                        provinces = provinces[:4]
+                    success, reward, message = self.realm_magic_blight(Regent, provinces)
+                    return [Regent, actor, Type, 'realm_magic_blight', decision, enemy, '', ', '.join(provinces), '',  success, reward, state, False, message]
             # realm_magic_death_plague
             elif decision[58] == 1: # 58, enemy
                 if state[3]==1 or state[37]==0 or state[94]==1 or state[95]==1 or state[19]==0:
@@ -3474,85 +3474,85 @@ class Regency(object):
                     success, reward, message = self.realm_magic_death_plague(Regent, enemy)
                     return [Regent, actor, Type, 'realm_magic_death_plague', decision, enemy, '', '', '',  success, reward, state, False, message]
             # realm_magic_demagogue_friend
-            elif decision[59] == 1: # 59, friend, [provences]
+            elif decision[59] == 1: # 59, friend, [provinces]
                 if state[3]==1 or state[37]==0 or state[94]==1 or state[95]==1 or state[97]==0:
                     return [Regent, actor, Type, 'realm_magic_demagogue_friend', decision, friend, '', '', '',  False, -1, state, True, '']
                 else:
-                    success, reward, message = self.realm_magic_demagogue(Regent, friend, Increase=True, provences=provences)
+                    success, reward, message = self.realm_magic_demagogue(Regent, friend, Increase=True, provinces=provinces)
                     return [Regent, actor, Type, 'realm_magic_demagogue_friend', decision, friend, '', '', '',  success, reward, state, False, message]
              # realm_magic_demagogue_enemy
-            elif decision[60] == 1:  # 60, enemy, [provences]
+            elif decision[60] == 1:  # 60, enemy, [provinces]
                 if state[3]==1 or state[37]==0 or state[94]==1 or state[95]==1 or state[98]==0:
                     return [Regent, actor, Type, 'realm_magic_demagogue_enemy', decision, enemy, '', '', '',  False, -1, state, True, '']
                 else:
-                    success, reward, message = self.realm_magic_demagogue(Regent, enemy, Increase=False, provences=provences)
+                    success, reward, message = self.realm_magic_demagogue(Regent, enemy, Increase=False, provinces=provinces)
                     return [Regent, actor, Type, 'realm_magic_demagogue_enemy', decision, enemy, '', '', '',  success, reward, state, False, message]
             # realm_magic_legion_of_the_dead_enemy
-            elif decision[61] == 1:  #61, enemy, [provences]
+            elif decision[61] == 1:  #61, enemy, [provinces]
                 if state[3]==1 or state[37]==0 or state[94]==1 or state[95]==1 or state[98]==0:
                     return [Regent, actor, Type, 'realm_magic_legion_of_the_dead', decision, enemy, '', '', '',  False, -10, state, True, '']
                 else:
-                    if len(provences) == 0:
+                    if len(provinces) == 0:
                         temp = self.Holdings[self.Holdings['Regent'] == Regent].copy()
-                        temp = temp[temp['Type']=='Source'][['Type', 'Level', 'Provence']]
+                        temp = temp[temp['Type']=='Source'][['Type', 'Level', 'Province']]
                         temp = temp[temp['Level']>=3]
-                        temp = pd.concat([temp[['Provence']], self.LeyLines[self.LeyLines['Regent']==Regent][['Provence']]])
+                        temp = pd.concat([temp[['Province']], self.LeyLines[self.LeyLines['Regent']==Regent][['Province']]])
                         temp_ = self.Troops[self.Troops['Regent'] == enemy]
-                        temp_ = temp_[['Provence', 'CR']].groupby('Provence').sum().reset_index()
-                        temp = pd.merge(temp, temp_, on='Provence', how='left').fillna(0)
+                        temp_ = temp_[['Province', 'CR']].groupby('Province').sum().reset_index()
+                        temp = pd.merge(temp, temp_, on='Province', how='left').fillna(0)
                         temp = temp.sort_values('CR', ascending='False')
                         if temp.shape[0] == 0:
                             return [Regent, actor, Type, 'realm_magic_legion_of_the_dead', decision, enemy, '', '', '',  False, -1, state, True, '']
                         else:
-                            provences = list(temp['Provence'])
+                            provinces = list(temp['Province'])
                     
-                    success, reward, message = self.realm_magic_legion_of_the_dead(Regent, provences[0])
+                    success, reward, message = self.realm_magic_legion_of_the_dead(Regent, provinces[0])
                     reward = reward + 5*state[80] + 5*state[81]
-                    return [Regent, actor, Type, 'realm_magic_legion_of_the_dead', decision, enemy, provences[0], '', '',  success, reward, state, False, message]
+                    return [Regent, actor, Type, 'realm_magic_legion_of_the_dead', decision, enemy, provinces[0], '', '',  success, reward, state, False, message]
             # realm_magic_legion_of_the_dead_capital
-            elif decision[62] == 1:  # 62, provences
+            elif decision[62] == 1:  # 62, provinces
                 if state[3]==1 or state[37]==0 or state[94]==1 or state[95]==1:
                     return [Regent, actor, Type, 'realm_magic_legion_of_the_dead', decision, enemy, '', '', '',  False, -1, state, True, '']
                 else:
-                    if len(provences) == 0:
+                    if len(provinces) == 0:
                         temp = self.Holdings[self.Holdings['Regent'] == Regent].copy()
-                        temp = temp[temp['Type']=='Source'][['Type', 'Level', 'Provence']]
+                        temp = temp[temp['Type']=='Source'][['Type', 'Level', 'Province']]
                         temp = temp[temp['Level']>=3]
-                        temp = pd.concat([temp[['Provence']], self.LeyLines[self.LeyLines['Regent']==Regent][['Provence']]])
-                        temp = temp[temp['Provence'] == capital]
+                        temp = pd.concat([temp[['Province']], self.LeyLines[self.LeyLines['Regent']==Regent][['Province']]])
+                        temp = temp[temp['Province'] == capital]
                         if temp.shape[0] == 0:
                             return [Regent, actor, Type, 'realm_magic_legion_of_the_dead', decision, '', capital, '', '',  False, -1, state, True, '']
-                        provences = list(temp['Provence'])
-                    success, reward, message = self.realm_magic_legion_of_the_dead(Regent, provences[0])
+                        provinces = list(temp['Province'])
+                    success, reward, message = self.realm_magic_legion_of_the_dead(Regent, provinces[0])
                     reward = reward
-                    return [Regent, actor, Type, 'realm_magic_legion_of_the_dead', decision, '', provences[0], '', '',  success, reward, state, False, message]
+                    return [Regent, actor, Type, 'realm_magic_legion_of_the_dead', decision, '', provinces[0], '', '',  success, reward, state, False, message]
             # realm_magic_mass_destruction
-            elif decision[63] == 1: # 63, enemy [provences]
+            elif decision[63] == 1: # 63, enemy [provinces]
                 if state[3]==1 or state[37]==0 or state[94]==1 or state[95]==1 or state[12]==0 or (state[107]+state[106])==0:
                     return [Regent, actor, Type, 'realm_magic_mass_destruction', decision, '', '', '', '',  False, -1, state, True, '']
                 else:
-                    if len(provences)==0:
-                        provences = [enemy_capital]
-                    success, reward, message = self.realm_magic_mass_destruction(Regent, provences[0])
-                    return [Regent, actor, Type, 'realm_magic_mass_destruction', decision, '', provences[0], '', '',  success, reward, state, False, message]
+                    if len(provinces)==0:
+                        provinces = [enemy_capital]
+                    success, reward, message = self.realm_magic_mass_destruction(Regent, provinces[0])
+                    return [Regent, actor, Type, 'realm_magic_mass_destruction', decision, '', provinces[0], '', '',  success, reward, state, False, message]
             # realm_magic_raze
-            elif decision[64] == 1:  # 64, enemy, [provences]
+            elif decision[64] == 1:  # 64, enemy, [provinces]
                 if state[3]==1 or state[37]==0 or state[94]==1 or state[95]==1 or state[79]==1 or state[12]==0 or state[108]==0:
                     return [Regent, actor, Type, 'realm_magic_raze', decision, '', '', '', '',  False, -1, state, True, '']
                 else:
-                    if len(provences) == 0:
+                    if len(provinces) == 0:
                         temp = self.Holdings[self.Holdings['Regent'] == Regent].copy()
-                        temp = temp[temp['Type']=='Source'][['Type', 'Level', 'Provence']]
+                        temp = temp[temp['Type']=='Source'][['Type', 'Level', 'Province']]
                         temp = temp[temp['Level']>=5]
-                        temp = pd.concat([temp[['Provence']], self.LeyLines[self.LeyLines['Regent']==Regent][['Provence']]])
-                        temp = pd.merge(temp, self.Troops[['Regent', 'Provence']][self.Troops['Regent']==Regent], on='Provence', how='inner').fillna(0)
-                        temp = pd.merge(temp[['Provence']], self.Provences[self.Provences['Regent']==enemy][['Provence', 'Castle']], on='Provence', how='inner')
+                        temp = pd.concat([temp[['Province']], self.LeyLines[self.LeyLines['Regent']==Regent][['Province']]])
+                        temp = pd.merge(temp, self.Troops[['Regent', 'Province']][self.Troops['Regent']==Regent], on='Province', how='inner').fillna(0)
+                        temp = pd.merge(temp[['Province']], self.Provinces[self.Provinces['Regent']==enemy][['Province', 'Castle']], on='Province', how='inner')
                         temp['roll'] = np.random.randint(1,6,temp.shape[0])
                         temp = temp.sort_values('roll')
-                        provences = list(temp['Provence'])
+                        provinces = list(temp['Province'])
 
-                    success, reward, message = self.realm_magic_raze(Regent, provences[0])
-                    return [Regent, actor, Type, 'realm_magic_raze', decision, '', provences[0], '', '',  success, reward, state, False, message]
+                    success, reward, message = self.realm_magic_raze(Regent, provinces[0])
+                    return [Regent, actor, Type, 'realm_magic_raze', decision, '', provinces[0], '', '',  success, reward, state, False, message]
             # realm_magic_stronghold_capital
             elif decision[65] == 1:  
                 if state[3]==1 or state[37]==0 or state[94]==1 or state[95]==1 or state[12]==0 or state[6]==0 or state[23]==0 or state[109]==0:
@@ -3596,25 +3596,25 @@ class Regency(object):
                     success, reward, message = self.realm_magic_stronghold(Regent, low_pop, True)
                     return [Regent, actor, Type, 'realm_magic_stronghold', decision, '', low_pop, '', '',  success, reward, state, False, message]  
             # build_ship
-            elif decision[71] == 1:  # 71, Target, name, provences
+            elif decision[71] == 1:  # 71, Target, name, provinces
                 if state[94]==1:
                     return [Regent, actor, Type, 'build_ship', decision, '', '', '', '',  False, -1, state, True, '']
                 else:
-                    Provence = ''
+                    Province = ''
                     # what type and where
-                    if len(provences)==0 or self.Provences[self.Provences['Provence']==provences[0]]['Waterway'].values[0]==False:
-                        temp = pd.concat([self.Provences[self.Provences['Regent']==Regent][['Provence']]
-                                         , self.Holdings[self.Holdings['Regent']==Regent][['Provence']]], sort=False)
-                        temp = pd.merge(temp, self.Provences, on='Provence', how='left').fillna(0)
+                    if len(provinces)==0 or self.Provinces[self.Provinces['Province']==provinces[0]]['Waterway'].values[0]==False:
+                        temp = pd.concat([self.Provinces[self.Provinces['Regent']==Regent][['Province']]
+                                         , self.Holdings[self.Holdings['Regent']==Regent][['Province']]], sort=False)
+                        temp = pd.merge(temp, self.Provinces, on='Province', how='left').fillna(0)
                         temp = temp[temp['Waterway']==True]
                         if temp.shape[0] == 0:
                             return [Regent, actor, Type, 'build_ship', decision, '', '', '', '',  False, -1, state, True, '']
                         else:
                             temp['Roll'] = temp['Population'] + np.random.randint(1,6,temp.shape[0])
                             temp = temp.sort_values('Roll', ascending=False)
-                            Provence = temp.iloc[0]['Provence']
+                            Province = temp.iloc[0]['Province']
                     else:
-                        Provence=provences[0]
+                        Province=provinces[0]
                     if Target == None:
                         GB = self.Regents[self.Regents['Regent'] == Regent]['Gold Bars'].values[0]
                         ships = self.ship_units.copy()
@@ -3630,10 +3630,10 @@ class Regency(object):
                             ships = ships.sort_values('roll', ascending=False)
                             Target = ships.iloc[0]['Ship']
                         # build ship
-                    success, reward, message = self.bonus_action_build(Regent, Provence, Ship = Target, Name = Name)
-                    return [Regent, actor, Type, 'build_ship', decision, '', Provence, '', '',  success, reward, state, False, message]
+                    success, reward, message = self.bonus_action_build(Regent, Province, Ship = Target, Name = Name)
+                    return [Regent, actor, Type, 'build_ship', decision, '', Province, '', '',  success, reward, state, False, message]
             # garrison_troops_capital or high_pop or low_pop
-            elif decision[72] == 1 or decision[73] == 1 or decision[74] == 1:  # 72, capital/high_pop/low_pop, [troops, provences]
+            elif decision[72] == 1 or decision[73] == 1 or decision[74] == 1:  # 72, capital/high_pop/low_pop, [troops, provinces]
                 Target = ''
                 if decision[72] == 1:
                     if state[23]== 0 or state[44] == 0 or state[112] == 0:
@@ -3651,28 +3651,28 @@ class Regency(object):
                     else:
                         Target = low_pop
                 
-                if len(troops) == 0 or len(provences) == 0:
+                if len(troops) == 0 or len(provinces) == 0:
                     temp = self.Troops[self.Troops['Regent']==Regent]
-                    temp['roll'] = np.random.randint(1,6,temp.shape[0]) + temp['CR'] + 10*(temp['Provence'] == capital)
+                    temp['roll'] = np.random.randint(1,6,temp.shape[0]) + temp['CR'] + 10*(temp['Province'] == capital)
                     temp = temp.sort_values('roll', ascending=False)
-                    space = self.Provences[self.Provences['Provence']==capital]['Castle'].values[0]
-                    space = space - np.sum(temp[temp['Provence']==capital]['Garrisoned'])
+                    space = self.Provinces[self.Provinces['Province']==capital]['Castle'].values[0]
+                    space = space - np.sum(temp[temp['Province']==capital]['Garrisoned'])
                     for a in range(space):
                         if a <= temp.shape[0]-1:
                             troops.append(temp['Type'].values[a])
-                            provences.append(temp['Provence'].values[a])
-                success, reward, message = self.bonus_action_move_troops(Regent, troops, provences, Target, 1)
+                            provinces.append(temp['Province'].values[a])
+                success, reward, message = self.bonus_action_move_troops(Regent, troops, provinces, Target, 1)
                 return [Regent, actor, Type, 'garrison_troops', decision, '', Target, '', '',  success, reward, state, False, message]
             # ungarrison troops
-            elif decision[75] == 1:  # [troops, provences]
+            elif decision[75] == 1:  # [troops, provinces]
                 if state[47] == 0:
                     return [Regent, actor, Type, 'ungarrison_troops', decision, '', '', '', '',  False, -1, state, True, '']
                 else:
-                    if len(troops) == 0 or len(provences) == 0:
+                    if len(troops) == 0 or len(provinces) == 0:
                         temp = self.Troops[self.Troops['Regent']==Regent][self.Troops['Garrisoned']==1].copy()
                         troops = list(temp['Type'])
-                        provences = list(temp['Provence'])
-                    success, reward, message = self.bonus_action_ungarrison_troops(Regent, troops, provences)
+                        provinces = list(temp['Province'])
+                    success, reward, message = self.bonus_action_ungarrison_troops(Regent, troops, provinces)
                     return [Regent, actor, Type, 'ungarrison_troops', decision, '', Target, '', '',  success, reward, state, False, message]
             # Nothing Doin'
             else:
@@ -3690,7 +3690,7 @@ class Regency(object):
         
         
     # Bonus Actions First
-    def bonus_action_build(self, Regent, Provence, Road=None, Ship=None, player_gbid=None, Name=None):
+    def bonus_action_build(self, Regent, Province, Road=None, Ship=None, player_gbid=None, Name=None):
         '''
         
         
@@ -3731,7 +3731,7 @@ class Regency(object):
         and immediately completes 2d6 of its total building cost.
 
        
-        Road = Target Provence
+        Road = Target Province
         
         Terrain (add both together)
         'Desert', 'Tundra', 'Forest', 'Steppes' 2
@@ -3742,7 +3742,7 @@ class Regency(object):
         
         if bridge needed: + 1d4+1
         
-        (multiply by population of higher population provence)
+        (multiply by population of higher population provinces)
         Population < 2: 1
         Population 3,4: 3/4
         Population > 4: 1/2
@@ -3751,7 +3751,7 @@ class Regency(object):
         
         INFO NEEDED:
         CAPITAL HAS ROADS TO ALL BORDERING PROVENCES IN DOMAIN
-        not all provences connected by roads
+        not all provinces connected by roads
         UNROADED PROVENCE BETWEEN SELF AND FRIEND
         HAVE PROVENCES
         
@@ -3760,8 +3760,8 @@ class Regency(object):
         sucess, reward, message = False, 0, ''
         if Road!=None:
             message = ''
-            temp = pd.concat([self.Provences[self.Provences['Provence']==Provence], self.Provences[self.Provences['Provence']==Road]], sort=False)
-            temp = pd.merge(temp, self.Geography[self.Geography['Neighbor']==Road], on='Provence', how='left').fillna(0)
+            temp = pd.concat([self.Provinces[self.Provinces['Province']==Province], self.Provinces[self.Provinces['Province']==Road]], sort=False)
+            temp = pd.merge(temp, self.Geography[self.Geography['Neighbor']==Road], on='Province', how='left').fillna(0)
             temp['Terrain'] = temp['Terrain'].str.replace('Desert', '2').replace('Tundra', '2').replace('Forest','2').replace('Steppes','2')
             temp['Terrain'] = temp['Terrain'].str.replace('Plains', '1').replace('Farmland','1')
             temp['Terrain'] = temp['Terrain'].str.replace('Hills','4').replace('Swamp','4').replace('Marsh','4')
@@ -3780,7 +3780,7 @@ class Regency(object):
             cost = int(cost)
 
             # not always opposed
-            target = temp[temp['Provence']==Road]['Regent'].values[0]
+            target = temp[temp['Province']==Road]['Regent'].values[0]
             if target != Regent:
                 dc = self.set_difficulty(5, Regent, target)
             else:
@@ -3798,18 +3798,18 @@ class Regency(object):
                     progress = cost - (np.random.randint(1,6,1)[0] + np.random.randint(1,6,1)[0])  # 2d6 rolls dif than 2-12
                 # make sure it doesn't already exist
                 df = self.Projects[self.Projects['Project Type']=='Road'].copy()
-                df[df['Details'] == (Provence, Road)]
+                df[df['Details'] == (Province, Road)]
                 cols = ['Regent','Project Type','Details','Gold Bars Left']
                 if df.shape[0] > 0:
                     progress = df.iloc[0]['Gold Bars Left'] - np.random.randint(1,6,1)
-                    self.Projects = self.Projects.append(pd.DataFrame([[Regent, 'Road',(Provence, Road), progress]],columns=cols)).reset_index(drop=True)
+                    self.Projects = self.Projects.append(pd.DataFrame([[Regent, 'Road',(Province, Road), progress]],columns=cols)).reset_index(drop=True)
                     self.Projects = self.Projects[cols]
                 else:
-                    self.Projects = self.Projects.append(pd.DataFrame([[Regent, 'Road',(Provence, Road), progress]],columns=cols)).reset_index(drop=True)
+                    self.Projects = self.Projects.append(pd.DataFrame([[Regent, 'Road',(Province, Road), progress]],columns=cols)).reset_index(drop=True)
                     self.Projects = self.Projects[cols]
-                message = '{} built a road between {} and {}'.format(Regent, Provence, Road)
+                message = '{} built a road between {} and {}'.format(Regent, Province, Road)
             else:
-                message = '{} failed to build a road between {} and {}.'.format(Regent, Provence, Road)
+                message = '{} failed to build a road between {} and {}.'.format(Regent, Province, Road)
             # reward
             reward = 5*success - 5*(1-success)
             if self.Regents[self.Regents['Regent']==Regent]['Attitude'].values[0] == 'Xenophobic':
@@ -3831,17 +3831,17 @@ class Regency(object):
                 success = False
                 reward = 0
                 message = '{} could not afford to build a {}'.format(self.Regents[self.Regents['Regent']==Regent]['Full Name'].values[0], Ship)
-            elif self.Provences[self.Provences['Provence']==Provence]['Waterway'].values[0]==False:
+            elif self.Provinces[self.Provinces['Province']==Province]['Waterway'].values[0]==False:
                 success = False
                 reward = 0
                 message = '{} tried to build a {} in a landlocked area!'.format(self.Regents[self.Regents['Regent']==Regent]['Full Name'].values[0], Ship)
             elif success==True:
                 reward = temp['Hull'] + temp['Troop Capacity']
-                message = '{} commissioned a {} to be built in {}'.format(self.Regents[self.Regents['Regent']==Regent]['Full Name'].values[0], Ship, Provence)
+                message = '{} commissioned a {} to be built in {}'.format(self.Regents[self.Regents['Regent']==Regent]['Full Name'].values[0], Ship, Province)
                 self.change_regent(Regent, Gold_Bars = GB - cost)
                 if crit == True:
                     cost = cost - (np.random.randint(1,6,1) + np.random.randint(1,6,1))
-                self.Projects = self.Projects.append(pd.DataFrame([[Regent, 'Build Ship', (Ship, Provence,Name), cost]], columns=['Regent', 'Project Type', 'Details', 'Gold Bars Left']))
+                self.Projects = self.Projects.append(pd.DataFrame([[Regent, 'Build Ship', (Ship, Province,Name), cost]], columns=['Regent', 'Project Type', 'Details', 'Gold Bars Left']))
             else:
                 reward=0
                 message = '{} could not get the needed people to build a {}'.format(self.Regents[self.Regents['Regent']==Regent]['Full Name'].values[0], Ship)
@@ -3912,7 +3912,7 @@ class Regency(object):
         self.change_regent(Regent, Gold_Bars = self.Regents[self.Regents['Regent']==Regent]['Gold Bars'].values[0] - cost)
         return success, reward, message
             
-    def bonus_action_disband(self, Regent, units, Provence):
+    def bonus_action_disband(self, Regent, units, Province):
         '''
         Type: Bonus
 
@@ -3950,24 +3950,24 @@ class Regency(object):
         message = '!Regent! disbanded '
         lst = []
         for i, unit in enumerate(units):
-            self.disband_troops(Regent, Provence[i], unit, Killed=False)
-            lst.append('{} from {}'.format(unit, Provence[i]))
+            self.disband_troops(Regent, Province[i], unit, Killed=False)
+            lst.append('{} from {}'.format(unit, Province[i]))
         return True, 0, message + ', '.join(lst)
     
-    def bonus_action_ungarrison_troops(self, Regent, troops, provences):
+    def bonus_action_ungarrison_troops(self, Regent, troops, provinces):
         '''
         '''
         message = '{} has ordered the following troops out of garrison:'.format(self.Regents[self.Regents['Regent']==Regent]['Full Name'].values[0])
         lst = []
         for i, unit in enumerate(troops):
-            self.Projects = self.Projects.append(pd.DataFrame([[Regent, 'Ungarrison Troops', (provences[i], unit), -1]]
+            self.Projects = self.Projects.append(pd.DataFrame([[Regent, 'Ungarrison Troops', (provinces[i], unit), -1]]
                                                                         , columns=['Regent', 'Project Type', 'Details', 'Gold Bars Left']))
             self.Projects = self.Projects.reset_index(drop=True)
-            lst.append('{} from out of "{}"'.format(unit, self.Provences[self.Provences['Provence']==provences[i]]['Castle Name'].values[0]))   
+            lst.append('{} from out of "{}"'.format(unit, self.Provinces[self.Provinces['Province']==provinces[i]]['Castle Name'].values[0]))   
         return True,0,message + ', '.join(lst)
         
     # Bonus & Domain
-    def domain_action_agitate(self, Regent, Target, Conflict, Provences=None, bid=None):
+    def domain_action_agitate(self, Regent, Target, Conflict, Provinces=None, bid=None):
         '''
         Base Cost: 1 RP, 1 GB
         Base Success: DC 10
@@ -3992,8 +3992,8 @@ class Regency(object):
         Critical Success: The loyalty of the affected province is increased or decreased by two grades instead 
         of one.
         
-        Target is a regent.  if a bonus action, will be a randomly determined provence
-        in their domain (or Provences if Player)
+        Target is a regent.  if a bonus action, will be a randomly determined provinces
+        in their domain (or Provinces if Player)
         
         if conflict==True:
             DC increases by highest Law holding involved
@@ -4004,14 +4004,14 @@ class Regency(object):
         nat 20: +2 or -2.
         
         INFO NEEDED 
-        Temple Holding in Friend/Liege Provence, 
-        Temple Holding in Enemy Provence
+        Temple Holding in Friend/Liege Province, 
+        Temple Holding in Enemy Province
         Has Temple Holding (can't do without)
         
         agitate_conflict_True
         agitate_conflict_False
         '''
-        cost = len(Provences)
+        cost = len(Provinces)
         dc = 10
         # spend the money and regency
         tname = self.Regents[self.Regents['Regent']==Target]['Full Name'].values[0]
@@ -4024,7 +4024,7 @@ class Regency(object):
         dip = add
         if cost > self.Regents[self.Regents['Regent']==Regent]['Gold Bars'].values[0]:
             success = False
-        elif len(Provences) == 0:
+        elif len(Provinces) == 0:
             success = False
         else:
             self.change_regent(Regent, Gold_Bars = self.Regents[self.Regents['Regent']==Regent]['Gold Bars'].values[0] - cost, Regency_Points = self.Regents[self.Regents['Regent']==Regent]['Regency Points'].values[0] - cost)
@@ -4033,16 +4033,16 @@ class Regency(object):
         if success:
             # make the changes
             temp = {}
-            temp['Provence'] = Provences
+            temp['Province'] = Provinces
             temp = pd.DataFrame(temp)
-            temp = pd.merge(temp, self.Provences.copy(), on='Provence', how='left')
+            temp = pd.merge(temp, self.Provinces.copy(), on='Province', how='left')
             for i, row in temp.iterrows():
-                self.change_loyalty(row['Provence'], add)
+                self.change_loyalty(row['Province'], add)
             
             if dip == -1:
-                message = '{} agitated the people against {} in the following provences: {}'.format('!Regent!', tname, ', '.join(Provences))
+                message = '{} agitated the people against {} in the following provinces: {}'.format('!Regent!', tname, ', '.join(Provinces))
             else:
-                message = '{} used their influence to rally the people behind {} in the following provences: {}'.format('!Regent!', tname, ', '.join(Provences))
+                message = '{} used their influence to rally the people behind {} in the following provinces: {}'.format('!Regent!', tname, ', '.join(Provinces))
             # change diplomacy (Target cares)
             self.add_relationship(Target, Regent, Diplomacy=dip)
             temp = self.Relationships[self.Relationships['Regent']==Regent].copy()
@@ -4052,13 +4052,13 @@ class Regency(object):
                 reward = 0
             attitude = self.Regents[self.Regents['Regent']==Regent]['Attitude']
         else:
-            message = '{} failed to change peoples minds about {} in {}'.format('!Regent!', tname, ', '.join(Provences))
+            message = '{} failed to change peoples minds about {} in {}'.format('!Regent!', tname, ', '.join(Provinces))
             # change diplomacy (Target cares)
             self.add_relationship(Target, Regent, Diplomacy=dip)
             reward = 0
         return success, reward, message
         
-    def domain_action_espionage(self, Regent, Target, Provence, Type, prbid=0, pgbid=0):
+    def domain_action_espionage(self, Regent, Target, Province, Type, prbid=0, pgbid=0):
         '''
         Type: Action (or Bonus)
 
@@ -4129,14 +4129,14 @@ class Regency(object):
         cost = 1
         dc = 15
         lst = [Regent, Target, '', '', '', '']
-        # adjust dc based on provence targeted
+        # adjust dc based on provinces targeted
         victim = self.Regents[self.Regents['Regent'] == Target]['Full Name'].values[0]
 
         if Type != 'Investigate' and Type != 'Trade':
             # For hostile Espionage actions, the target DC is modified by the level of the province in which Espionage is being performed, 
-            dc = dc + self.Provences[self.Provences['Provence'] == Provence]['Population'].values[0]
+            dc = dc + self.Provinces[self.Provinces['Province'] == Province]['Population'].values[0]
             # as well as the levels of any Law holdings within those provinces.
-            temp = self.Holdings[self.Holdings['Provence'] == Provence].copy()
+            temp = self.Holdings[self.Holdings['Province'] == Province].copy()
             dc = dc + np.sum(temp[temp['Type']=='Law']['Level'])
             
         # now, opposition
@@ -4146,7 +4146,7 @@ class Regency(object):
         else:
             success, crit = self.make_roll(Regent, dc, 'Deception')
         # capital check
-        Capital = self.Provences[self.Provences['Provence'] == Provence]['Capital'].values[0]
+        Capital = self.Provinces[self.Provinces['Province'] == Province]['Capital'].values[0]
         if cost > self.Regents[self.Regents['Regent']==Regent]['Gold Bars'].values[0]:
             success = False
         else:
@@ -4178,7 +4178,7 @@ class Regency(object):
             lst[4] = self.Season
             reward = 0
             temp = self.Troops[self.Troops['Regent']==Target].copy()
-            if temp[temp['Provence'] == Provence].shape[0] == 0:
+            if temp[temp['Province'] == Province].shape[0] == 0:
                 success = False  # no troops there.
             if success:
                 temp = self.Relationships.copy()
@@ -4193,7 +4193,7 @@ class Regency(object):
         elif Type == 'Trade':
             lst[3] = self.Season
             reward = 0
-            temp = self.Geography[self.Geography['Provence']==Provence].copy()
+            temp = self.Geography[self.Geography['Province']==Province].copy()
             if pd.concat([temp[temp['Caravan']==1].copy(), temp[temp['Shipping']==1].copy()], sort=False).shape[0] == 0:
                 success = False
             if success:
@@ -4206,7 +4206,7 @@ class Regency(object):
             message = "Spied on {}'s Trade Routes!".format(victim)
         elif Type == 'Investigate':
             reward = 0
-            temp = self.Geography[self.Geography['Provence']==Provence].copy()
+            temp = self.Geography[self.Geography['Province']==Province].copy()
             message = "Failed to find evidence that {} used espionage on them.".format(victim)
             temp = self.Espionage[self.Espionage['Regent']==Target].copy()
             temp = temp[temp['Target']==Regent].copy()
@@ -4343,20 +4343,20 @@ class Regency(object):
         else:
             self.change_regent(Regent, Gold_Bars = self.Regents[self.Regents['Regent']==Regent]['Gold Bars'].values[0] - cost)       
             if Name == None:
-                temp = self.Provences[self.Provences['Regent']==Regent][['Provence', 'Population']]
+                temp = self.Provinces[self.Provinces['Regent']==Regent][['Province', 'Population']]
                 temp['Level'] = temp['Population']
-                temp = pd.concat([temp[['Provence', 'Level']], self.Holdings[self.Holdings['Regent'] == Regent][['Provence', 'Level']]], sort=False)
+                temp = pd.concat([temp[['Province', 'Level']], self.Holdings[self.Holdings['Regent'] == Regent][['Province', 'Level']]], sort=False)
                 temp['Level'] = temp['Level'] + np.random.randint(1, 6, temp.shape[0])
                 temp = temp.sort_values('Level', ascending=False)
                 if temp.shape[0]>0:
-                    Name = self.name_generator(self.Regents[self.Regents['Regent']==Regent]['Culture'].values[0], temp['Provence'].values[0])
+                    Name = self.name_generator(self.Regents[self.Regents['Regent']==Regent]['Culture'].values[0], temp['Province'].values[0])
                 else:
                     Name = self.name_generator(self.Regents[self.Regents['Regent']==Regent]['Culture'].values[0])
             self.add_lieutenant(Regent, Name, True)
             message =  '{} hired {} as a Lieutenant'.format(self.Regents[self.Regents['Regent']==Regent]['Full Name'].values[0], Name)
         return success, 5, message
         
-    def bonus_action_move_troops(self, Regent, Troops, Provence, Target, Garrison=0):
+    def bonus_action_move_troops(self, Regent, Troops, Province, Target, Garrison=0):
         '''
         Type: Bonus
         Base Cost: 1 GB
@@ -4380,12 +4380,12 @@ class Regency(object):
         enemy_troops_in_friends_domain
         at_war
         
-        move_troops_defend_provence
+        move_troops_defend_provinces
         move_troops_defend_friend
         move_troops_into_enemy_territory
-        move_troops_to_provence
+        move_troops_to_provinces
         '''
-        #print('MOVE TROOPS', Regent, Troops, Provence, Target)
+        #print('MOVE TROOPS', Regent, Troops, Province, Target)
         gold = self.Regents[self.Regents['Regent'] == Regent]['Gold Bars'].values[0]
         cost = 0
         points = 9
@@ -4393,36 +4393,36 @@ class Regency(object):
         ship_from, ship_to = '', ''
         # in case of ships
         capacity = 0
-        if len(Troops) != len(Provence):
-            self.errors.append('List Mismatch', Troops, Provence)
+        if len(Troops) != len(Province):
+            self.errors.append('List Mismatch', Troops, Province)
         for i, unit in enumerate(Troops):
             cost = int(points/10)
             if cost <= gold:
-                tc, tp = self.get_travel_cost(Regent, Provence[i], Target, unit, True)
+                tc, tp = self.get_travel_cost(Regent, Province[i], Target, unit, True)
                 points = points + tc
                 for k, start in enumerate(tp):
                     if k < len(tp)-1:
-                        check = self.Geography[self.Geography['Provence']==start]
+                        check = self.Geography[self.Geography['Province']==start]
                         check = check[check['Neighbor']==tp[k+1]]
                         if check.shape[0]==0:
                             used_ship = True
                             ship_from = start
                             ship_to = tp[k+1]
                             navy = self.Navy[self.Navy['Regent']==Regent]
-                            capacity_old = np.sum(navy[navy['Provence']==ship_to]['Troop Capacity']) 
+                            capacity_old = np.sum(navy[navy['Province']==ship_to]['Troop Capacity']) 
                         else:
                             if check['Border'].values[0]==0:
                                 used_ship = True
                                 ship_from = start
                                 ship_to = tp[k+1]
                                 navy = self.Navy[self.Navy['Regent']==Regent]
-                                capacity_old = np.sum(navy[navy['Provence']==ship_to]['Troop capacity']) 
+                                capacity_old = np.sum(navy[navy['Province']==ship_to]['Troop capacity']) 
                         
                 if int(points/10) <= gold:
                     # do this!
                     temp = self.Troops[self.Troops['Regent']==Regent].copy()
                     temp = temp[temp['Type'] == unit]
-                    temp = temp[temp['Provence'] == Provence[i]]
+                    temp = temp[temp['Province'] == Province[i]]
                     temp = temp[temp['Garrisoned'] == 0]
                     # move a ship, we have plenty of room for more troops maybe
                     if used_ship:
@@ -4432,7 +4432,7 @@ class Regency(object):
                         while ship_space < capacity:
                             wship = self.Navy.copy()
                             wship = wship[wship['Regent']==Regent]
-                            wship = wship[wship['Provence']==ship_from]
+                            wship = wship[wship['Province']==ship_from]
                             if len(Troops) <= 3:
                                 wship = wship.sort_values('Troop Capacity')
                             else:
@@ -4440,26 +4440,26 @@ class Regency(object):
                             # move the ship
                             self.move_ship(Regent, wship['Ship'].values[0], ship_from, ship_to)
                             navy = self.Navy[self.Navy['Regent']==Regent]
-                            capacity = np.sum(navy[navy['Provence']==ship_to]['Troop Capacity']) - capacity_old
+                            capacity = np.sum(navy[navy['Province']==ship_to]['Troop Capacity']) - capacity_old
                         capacity = capacity - ship_space
                     move = 0
                     for j, row in temp.iterrows():
                         if move == 0:
                             move = 1  # only move the 1...
                             temp = self.Troops[self.Troops['Regent'] == Regent]
-                            temp = temp[temp['Provence']==Provence[i]]
+                            temp = temp[temp['Province']==Province[i]]
                             temp = temp[temp['Type'] == unit]
                             temp = temp[temp['Garrisoned']==0]
-                            self.disband_troops(row['Regent'], row['Provence'], row['Type'], Killed=False, Real=False)
+                            self.disband_troops(row['Regent'], row['Province'], row['Type'], Killed=False, Real=False)
                             self.add_troops(row['Regent'], Target, row['Type'], row['Home'], Garrisoned=Garrison, Injury=row['Injury'])
                             
         end_bit = '.'
         if Garrison == 1:
-            end_bit = ' to Garrison in "{}".'.format(self.Provences[self.Provences['Provence']==Target]['Castle Name'].values[0])
+            end_bit = ' to Garrison in "{}".'.format(self.Provinces[self.Provinces['Province']==Target]['Castle Name'].values[0])
         self.change_regent(Regent, Gold_Bars = self.Regents[self.Regents['Regent']==Regent]['Gold Bars'].values[0] - int(points/10))
         return True, len(Troops), '{} moved {} to {}{}'.format(self.Regents[self.Regents['Regent'] == Regent]['Full Name'].values[0], ', '.join(Troops), Target, end_bit)
         
-    def bonus_action_muster_armies(self, Regent, Troops, Provences):
+    def bonus_action_muster_armies(self, Regent, Troops, Provinces):
         '''
         Type: Bonus
         Base Cost: Special
@@ -4512,21 +4512,21 @@ class Regency(object):
             
             success = True
             if Type == 'Levies':
-                Home = Provences[i]
-                check = self.Provences[self.Provences['Provence']==Provences[i]]['Population'].values[0]
-                # prevent non-provence holder from raising levies - commented out.
-                if check == 0: # or self.Provences[self.Provences['Provence']==Provence]['Regent'] != Regent:
+                Home = Provinces[i]
+                check = self.Provinces[self.Provinces['Province']==Provinces[i]]['Population'].values[0]
+                # prevent non-provinces holder from raising levies - commented out.
+                if check == 0: # or self.Provinces[self.Provinces['Province']==Province]['Regent'] != Regent:
                     success = False
                 else:
-                    self.change_provence(Home, Population_Change=-1*len(Provences))
+                    self.change_provinces(Home, Population_Change=-1*len(Provinces))
             cost = self.troop_units[self.troop_units['Unit Type'] == Type]['Muster Cost'].values[0]
             
             if cost <= self.Regents[self.Regents['Regent']==Regent]['Gold Bars'].values[0]:
-                # self.add_troops(Regent, Provence, Type, Home=Home)
+                # self.add_troops(Regent, Province, Type, Home=Home)
                 if 'Mercenary' in Type:  # Mercs can fight the same turn they are mustered
-                    self.add_troops(Regent, Provences[i], Type)
+                    self.add_troops(Regent, Provinces[i], Type)
                 else:
-                    self.Projects = self.Projects.append(pd.DataFrame([[Regent, 'Muster Troops', (Provences[i], Type, Home), -1]]
+                    self.Projects = self.Projects.append(pd.DataFrame([[Regent, 'Muster Troops', (Provinces[i], Type, Home), -1]]
                                                                         , columns=['Regent', 'Project Type', 'Details', 'Gold Bars Left']))
                     self.Projects = self.Projects.reset_index(drop=True)
                 self.change_regent(Regent, Gold_Bars = self.Regents[self.Regents['Regent']==Regent]['Gold Bars'].values[0]-cost)
@@ -4562,7 +4562,7 @@ class Regency(object):
             reward = temp['Reward'].values[0]
         return True, reward, message
                    
-    def domain_action_contest(self, Regent, Target, Provence, Type, gbid=None):
+    def domain_action_contest(self, Regent, Target, Province, Type, gbid=None):
         '''
         Cost: 1 RP
         success: DC 10
@@ -4600,21 +4600,21 @@ class Regency(object):
         enemy_has_(Type)_holding in my lands
         enemy_has_same_Type_of_holding_as_me_somewhere_i_have_holding
         i have contested holding
-        i have contested provence
+        i have contested provinces
         enemy_has_contested_holding
-        enemy_has_contested_provence
+        enemy_has_contested_provinces
         enemy_has_no_law_holdings_and_rebellious_or_poor_loyalty_in_a_province
         
         
         contest_holding
-        contest_provence
+        contest_provinces
         '''
         cost = 1
         dc = 10
         Regent_name = self.Regents[self.Regents['Regent']==Regent]['Full Name'].values[0]
         Target_name = self.Regents[self.Regents['Regent']==Target]['Full Name'].values[0]
-        if Type == 'Provence':  # The province’s level increases the DC to Contest
-            dc = dc + self.Provences[self.Provences['Provence']==Provence]['Population'].values[0]
+        if Type == 'Province':  # The province’s level increases the DC to Contest
+            dc = dc + self.Provinces[self.Provinces['Province']==Province]['Population'].values[0]
         # roll it up
         dc = self.set_difficulty(dc, Regent, Target, hostile=True)
         success, crit = self.make_roll(Regent, dc, 'Persuasion', player_gbid=gbid)
@@ -4629,33 +4629,33 @@ class Regency(object):
             temp = temp[temp['Other'] == Target]
             if temp.shape[0] > 0:
                 reward = int(-1.25*temp['Diplomacy'].values[0])
-        if Type != 'Provence':
-            message = "{} failed to contest {}'s {} Holding in {}".format(Regent_name, Target_name, Type, Provence)
+        if Type != 'Province':
+            message = "{} failed to contest {}'s {} Holding in {}".format(Regent_name, Target_name, Type, Province)
             if success:
-                self.change_holding(Provence, Target, Type, Contested=1)
-                message = "{} contested {}'s {} Holding in {}".format(Regent_name, Target_name, Type, Provence)
+                self.change_holding(Province, Target, Type, Contested=1)
+                message = "{} contested {}'s {} Holding in {}".format(Regent_name, Target_name, Type, Province)
         else:
             # make sure it's valid...
             temp = self.Holdings[self.Holdings['Regent'] != Regent].copy()
             temp = temp[temp['Type'] == 'Law']
-            temp = temp[temp['Provence'] == Provence]
+            temp = temp[temp['Province'] == Province]
             temp = temp[temp['Contested']==0]
             law_level = np.sum(temp['Level'])
-            loyalty = self.Provences[self.Provences['Provence']==Provence]['Loyalty'].values[0]
+            loyalty = self.Provinces[self.Provinces['Province']==Province]['Loyalty'].values[0]
             
             if loyalty != 'High' and loyalty != 'Average' and law_level <= 0:
                 # valid!
-                self.change_provence(Provence, Contested=True)
+                self.change_provinces(Province, Contested=True)
                 reward = 2*reward
-                message = "{} contested {}'s rule of {}".format(Regent_name, Target_name, Provence)
+                message = "{} contested {}'s rule of {}".format(Regent_name, Target_name, Province)
             else:
                 success = False
                 reward = -10
             if success == False:
-                message = "{} failed to contest {}'s rule of {}".format(Regent_name, Target_name, Provence)
+                message = "{} failed to contest {}'s rule of {}".format(Regent_name, Target_name, Province)
         return success, reward, message
           
-    def domain_action_create_holding(self, Regent, Provence, Type, gbid=None):
+    def domain_action_create_holding(self, Regent, Province, Type, gbid=None):
         '''
         Base: 1 GB
         success: 10 (+ population) (Persuasion)
@@ -4691,9 +4691,9 @@ class Regency(object):
         '''
         dc = 10
         # check if it's easy
-        temp = self.Provences[self.Provences['Provence']==Provence].copy()
+        temp = self.Provinces[self.Provinces['Province']==Province].copy()
         temp = pd.merge(temp, self.Relationships[self.Relationships['Other']==Regent].copy(), on='Regent', how='left').fillna(0)
-        temp = pd.merge(temp, self.Holdings[self.Holdings['Type']==Type].copy(), on='Provence', how='left')
+        temp = pd.merge(temp, self.Holdings[self.Holdings['Type']==Type].copy(), on='Province', how='left')
         hostile = False
         if temp.shape[0] > 0:
             if temp.iloc[0]['Diplomacy'] <= 0:
@@ -4703,16 +4703,16 @@ class Regency(object):
             dc = self.set_difficulty(dc, Regent, temp.iloc[0]['Regent_x'], hostile=hostile)
         success, crit = self.make_roll(Regent, dc, 'Persuasion')
         
-        message = '!Regent! failed to start a {} Holding in {}'.format(Type, Provence)
+        message = '!Regent! failed to start a {} Holding in {}'.format(Type, Province)
         if (Type == 'Temple' and self.Regents[self.Regents['Regent']==Regent]['Divine'].values[0]==False) or (Type == 'Source' and self.Regents[self.Regents['Regent']==Regent]['Arcane'].values[0]==False):
             success=False
         if success == True and 1 <= self.Regents[self.Regents['Regent']==Regent]['Gold Bars'].values[0]:
-            message = '!Regent! established a {} Holding in {}'.format(Type, Provence)
+            message = '!Regent! established a {} Holding in {}'.format(Type, Province)
             level = 0
             if crit == True:
                 level = 1
             # make the holding
-            self.add_holding(Provence, Regent, Type, level)
+            self.add_holding(Province, Regent, Type, level)
             # Pay!
             self.change_regent(Regent, Gold_Bars = self.Regents[self.Regents['Regent']==Regent]['Gold Bars'].values[0] - 1)
         else:
@@ -4876,29 +4876,29 @@ class Regency(object):
                         self.add_relationship(Regent, Target, Payment = -1*check['Payment'].values[0])  # end payments in other direction
                     reward = reward - check['Diplomacy'].values[0]
             if Type == 'deal_with_brigands':
-                temp = self.Provences[self.Provences['Regent']==Regent]
+                temp = self.Provinces[self.Provinces['Regent']==Regent]
                 temp = temp[temp['Brigands']==True]
                 if temp.shape[0]==0:
                     success = False
                     message = "{} tried to deal with Brigands that didn't exist.".format(reg_name)
                 else:
-                    self.change_provence(temp.iloc[0]['Provence'], Brigands=False)
+                    self.change_provinces(temp.iloc[0]['Province'], Brigands=False)
             if Type == 'handle_unrest':
                 # undo the unrest...
-                provences = self.Provence[self.Provence['Regent'] == Target]['Provence']
-                # return the provences
-                for p in list(provences):
-                    self.change_provence(p, Loyalty='Poor')
+                provinces = self.Province[self.Province['Regent'] == Target]['Province']
+                # return the provinces
+                for p in list(provinces):
+                    self.change_provinces(p, Loyalty='Poor')
                 # disband any and all troops
                 troops = self.Troops[self.Troops['Regent']==Target]
                 for i, row in troops.iterrows():
-                    self.disband_troops(Target, row['Provence'], row['Type'], Killed=False)
+                    self.disband_troops(Target, row['Province'], row['Type'], Killed=False)
                 self.kill_regent(Target)
                 self.Regents = self.Regents[self.Regents != Target]
                 reward = 5
         return success, reward, message
 
-    def domain_action_forge_ley_line(self, Regent, Provence, Target):
+    def domain_action_forge_ley_line(self, Regent, Province, Target):
         '''
         Forge Ley Line
         Type: Action
@@ -4958,18 +4958,18 @@ class Regency(object):
         '''
         # make a network for the calculation
         G = nx.Graph()
-        G.add_nodes_from(list(self.Provences['Provence']))
+        G.add_nodes_from(list(self.Provinces['Province']))
         Gl = G.copy()
 
-        G.add_edges_from([(row['Provence'], row['Neighbor']) for i, row in self.Geography.iterrows()])
-        Gl.add_edges_from([(row['Provence'], row['Other']) for i, row in self.LeyLines[self.LeyLines['Regent']==Regent].iterrows()])
+        G.add_edges_from([(row['Province'], row['Neighbor']) for i, row in self.Geography.iterrows()])
+        Gl.add_edges_from([(row['Province'], row['Other']) for i, row in self.LeyLines[self.LeyLines['Regent']==Regent].iterrows()])
 
-        provences = [Provence] + [a[1] for a in Gl.edges(Provence)]
+        provinces = [Province] + [a[1] for a in Gl.edges(Province)]
         targets = [Target] + [a[1] for a in Gl.edges(Target)]
 
         shortest = 9000
-        pair = (Provence, Target)
-        for p in provences:
+        pair = (Province, Target)
+        for p in provinces:
             for t in targets:
                 a = nx.shortest_path_length(G, p, t, 'Border')
                 if a < shortest:
@@ -4978,13 +4978,13 @@ class Regency(object):
         cost = shortest
         dc = 5*shortest
         temp = self.Regents[self.Regents['Regent']==Regent]
-        message = '{} failed to make a ley line from {} to {}'.format(temp.iloc[0]['Full Name'], Provence, Target)
+        message = '{} failed to make a ley line from {} to {}'.format(temp.iloc[0]['Full Name'], Province, Target)
         if temp.iloc[0]['Gold Bars'] < cost or temp.iloc[0]['Regency Points'] < cost:
             success = False
         else:
             self.change_regent(Regent, Regency_Points = temp.iloc[0]['Regency Points'] - cost, Gold_Bars = temp.iloc[0]['Gold Bars'] - cost)
             temp_ = self.Holdings[self.Holdings['Type']=='Source'].copy()
-            temp_ = pd.concat([temp_[temp_['Provence']==pair[0]], temp_[temp_['Provence']==pair[1]]], sort=False)
+            temp_ = pd.concat([temp_[temp_['Province']==pair[0]], temp_[temp_['Province']==pair[1]]], sort=False)
             temp_ = pd.merge(temp_, self.Relationships[self.Relationships['Other']==Regent], on='Regent', how='left').fillna(0)
             temp_ = temp_.sort_values('Diplomacy')
             enemy = temp_.iloc[0]['Regent']
@@ -4992,14 +4992,14 @@ class Regency(object):
                 dc = self.set_difficulty(dc, Regent, enemy)
             success, crit = self.make_roll(Regent, dc, 'Regency Bonus')  # classic for reasons  
         if success == True:
-            message = '{} forged ley lines from {} to {}'.format(temp.iloc[0]['Full Name'], Provence, Target)
+            message = '{} forged ley lines from {} to {}'.format(temp.iloc[0]['Full Name'], Province, Target)
             lst = nx.shortest_path(G, pair[0], pair[1], 'Border')
             for a in range(len(lst)-1):  # make all the paths
                 self.LeyLines = self.LeyLines.append(pd.DataFrame([[Regent, lst[a], lst[a+1]]], columns=self.LeyLines.keys()), ignore_index=True)
                 self.LeyLines = self.LeyLines.append(pd.DataFrame([[Regent, lst[a+1], lst[a]]], columns=self.LeyLines.keys()), ignore_index=True)
         return success, cost, message
         
-    def domain_action_fortify(self, Regent, Provence, level, name=None):
+    def domain_action_fortify(self, Regent, Province, level, name=None):
         '''
         Type: Action
 
@@ -5065,10 +5065,10 @@ class Regency(object):
         temp = pd.merge(temp, t2, on='X', how='left')
         temp['New Castle Name'] = temp['Name']+temp['End']
         temp['New Castle Name'] = temp['New Castle Name'].str.replace('_', ' ')
-        temp['New Castle Name'] = temp['New Castle Name'].str.replace('PPP', Provence)
+        temp['New Castle Name'] = temp['New Castle Name'].str.replace('PPP', Province)
         temp['New Castle Name'] = temp['New Castle Name'].str.title()
         temp['New Castle Name'] = temp['New Castle Name'].str.replace("'S","'s")
-        temp = pd.merge(temp, self.Provences[self.Provences['Provence'] == Provence].copy(), on='Regent', how='left').fillna(-1)
+        temp = pd.merge(temp, self.Provinces[self.Provinces['Province'] == Province].copy(), on='Regent', how='left').fillna(-1)
         message = 'Failed to Build a Castle'
         success = False
         reward = 0
@@ -5087,7 +5087,7 @@ class Regency(object):
                     # current construction projects
                     for a in self.Projects[self.Projects['Regent'] == Regent].values:
                         if a[1] == 'Castle':
-                            if a[2][0] == Provence:
+                            if a[2][0] == Province:
                                 previous = previous + a[2][1]
                     end_level = level + previous
                     cost = level*6
@@ -5099,16 +5099,16 @@ class Regency(object):
                     if cost <= temp.iloc[0]['Gold Bars']:
                         # make the castle
                         reward = 5+level
-                        message = '{} started construction on {}, a level {} castle in {}'.format(temp.iloc[0]['Full Name'],temp.iloc[0]['Castle Name'], level, Provence)
+                        message = '{} started construction on {}, a level {} castle in {}'.format(temp.iloc[0]['Full Name'],temp.iloc[0]['Castle Name'], level, Province)
                         # charge 'em
                         self.change_regent(Regent, Gold_Bars = temp.iloc[0]['Gold Bars'] - cost)
                         if crit == True:  # 2d6 off of the cost as per the rules
                             cost = cost - np.random.randint(1,6,1)[0] - np.random.randint(1,6,1)[0]
-                        self.Projects = self.Projects.append(pd.DataFrame([[Regent, 'Castle', (Provence, level), cost]], columns=self.Projects.keys()), ignore_index=True)
-                        self.change_provence(Provence, Castle_Name = temp.iloc[0]['Castle Name'])
+                        self.Projects = self.Projects.append(pd.DataFrame([[Regent, 'Castle', (Province, level), cost]], columns=self.Projects.keys()), ignore_index=True)
+                        self.change_provinces(Province, Castle_Name = temp.iloc[0]['Castle Name'])
         return success, reward, message
        
-    def domain_action_investiture(self, Regent, Target, provences=[], holdings=[], Invest=False, Divest=False, Vassal=False, Claim=False):
+    def domain_action_investiture(self, Regent, Target, provinces=[], holdings=[], Invest=False, Divest=False, Vassal=False, Claim=False):
         '''
         Type: Action
         Base Cost: Varies
@@ -5161,28 +5161,28 @@ class Regency(object):
         investiture_divest_enemy
         investiture_become_vassal_friend
         investiture_take_bloodline_enemy
-        investiture_take_provence
+        investiture_take_provinces
         '''
         
         if Invest == True or Divest == True:
             # cost
-            Provences = pd.DataFrame()
+            Provinces = pd.DataFrame()
             Holdings = pd.DataFrame()
             who = Regent
             towho = Target
             if Divest==True:
                 who=Target
                 towho=Regent
-            if len(provences) + len(holdings) == 0:
-                Provences = self.Provences[self.Provences['Regent']==who].copy()
+            if len(provinces) + len(holdings) == 0:
+                Provinces = self.Provinces[self.Provinces['Regent']==who].copy()
                 Holdings = self.Holdings[self.Holdings['Regent']==who].copy()
-            if len(provences) > 0:
-                Provences = pd.concat([self.Provences[self.Provences['Regent']==who][self.Provences['Provence']==a] for a in provences])
+            if len(provinces) > 0:
+                Provinces = pd.concat([self.Provinces[self.Provinces['Regent']==who][self.Provinces['Province']==a] for a in provinces])
             if len(holdings) > 0:
-                Holdings = pd.concat([self.Holdings[self.Holdings['Regent']==who][self.Holdings['Provence']==a[0]][self.Holdings['Type']==a[1]] for a in holdings])
+                Holdings = pd.concat([self.Holdings[self.Holdings['Regent']==who][self.Holdings['Province']==a[0]][self.Holdings['Type']==a[1]] for a in holdings])
             if Divest==True:  # only contested
-                if Provences.shape[0]>0:
-                    Provences = Provences[Provences['Contested']==True]
+                if Provinces.shape[0]>0:
+                    Provinces = Provinces[Provinces['Contested']==True]
                 if Holdings.shape[0]>0:
                     Holdings = Holdings[Holdings['Contested']==1]
             # check if they have the points...
@@ -5191,29 +5191,29 @@ class Regency(object):
             if Divest == True:
                 dc = self.set_difficulty(10+self.Regents[self.Regents['Regent']==Target]['Regency Bonus'].values[0], Regent, Target, hostile=True)
                 success, crit = self.make_roll(Regent, dc, 'Regency Bonus')
-            if Regency > 0 and Provences.shape[0]+Holdings.shape[0] > 0:
-                # Provences
+            if Regency > 0 and Provinces.shape[0]+Holdings.shape[0] > 0:
+                # Provinces
                 invested = []
-                if Provences.shape[0]>0:  # this un-contests the holdings
-                    for i, row in Provences.iterrows():
+                if Provinces.shape[0]>0:  # this un-contests the holdings
+                    for i, row in Provinces.iterrows():
                         if Regency > row['Population']+row['Castle']:
                             Regency = Regency - row['Population'] - row['Castle']
-                            self.change_provence(row['Provence'], Regent=towho, Contested=False)
-                            invested.append(row['Provence'])
+                            self.change_provinces(row['Province'], Regent=towho, Contested=False)
+                            invested.append(row['Province'])
                             if Divest==False:
                                 # give them the troops that come with
                                 self.Troops = self.Troops.reset_index(drop=True)
-                                if (self.Troops[self.Troops['Provence'] == row['Provence']][self.Troops['Regent'] == who]).shape[0] > 0:
-                                    troops1 = self.Troops[self.Troops['Provence'] == row['Provence']][self.Troops['Regent'] == who]
+                                if (self.Troops[self.Troops['Province'] == row['Province']][self.Troops['Regent'] == who]).shape[0] > 0:
+                                    troops1 = self.Troops[self.Troops['Province'] == row['Province']][self.Troops['Regent'] == who]
                                     troops2 = self.Troops[self.Troops['Regent'] != who]
-                                    troops3 = self.Troops[self.Troops['Regent'] == who][self.Troops['Provence'] != row['Provence']]
+                                    troops3 = self.Troops[self.Troops['Regent'] == who][self.Troops['Province'] != row['Province']]
                                     troops1['Regent'] = towho
                                     self.Troops = pd.concat([troops1, troops2, troops3], sort=True)
                                 # and the boats...
-                                if (self.Navy[self.Navy['Provence'] == row['Provence']][self.Navy['Regent'] == who]).shape[0]>0:
-                                    boats1 = self.Navy[self.Navy['Provence'] == row['Provence']][self.Navy['Regent'] == who]
+                                if (self.Navy[self.Navy['Province'] == row['Province']][self.Navy['Regent'] == who]).shape[0]>0:
+                                    boats1 = self.Navy[self.Navy['Province'] == row['Province']][self.Navy['Regent'] == who]
                                     boats2 = self.Navy[self.Navy['Regent'] != who]
-                                    boats3 = self.Navy[self.Navy['Regent'] == who][self.Navy['Provence'] != row['Provence']]
+                                    boats3 = self.Navy[self.Navy['Regent'] == who][self.Navy['Province'] != row['Province']]
                                     boats1['Regent'] = towho
                                     self.Navy = pd.concat([boats1, boats2, boats3], sort=True)
                 # Holdings... remeber that only magic people can have magic holdings
@@ -5221,16 +5221,16 @@ class Regency(object):
                     for i, row in Holdings.iterrows():
                         if Regency > row['Level']:
                             if row['Type']=='Temple' and self.Regents[self.Regents['Regent']==towho]['Divine'].values[0] == True:
-                                self.change_holding(row['Provence'], row['Regent'], row['Type'], Contested=0, new_Regent = towho)
-                                invested.append('A {} Holding in {}'.format(row['Type'], row['Provence']))
+                                self.change_holding(row['Province'], row['Regent'], row['Type'], Contested=0, new_Regent = towho)
+                                invested.append('A {} Holding in {}'.format(row['Type'], row['Province']))
                                 Regency = Regency - row['Level']
                             elif row['Type']=='Source' and self.Regents[self.Regents['Regent']==towho]['Arcane'].values[0] == True:
-                                self.change_holding(row['Provence'], row['Regent'], row['Type'], Contested=0, new_Regent = towho)
-                                invested.append('A {} Holding in {}'.format(row['Type'], row['Provence']))
+                                self.change_holding(row['Province'], row['Regent'], row['Type'], Contested=0, new_Regent = towho)
+                                invested.append('A {} Holding in {}'.format(row['Type'], row['Province']))
                                 Regency = Regency - row['Level']
                             elif row['Type'] == 'Law' or row['Type'] == 'Guild':
-                                self.change_holding(row['Provence'], row['Regent'], row['Type'], row['Level'], Contested=0, new_Regent = towho)
-                                invested.append('A {} Holding in {}'.format(row['Type'], row['Provence']))
+                                self.change_holding(row['Province'], row['Regent'], row['Type'], row['Level'], Contested=0, new_Regent = towho)
+                                invested.append('A {} Holding in {}'.format(row['Type'], row['Province']))
                                 Regency = Regency - row['Level']
                 if len(invested) > 0:
                     self.change_regent(Regent, Regency_Points = Regency)
@@ -5262,17 +5262,17 @@ class Regency(object):
             dc = 10
             message = 'Failed to claim {}'.format(Target)
             success, crit = self.make_roll(Regent, dc, 'Regency Bonus')
-            if self.Provences[self.Provences['Provence']==Target].shape[0] == 0 and self.Provences[self.Provences['Provence']==Target]['Regent'].values[0]!='':
+            if self.Provinces[self.Provinces['Province']==Target].shape[0] == 0 and self.Provinces[self.Provinces['Province']==Target]['Regent'].values[0]!='':
                 success = False
             else:
                 success = True
-                self.change_regent(Regent, Regency_Points= self.Regents[self.Regents['Regent']==Regent]['Regency Points'].values[0]-self.Provences[self.Provences['Provence']==Target]['Population'].values[0])
-                self.change_provence(Target, Regent=Regent, Contested=False)
+                self.change_regent(Regent, Regency_Points= self.Regents[self.Regents['Regent']==Regent]['Regency Points'].values[0]-self.Provinces[self.Provinces['Province']==Target]['Population'].values[0])
+                self.change_provinces(Target, Regent=Regent, Contested=False)
                 message = '{} claimed and Invested {}'.format(self.Regents[self.Regents['Regent']==Regent]['Full Name'].values[0], Target)
-            return success, self.Provences[self.Provences['Provence']==Target]['Population'], message
+            return success, self.Provinces[self.Provinces['Province']==Target]['Population'], message
         return False, 0, 'Error {}'.format(Regent)   
         
-    def domain_action_rule(self, Regent, Holding=True, Provence='', holdings=[]):
+    def domain_action_rule(self, Regent, Holding=True, Province='', holdings=[]):
         '''
         Rule
         Type: Action
@@ -5320,10 +5320,10 @@ class Regency(object):
         
         INFO NEEDED
         Holdings_Can_Increase_Level
-        Has_Provences
+        Has_Provinces
         
         rule_holdings
-        rule_provence
+        rule_provinces
         '''
         rrow = self.Regents[self.Regents['Regent']==Regent].iloc[0]
         GB = rrow['Gold Bars']
@@ -5339,27 +5339,27 @@ class Regency(object):
         if Holding==True:
             if len(holdings) == 0:
                 for i, row in self.Holdings[self.Holdings['Regent']==Regent].iterrows():
-                    holdings.append((row['Provence'], row['Type']))
+                    holdings.append((row['Province'], row['Type']))
             # check your holdings...
-            temp = pd.concat([self.Holdings[self.Holdings['Regent']==Regent][self.Holdings['Provence']==a[0]][self.Holdings['Type']==a[1]] for a in holdings], sort=True)
+            temp = pd.concat([self.Holdings[self.Holdings['Regent']==Regent][self.Holdings['Province']==a[0]][self.Holdings['Type']==a[1]] for a in holdings], sort=True)
             temp = temp[temp['Contested']==0]  # can't rule if contested
             
             # get pop by type...
-            pop = pd.merge(temp[['Provence']].drop_duplicates(), self.Holdings.copy(), on='Provence', how='left')
+            pop = pd.merge(temp[['Province']].drop_duplicates(), self.Holdings.copy(), on='Province', how='left')
             if pop.shape[0]>0:
-                pop = pop[['Provence', 'Type', 'Level']].groupby(['Provence', 'Type']).sum().reset_index()
-                pop = pd.merge(pop, self.Provences.copy(), on='Provence', how='left')
+                pop = pop[['Province', 'Type', 'Level']].groupby(['Province', 'Type']).sum().reset_index()
+                pop = pd.merge(pop, self.Provinces.copy(), on='Province', how='left')
                 pop = pop[pop['Contested']==0]  # allow ruling holdings where others are contested
                 pop1 = pop[pop['Type']!='Source']
                 pop2 = pop[pop['Type']=='Source']
                 pop1['Limit']=pop1['Population']
                 pop2['Limit']=pop2['Magic']
                 pop=pd.concat([pop1, pop2])
-                pop[pop['Level']<pop['Limit']][['Provence', 'Type', 'Level', 'Limit']]
+                pop[pop['Level']<pop['Limit']][['Province', 'Type', 'Level', 'Limit']]
                 pop['Raise'] = pop['Limit']-pop['Level']
             
                 # get the holdings I can improve...
-                temp = pd.merge(pop[['Provence', 'Type', 'Raise']], temp, on=['Provence','Type'], how='left').fillna(-1)
+                temp = pd.merge(pop[['Province', 'Type', 'Raise']], temp, on=['Province','Type'], how='left').fillna(-1)
                 temp = temp[temp['Level']>-1]
             
                 # do it...
@@ -5374,14 +5374,14 @@ class Regency(object):
                         Level = row['Level'] + 1
                         if crit==True and row['Raise']>=2:
                             Level = row['Level'] + 2
-                        self.change_holding(row['Provence'], Regent, row['Type'], Level=Level)
+                        self.change_holding(row['Province'], Regent, row['Type'], Level=Level)
                         reward = reward + Level - row['Level']
-                        ruled.append('a {} Holding in {}'.format(row['Type'], row['Provence']))
+                        ruled.append('a {} Holding in {}'.format(row['Type'], row['Province']))
                 self.change_regent(Regent, Gold_Bars = GB, Regency_Points = RP)
                 message = '{} ruled {}.'.format(name, ', '.join(ruled)) 
-        elif Provence !='':
-            message = '{} ruled over {}'.format(rrow['Full Name'], Provence)
-            value = self.Provences[self.Provences['Provence']==Provence]['Population'].values[0]
+        elif Province !='':
+            message = '{} ruled over {}'.format(rrow['Full Name'], Province)
+            value = self.Provinces[self.Provinces['Province']==Province]['Population'].values[0]
             if rrow['Race'].lower() == 'elf':
                 value = 2*value+1
             if GB < value+1 or RP < value+1:
@@ -5391,10 +5391,10 @@ class Regency(object):
                 self.change_regent(Regent, Gold_Bars = GB - value - 1, Regency_Points = RP - value - 1)
                 success, crit = self.make_roll(Regent, 10, 'Persuasion')
                 if success == True and crit == True:
-                    self.change_provence(Provence, Population_Change=2)
+                    self.change_provinces(Province, Population_Change=2)
                     reward = 5*(value+2)
                 elif success == True:
-                    self.change_provence(Provence, Population_Change=1)
+                    self.change_provinces(Province, Population_Change=1)
                     reward = 5*(value+1)
         return success, reward, message
         
@@ -5434,13 +5434,13 @@ class Regency(object):
         INFO_NEEDED
         trade_permission_granted
         waterways_can_have_routes
-        provences_can_have_routes
+        provinces_can_have_routes
         
         
         create_trade_route
         '''
         # do we have permission?
-        Other = self.Provences[self.Provences['Provence']==Target]['Regent'].values[0]
+        Other = self.Provinces[self.Provinces['Province']==Target]['Regent'].values[0]
         A = self.Relationships[self.Relationships['Regent']==Regent].copy()
         A = A[A['Other']==Other]
         B = self.Relationships[self.Relationships['Regent']==Other].copy()
@@ -5453,7 +5453,7 @@ class Regency(object):
         if np.sum(temp['Trade Permission']) > 0 and rrow['Gold Bars'] >= 1 and rrow['Regency Points'] >= 1:
             # waterways?
             Waterway = False
-            if self.Provences[self.Provences['Provence']==Base][self.Provences['Waterway']==True].shape[0] > 0 and self.Provences[self.Provences['Provence']==Target][self.Provences['Waterway']==True].shape[0] > 0:
+            if self.Provinces[self.Provinces['Province']==Base][self.Provinces['Waterway']==True].shape[0] > 0 and self.Provinces[self.Provinces['Province']==Target][self.Provinces['Waterway']==True].shape[0] > 0:
                 Waterway = True
             self.change_regent(Regent, Gold_Bars = rrow['Gold Bars'] - 1, Regency_Points =  rrow['Regency Points'] - 1)
             success, crit = self.make_roll(Regent, 10, 'Persuasion')
@@ -5533,23 +5533,23 @@ class Regency(object):
 
             # cast away!
             lst = []
-            for i, Provence in enumerate(Targets):
+            for i, Province in enumerate(Targets):
                 if i <= 3:
                     if Level >= Limits[i] and RP >= 3:
                         success = True
                         reward = reward + 3
-                        lst.append(Provence)
+                        lst.append(Province)
                         RP = RP - 3
                         # The province also improves its loyalty by one grade.
-                        self.change_loyalty(Provence, 1)
-                        # gold increase for Provence itself.
-                        Reg = self.Provences[self.Provences['Provence']==Provence]['Regent'].values[0]
+                        self.change_loyalty(Province, 1)
+                        # gold increase for Province itself.
+                        Reg = self.Provinces[self.Provinces['Province']==Province]['Regent'].values[0]
                         if Reg != '':
                             try:
                                 self.change_regent(Reg, Gold_Bars = self.Regents[self.Regents['Regent']==Reg]['Gold Bars'].values[0] + 1 )
                             except:
-                                self.errors.append('bless_land provence_boost', 'regent', Reg)
-                        temp = self.Holdings[self.Holdings['Provence']==Provence]
+                                self.errors.append('bless_land provinces_boost', 'regent', Reg)
+                        temp = self.Holdings[self.Holdings['Province']==Province]
                         for Reg in list(temp[temp['Type'] != 'Source']['Regent']):
                             if  self.Regents[self.Regents['Regent']==Reg].shape[0] > 0:
                                 self.change_regent(Reg, Gold_Bars = self.Regents[self.Regents['Regent']==Reg]['Gold Bars'].values[0] + 1 )
@@ -5590,26 +5590,26 @@ class Regency(object):
 
             # cast away!
             lst = []
-            for i, Provence in enumerate(Targets):
+            for i, Province in enumerate(Targets):
                 if i <= 3:
                     if Level >= Limits[i] and RP >= 3:
                         success = True
                         reward = reward + 3
-                        lst.append(Provence)
+                        lst.append(Province)
                         RP = RP - 3
                         
-                        # gold increase for Provence itself.
-                        Reg = self.Provences[self.Provences['Provence']==Provence]['Regent'].values[0]
+                        # gold increase for Province itself.
+                        Reg = self.Provinces[self.Provinces['Province']==Province]['Regent'].values[0]
                         # The province may also lose a grade of loyalty
                         save_ = False  # if no Regent, no protection
                         if Reg != '':
                             save_, _ = self.make_roll(Reg, 10+self.Regents[self.Regents['Regent']==Regent]['Regency Bonus'].values[0], 'Regency Bonus')
                         if save_ == False:
-                            self.change_loyalty(Provence, -1)
+                            self.change_loyalty(Province, -1)
                         if Reg != '':
                             if self.Regents[self.Regents['Regent']==Reg]['Gold Bars'].values[0] >= 1:
                                 self.change_regent(Reg, Gold_Bars = self.Regents[self.Regents['Regent']==Reg]['Gold Bars'].values[0] - 1 )
-                        temp = self.Holdings[self.Holdings['Provence']==Provence]
+                        temp = self.Holdings[self.Holdings['Province']==Province]
                         for Reg in list(temp[temp['Type'] != 'Source']['Regent']):
                             if Reg != '':
                                 if  self.Regents[self.Regents['Regent']==Reg].shape[0] > 0:
@@ -5641,7 +5641,7 @@ class Regency(object):
         suitable ley line connection.
         '''
         temp = self.Holdings[self.Holdings['Regent'] == Regent].copy()
-        temp = temp[temp['Type']=='Source'][['Type', 'Level', 'Provence']].groupby(['Type', 'Provence']).max().reset_index()
+        temp = temp[temp['Type']=='Source'][['Type', 'Level', 'Province']].groupby(['Type', 'Province']).max().reset_index()
         success = False
         reward = 0
         lst = []
@@ -5649,12 +5649,12 @@ class Regency(object):
         temp = temp[temp['Level']>=5]
         if temp.shape[0] > 0:
             # we have the resources...
-            valid = pd.concat([temp[['Provence']], self.LeyLines[self.LeyLines['Regent']==Regent][['Provence']]])
-            valid = pd.merge(valid, self.Provences[self.Provences['Regent']==Target], on='Provence', how='inner')
-            targets = pd.merge(valid[['Provence']], self.Geography, on='Provence', how='left').fillna(0)
-            targets = pd.merge(targets[targets['Border']==1][['Neighbor']],self.Provences[self.Provences['Regent']==Target], left_on='Neighbor', right_on='Provence', how='left').fillna(0)
-            targets = targets[targets['Provence'] != 0]
-            targets = list(valid['Provence']) + list(targets['Provence'])
+            valid = pd.concat([temp[['Province']], self.LeyLines[self.LeyLines['Regent']==Regent][['Province']]])
+            valid = pd.merge(valid, self.Provinces[self.Provinces['Regent']==Target], on='Province', how='inner')
+            targets = pd.merge(valid[['Province']], self.Geography, on='Province', how='left').fillna(0)
+            targets = pd.merge(targets[targets['Border']==1][['Neighbor']],self.Provinces[self.Provinces['Regent']==Target], left_on='Neighbor', right_on='Province', how='left').fillna(0)
+            targets = targets[targets['Province'] != 0]
+            targets = list(valid['Province']) + list(targets['Province'])
             # targets aquired...
             Limits = [1,5,11,17]
             if len(targets) == 0:
@@ -5667,16 +5667,16 @@ class Regency(object):
             for i, pro in enumerate(targets):
                 if i <= 3 and Level >= Limits[i]:
                     # do we have the RP...
-                    Pop = self.Provences[self.Provences['Provence'] == pro]['Population'].values[0]
+                    Pop = self.Provinces[self.Provinces['Province'] == pro]['Population'].values[0]
                     if RP >= Pop:
                         RP = RP - Pop
                         # lower the population
-                        self.change_provence(pro, Population_Change=-1)
+                        self.change_provinces(pro, Population_Change=-1)
                         lst.append(pro)
             self.change_regent(Regent, Gold_Bars = self.Regents[self.Regents['Regent']==Regent]['Gold Bars'].values[0] - 2, Regency_Points = RP)
         return True, 0, message + ', '.join(lst)
 
-    def realm_magic_demagogue(self, Regent, Target, Increase=True, provences=[]):
+    def realm_magic_demagogue(self, Regent, Target, Increase=True, provinces=[]):
         '''
         RP Cost: 5 per loyalty grade
         GB Cost: 1
@@ -5697,21 +5697,21 @@ class Regency(object):
         temp = temp[temp['Level']>=3]
         RP = self.Regents[self.Regents['Regent']==Regent]['Regency Points'].values[0]
         Level = self.Regents[self.Regents['Regent']==Regent]['Level'].values[0]
-        message = "{} cast 'Demagogue' on {}'s Provences: ".format(self.Regents[self.Regents['Regent']==Regent]['Full Name'].values[0], self.Regents[self.Regents['Regent']==Target]['Full Name'].values[0])
+        message = "{} cast 'Demagogue' on {}'s Provinces: ".format(self.Regents[self.Regents['Regent']==Regent]['Full Name'].values[0], self.Regents[self.Regents['Regent']==Target]['Full Name'].values[0])
         if temp.shape[0] > 0 and RP >= 5:
-            if len(provences) == 0:
-                temp = self.Provences[self.Provences['Regent'] == Target].copy()
+            if len(provinces) == 0:
+                temp = self.Provinces[self.Provinces['Regent'] == Target].copy()
                 temp['Loyalty'] = temp['Loyalty'].str.replace('Rebellious','0').replace('Poor','1').replace('Average','2').replace('High','3').astype(int)
                 success = True
                 
                 
                 temp = temp.sort_values('Loyalty')
-                provences = list(temp['Provence'])
+                provinces = list(temp['Province'])
            
             Limits = [1,5,11,17]
             lst = []
 
-            for i, prov in enumerate(provences):
+            for i, prov in enumerate(provinces):
                 if i <= 3:
                     if RP >= 5 and Limits[i] <= Level:
                        
@@ -5730,7 +5730,7 @@ class Regency(object):
                 message = message + ' : decreasing their loyalty'
         return success, reward, message
             
-    def realm_magic_legion_of_the_dead(self, Regent, Provence):
+    def realm_magic_legion_of_the_dead(self, Regent, Province):
         '''
         Legion of the Dead
         RP Cost: 4 per unit
@@ -5751,13 +5751,13 @@ class Regency(object):
         summon four.
         '''
         temp = self.Holdings[self.Holdings['Regent'] == Regent].copy()
-        temp = temp[temp['Type']=='Source'][['Type', 'Level', 'Provence']]
+        temp = temp[temp['Type']=='Source'][['Type', 'Level', 'Province']]
 
 
         temp = temp[temp['Level']>=3]
-        temp = pd.concat([temp[['Provence']], self.LeyLines[self.LeyLines['Regent']==Regent][['Provence']]])
-        temp = temp[temp['Provence']==Provence]
-        temp = pd.merge(temp[['Provence']], self.Holdings[self.Holdings['Type']=='Source'])
+        temp = pd.concat([temp[['Province']], self.LeyLines[self.LeyLines['Regent']==Regent][['Province']]])
+        temp = temp[temp['Province']==Province]
+        temp = pd.merge(temp[['Province']], self.Holdings[self.Holdings['Type']=='Source'])
         temp = temp[temp['Regent']==Regent]
         success = False
         reward = 0
@@ -5768,7 +5768,7 @@ class Regency(object):
         GB = self.Regents[self.Regents['Regent']==Regent]['Gold Bars'].values[0]
         Level = self.Regents[self.Regents['Regent']==Regent]['Level'].values[0]
         Limits = [1,5,11,17]
-        tcols = ['Regent', 'Provence', 'Type', 'Cost', 'CR', 'Garrisoned', 'Home', 'Injury']
+        tcols = ['Regent', 'Province', 'Type', 'Cost', 'CR', 'Garrisoned', 'Home', 'Injury']
         pcols = ['Regent', 'Project Type', 'Details', 'Gold Bars Left']
         if temp.shape[0] > 0 and RP >= 4 and GB >= 1:
             N = 0
@@ -5777,19 +5777,19 @@ class Regency(object):
                     RP = RP - 4
                     GB = GB - 1
                     N += 1
-                    self.Troops = self.Troops.append(pd.DataFrame([[Regent, Provence, 'Undead Troops', 0, 2, 0, '', 0]], columns=tcols))
+                    self.Troops = self.Troops.append(pd.DataFrame([[Regent, Province, 'Undead Troops', 0, 2, 0, '', 0]], columns=tcols))
                     self.Troops = self.Troops.reset_index(drop=True)
                     self.Troops = self.Troops[tcols]
                     self.Projects = self.Projects.append(pd.DataFrame([[Regent, 'Undead Troops', '', np.random.randint(2,4,1)[0]]], columns=pcols))
                     self.Projects = self.Projects.reset_index(drop=True)
                     self.Projects = self.Projects[pcols]
             self.change_regent(Regent, Gold_Bars=GB, Regency_Points=RP)
-            message = "{} Cast 'Legion of the Dead', summong {} Undead Troops in {}".format(self.Regents[self.Regents['Regent']==Regent]['Full Name'].values[0], N, Provence)
+            message = "{} Cast 'Legion of the Dead', summong {} Undead Troops in {}".format(self.Regents[self.Regents['Regent']==Regent]['Full Name'].values[0], N, Province)
             reward = N
             
         return success, reward, message
     
-    def realm_magic_mass_destruction(self, Regent, Provence):
+    def realm_magic_mass_destruction(self, Regent, Province):
         '''
         Mass Destruction
         RP Cost: 10 per unit
@@ -5821,10 +5821,10 @@ class Regency(object):
         ADDING IN DAMAGE TO SHIPS IF TARGETED
         '''
         temp = self.Holdings[self.Holdings['Regent'] == Regent].copy()
-        temp = temp[temp['Type']=='Source'][['Type', 'Level', 'Provence']]
+        temp = temp[temp['Type']=='Source'][['Type', 'Level', 'Province']]
         temp = temp[temp['Level']>=5]
-        temp = pd.concat([temp[['Provence']], self.LeyLines[self.LeyLines['Regent']==Regent][['Provence']]])
-        temp = temp[temp['Provence']==Provence]
+        temp = pd.concat([temp[['Province']], self.LeyLines[self.LeyLines['Regent']==Regent][['Province']]])
+        temp = temp[temp['Province']==Province]
         success = False
         reward = 0
         caster = self.Regents[self.Regents['Regent']==Regent]['Full Name'].values[0]
@@ -5837,15 +5837,15 @@ class Regency(object):
         SpellSave = 8 + ProfBonus + self.Regents[self.Regents['Regent']==Regent]['Regency Bonus'].values[0]
         Limits = [1,5,11,17]
         if temp.shape[0] > 0 and RP >= 10 and GB >= 5:
-            message = '{} cast "Mass Destruction" on {}, '.format(caster, Provence)
-            temp = pd.concat([self.Troops[self.Troops['Provence']==Provence],self.Navy[self.Navy['Provence']==Provence]], sort=False).fillna(-1)
+            message = '{} cast "Mass Destruction" on {}, '.format(caster, Province)
+            temp = pd.concat([self.Troops[self.Troops['Province']==Province],self.Navy[self.Navy['Province']==Province]], sort=False).fillna(-1)
             temp['roll'] = np.random.randint(1,temp.shape[0]+1, temp.shape[0])
             temp = temp.sort_values('roll')
             temp = pd.merge(temp, self.Regents[['Regent', 'Regency Bonus']], on='Regent', how='left')
             temp['Save'] = np.random.randint(1,20,temp.shape[0]) + temp['Regency Bonus']
             temp['SeaCheck'] = np.random.randint(1,20,temp.shape[0])
             self.change_regent(Regent, Gold_Bars=GB-5, Regency_Points = RP)
-            self.change_loyalty(Provence, -1)
+            self.change_loyalty(Province, -1)
             N = 0
             lst =[]
             for i, lim in enumerate(Limits):
@@ -5854,16 +5854,16 @@ class Regency(object):
                     RP = RP - 10
                     if temp['Ship'].values[i] == -1:  # troop
                         if temp['Save'].values[i] >= SpellSave and temp['Injury'].values[i]>-3:
-                            self.disband_troops(temp['Regent'].values[i], Provence, temp['Type'].values[i], Killed=False, Real=False)
-                            self.add_troops(temp['Regent'].values[i], Provence, temp['Type'].values[i], Home=temp['Home'].values[i], Garrisoned=temp['Garrisoned'].values[i], Injury=temp['Injury'].values[i]-1)
+                            self.disband_troops(temp['Regent'].values[i], Province, temp['Type'].values[i], Killed=False, Real=False)
+                            self.add_troops(temp['Regent'].values[i], Province, temp['Type'].values[i], Home=temp['Home'].values[i], Garrisoned=temp['Garrisoned'].values[i], Injury=temp['Injury'].values[i]-1)
                             lst.append("injuring a unit of {}'s {}".format(self.Regents[self.Regents['Regent']==temp['Regent'].values[i]]['Full Name'].values[0], temp['Type'].values[i]))
                         else:
-                            self.disband_troops(temp['Regent'].values[i], Provence, temp['Type'].values[i], Killed=True, Real=False)
+                            self.disband_troops(temp['Regent'].values[i], Province, temp['Type'].values[i], Killed=True, Real=False)
                             N += 1
                             lst.append("destroying a unit of {}'s {}".format(self.Regents[self.Regents['Regent']==temp['Regent'].values[i]]['Full Name'].values[0], temp['Type'].values[i]))
                     else:  # ship...
                         # remove the ship
-                        self.remove_ship(temp['Regent'].values[i], Provence, temp['Ship'].values[i], Name=temp['Name'].values[i])
+                        self.remove_ship(temp['Regent'].values[i], Province, temp['Ship'].values[i], Name=temp['Name'].values[i])
                         if temp['Save'].values[i] >= SpellSave and temp['Hull'].values[i] > 1:  # return if a save made...
                             Seaworthiness = temp['Seaworthiness'].values[i]-np.random.randint(1,4,1)[0]-np.random.randint(1,4,1)[0]
                             Hull = temp['Hull'].values[i]
@@ -5871,7 +5871,7 @@ class Regency(object):
                                 Hull = Hull -1
                             # and the ship did not sustain too much damage
                             if Hull >= 1 and Seaworthiness >= 1:
-                                self.add_ship(temp['Regent'].values[i], Provence, temp['Ship'].values[i], Name=temp['Name'].values[i], Seaworthiness=Seaworthiness, Hull=Hull)
+                                self.add_ship(temp['Regent'].values[i], Province, temp['Ship'].values[i], Name=temp['Name'].values[i], Seaworthiness=Seaworthiness, Hull=Hull)
                                 lst.append('damaging "{}", a {} belonging to {}'.format(temp['Name'].values[i], temp['Ship'].values[i], self.Regents[self.Regents['Regent']==temp['Regent'].values[i]]['Full Name'].values[0]))
                             else:
                                 lst.append('sinking "{}", a {} that belonged to {}'.format(temp['Name'].values[i], temp['Ship'].values[i], self.Regents[self.Regents['Regent']==temp['Regent'].values[i]]['Full Name'].values[0]))
@@ -5883,7 +5883,7 @@ class Regency(object):
             message = message + '; '.join(lst)
         return success, reward, message 
     
-    def realm_magic_raze(self, Regent, Target, provences=[]):
+    def realm_magic_raze(self, Regent, Target, provinces=[]):
         '''
         RP Cost: 10 per structure level
         GB Cost: 2 per damage level inflicted
@@ -5906,12 +5906,12 @@ class Regency(object):
         '''
         caster = self.Regents[self.Regents['Regent']==Regent]['Full Name'].values[0]
         temp = self.Holdings[self.Holdings['Regent'] == Regent].copy()
-        temp = temp[temp['Type']=='Source'][['Type', 'Level', 'Provence']]
+        temp = temp[temp['Type']=='Source'][['Type', 'Level', 'Province']]
         temp = temp[temp['Level']>=5]
-        temp = pd.concat([temp[['Provence']], self.LeyLines[self.LeyLines['Regent']==Regent][['Provence']]])
-        temp = temp[temp['Provence']==Target]
-        temp = pd.merge(temp, self.Provences, on='Provence', how='left')
-        temp = pd.merge(self.Troops[self.Troops['Regent']==Regent][['Provence']], temp, on='Provence', how='left')
+        temp = pd.concat([temp[['Province']], self.LeyLines[self.LeyLines['Regent']==Regent][['Province']]])
+        temp = temp[temp['Province']==Target]
+        temp = pd.merge(temp, self.Provinces, on='Province', how='left')
+        temp = pd.merge(self.Troops[self.Troops['Regent']==Regent][['Province']], temp, on='Province', how='left')
         temp = temp[temp['Castle']>0]
         success = False
         reward = 0
@@ -5930,19 +5930,19 @@ class Regency(object):
                     dmg += 1
                     RP = RP - 10
                     GB = GB - 2
-            save, _ = self.make_roll(self.Provences[self.Provences['Provence']==Target]['Regent'].values[0], 10+RB, 'Regency Bonus')
+            save, _ = self.make_roll(self.Provinces[self.Provinces['Province']==Target]['Regent'].values[0], 10+RB, 'Regency Bonus')
             if save == True:
                 dmg = int(dmg/2)
                 if dmg == 0:
                     dmg = 1
-            self.change_provence(temp.iloc[0]['Provence'], Castle = Level - dmg)
+            self.change_provinces(temp.iloc[0]['Province'], Castle = Level - dmg)
             self.change_regent(Regent, Gold_Bars = GB, Regency_Points = RP)
             success = True
             reward = dmg*5
             message = "{} cast 'Raze' on '{}' in {}".format(caster, temp.iloc[0]['Castle Name'],Target)
         return success, reward, message 
             
-    def realm_magic_stronghold(self, Regent, Provence, Perm=False):
+    def realm_magic_stronghold(self, Regent, Province, Perm=False):
         '''
         RP Cost: 6 RP per castle level
         GB Cost: 10
@@ -5962,10 +5962,10 @@ class Regency(object):
         '''
         caster = self.Regents[self.Regents['Regent']==Regent]['Full Name'].values[0]
         temp = self.Holdings[self.Holdings['Regent'] == Regent].copy()
-        temp = temp[temp['Type']=='Source'][['Type', 'Level', 'Provence']]
+        temp = temp[temp['Type']=='Source'][['Type', 'Level', 'Province']]
         temp = temp[temp['Level']>=7]
-        temp = pd.concat([temp[['Provence']], self.LeyLines[self.LeyLines['Regent']==Regent][['Provence']]])
-        temp = temp[temp['Provence']==Provence]
+        temp = pd.concat([temp[['Province']], self.LeyLines[self.LeyLines['Regent']==Regent][['Province']]])
+        temp = temp[temp['Province']==Province]
         success = False
         reward = 0
         message = "Lacks the resources to cast 'Stronghold'"
@@ -5975,7 +5975,7 @@ class Regency(object):
         GB = self.Regents[self.Regents['Regent']==Regent]['Gold Bars'].values[0]
         Level = self.Regents[self.Regents['Regent']==Regent]['Level'].values[0]
         if temp.shape[0] > 0 and RP >= 6 and GB >= 10:
-            temp = self.Provences[self.Provences['Provence']==Provence].copy()
+            temp = self.Provinces[self.Provinces['Province']==Province].copy()
             if temp.shape[0]>0:
                 Pop = temp.iloc[0]['Population']
                 castle = temp.iloc[0]['Castle']
@@ -5990,7 +5990,7 @@ class Regency(object):
                             castle += 1
                 if castle > 0 :
                     # Name
-                    name = self.Provences[self.Provences['Provence']==Provence]['Castle Name'].values[0]
+                    name = self.Provinces[self.Provinces['Province']==Province]['Castle Name'].values[0]
                     if name == '':
                             t1 = pd.read_csv('csv/castle_pre.csv')
                             t2 = pd.read_csv('csv/castle_post.csv')
@@ -6005,19 +6005,19 @@ class Regency(object):
                     else:
                         type = 'temporary'
                         name = name + " (Leomund's Massive Fortitfication')"
-                    self.change_provence(Provence, Castle=castle, Castle_Name=name)
+                    self.change_provinces(Province, Castle=castle, Castle_Name=name)
                     success = True
                     reward = castle*5
-                    message = "{} cast 'Stronghold' in {} creating '{}', a level {} {} castle.".format(caster, Provence, name, castle, type)
+                    message = "{} cast 'Stronghold' in {} creating '{}', a level {} {} castle.".format(caster, Province, name, castle, type)
                     if Perm == False:
-                        self.Projects = self.Projects.append(pd.DataFrame([[Regent, 'Realm Magic Stronghold', (Provence, castle), Level*3]], columns=self.Projects.keys()))
+                        self.Projects = self.Projects.append(pd.DataFrame([[Regent, 'Realm Magic Stronghold', (Province, castle), Level*3]], columns=self.Projects.keys()))
             self.change_regent(Regent, Gold_Bars = GB - 10, Regency_Points=RP)
         return success, reward, message
         
     # The War 'Move'
     def war_move(self):
         '''
-        Determine which provences have occupying troops (troops that belong to an active enemy 
+        Determine which provinces have occupying troops (troops that belong to an active enemy 
         of the home regent).
         '''
         # track battles
@@ -6047,11 +6047,10 @@ class Regency(object):
         army['Unit'] = army['Type']
         army['AN'] = 'A'
         combined_forces = pd.concat([army, navy]).fillna(0)
-        prov = self.Provences.copy()
+        prov = self.Provinces.copy()
         prov['Home Regent'] = prov['Regent']
-        combined_forces = pd.merge(combined_forces, prov[['Provence', 'Home Regent']], on='Provence', how='left')
-
-        combined_forces
+        combined_forces = pd.merge(combined_forces, prov[['Province', 'Home Regent']], on='Province', how='left')
+        
         # determine who is fighting who
         rel = self.Relationships.copy().groupby(['Regent', 'Other']).sum().reset_index()
         rel_ = rel.copy()
@@ -6081,18 +6080,18 @@ class Regency(object):
         B['Attacker'] = False
         combined_forces = pd.concat([A, A_, B, C, D], sort=False)
         
-        # # iterate thru each provence with enemy troops...
+        # # iterate thru each provinces with enemy troops...
     
         self.save_forces = combined_forces
-        for Provence in set(combined_forces[combined_forces['Attacker']==True]['Provence']):
-            event_name =  'Occupation of {}'.format(Provence)
+        for Province in set(combined_forces[combined_forces['Attacker']==True]['Province']):
+            event_name =  'Occupation of {}'.format(Province)
             message = ''
-            temp__ = combined_forces[combined_forces['Provence']==Provence].copy()
+            temp__ = combined_forces[combined_forces['Province']==Province].copy()
             defenders = temp__[temp__['Defender']==True].copy()
             attackers = temp__[temp__['Attacker']==True].copy()
             defenders['Count'] = 1
             attackers['Count'] = 1
-            Castle = self.Provences[self.Provences['Provence']==Provence]['Castle'].values[0]
+            Castle = self.Provinces[self.Provinces['Province']==Province]['Castle'].values[0]
             
             # castle stuff
             if attackers.shape[0] >= Castle and Castle > 0 and np.sum(attackers['Type'].str.lower().str.contains('artillery|engineer')) > 0:
@@ -6101,16 +6100,16 @@ class Regency(object):
                 print(defenders)
                 # Damage the Castle...
                 Castle = Castle - 1
-                self.change_provence(Provence, Castle=Castle-1)
+                self.change_provinces(Province, Castle=Castle-1)
                 # message
                 if castle > 0:
-                    message = message + 'The Castle "{}" was destroyed.'.format(self.Provecnes[self.Provences['Provence']==Provence]['Castle Name'].values[0])
+                    message = message + 'The Castle "{}" was destroyed.'.format(self.Provecnes[self.Provinces['Province']==Province]['Castle Name'].values[0])
                 else:
-                    message = message + 'The Castle "{}" was damaged.'.format(self.Provecnes[self.Provences['Provence']==Provence]['Castle Name'].values[0])
+                    message = message + 'The Castle "{}" was damaged.'.format(self.Provecnes[self.Provinces['Province']==Province]['Castle Name'].values[0])
             
             #WA- (headline continued on page 2)
             if defenders.shape[0] > 0:  # we have a war
-                event_name =  'Battle of {}'.format(Provence)
+                event_name =  'Battle of {}'.format(Province)
                 '''
                 Resolving Battles
                 Herein is presented a method for quickly resolving engagements with hostile units. The 
@@ -6122,7 +6121,7 @@ class Regency(object):
                 the field, roll 1d6 to determine its state at the end of the engagement and add 
                 modifiers based on following table.
                 '''
-                message = 'Battle of {}\n'.format(Provence) + message # castle damage was already reported
+                message = 'Battle of {}\n'.format(Province) + message # castle damage was already reported
                 defender = self.Regents[self.Regents['Regent'] == defenders['Home Regent'].values[0]]['Full Name'].values[0]
                 attacker = self.Regents[self.Regents['Regent'] == attackers['Regent'].values[0]]['Full Name'].values[0]
                 attackers = attackers.sort_values(['CR', 'Hull'], ascending=False).reset_index()
@@ -6137,14 +6136,16 @@ class Regency(object):
 
                 message = message + '\n\nStrength:'
                 for Reg in set(attackers['Regent']):
-                    message = message + '\n['+self.Regents[self.Regents['Regent']==Reg]['Full Name'].values[0] + ']\n'
-                    message = message + attackers.copy()[attackers['Regent']==Reg][attackers['Name']==0][['Count', 'Unit', 'CR']].copy().groupby('Unit').sum().reset_index().sort_values('CR', ascending=False)[['Unit', 'Count']].to_string(index=False, header=False)
+                    message = message + '\n['+self.Regents[self.Regents['Regent']==Reg]['Full Name'].values[0] + ']'
+                    if attackers.copy()[attackers['Regent']==Reg][attackers['AN']=='A'].shape[0]>0:
+                        message = message + '\n' + attackers.copy()[attackers['Regent']==Reg][attackers['Name']==0][['Count', 'Unit', 'CR']].copy().groupby('Unit').sum().reset_index().sort_values('CR', ascending=False)[['Unit', 'Count']].to_string(index=False, header=False)
                     if attackers.copy()[attackers['Regent']==Reg][attackers['AN']=='N'].shape[0]>0:
                         message = message + '\n' + attackers[attackers['AN']=='N'].sort_values('Troop Capacity', ascending=False)[['Name','Ship']].to_string(index=False, header=False)
                 message = message + '\n'
                 for Reg in set(defenders['Regent']):
-                    message = message + '\n['+self.Regents[self.Regents['Regent']==Reg]['Full Name'].values[0] + ']\n'
-                    message = message + defenders.copy()[defenders['Regent']==Reg][defenders['Name']==0][['Count', 'Unit', 'CR']].copy().groupby('Unit').sum().reset_index().sort_values('CR', ascending=False)[['Unit', 'Count']].to_string(index=False, header=False)
+                    message = message + '\n['+self.Regents[self.Regents['Regent']==Reg]['Full Name'].values[0] + ']'
+                    if defenders.copy()[defenders['Regent']==Reg][defenders['AN']=='A'].shape[0]>0:
+                        message = message + '\n' + defenders.copy()[defenders['Regent']==Reg][defenders['Name']==0][['Count', 'Unit', 'CR']].copy().groupby('Unit').sum().reset_index().sort_values('CR', ascending=False)[['Unit', 'Count']].to_string(index=False, header=False)
                     if defenders.copy()[defenders['Regent']==Reg][defenders['AN']=='N'].shape[0]>0:
                         message = message + '\n' + defenders.copy()[defenders['AN']=='N'].sort_values('Troop Capacity', ascending=False)[['Name','Ship']].to_string(index=False, header=False)
                 '''
@@ -6208,7 +6209,7 @@ class Regency(object):
                     if np.sum(defenders['Unit'].str.lower().str.contains('knight|cavalry'))>0 and np.sum(attackers['Unit'].str.lower().str.contains('knight|cavalry|pikem'))<=0:
                         attackers['Mod'] = attackers['Mod'] + (attackers['AN'].str.replace('A','-1').replace('N','0')).astype(int)
                     # The unit has terrain advantage (elves in forest, dwarves in mountains)  +1
-                    Terrain = self.Provences[self.Provences['Provence']==Provence]['Terrain'].values[0]
+                    Terrain = self.Provinces[self.Provinces['Province']==Province]['Terrain'].values[0]
                     if Terrain == 'Forest':
                         defenders['Mod'] = defenders['Mod'] + 1*defenders['Type'].str.lower().str.contains('elf')
                         attackers['Mod'] = attackers['Mod'] + 1*attackers['Type'].str.lower().str.contains('elf')
@@ -6304,9 +6305,9 @@ class Regency(object):
                     cas = pd.concat([AA[AA['Injury']<=-4].copy(), AN[AN['Hull']<=0].copy(), DA[DA['Injury']<=-4].copy(), DN[DN['Hull']<=0].copy()], sort=False)
                     for i, row in cas.iterrows():
                         if row['AN'] == 'N':
-                            self.remove_ship(row['Regent'], row['Provence'], row['Ship'], row['Name'])
+                            self.remove_ship(row['Regent'], row['Province'], row['Ship'], row['Name'])
                         else:
-                            self.disband_troops(row['Regent'], row['Provence'], row['Type'], Killed=True, Real=False)
+                            self.disband_troops(row['Regent'], row['Province'], row['Type'], Killed=True, Real=False)
                     # Score
                     off_score = (dead_o.shape[0] - np.sum(attackers['Injury'])/8)/s_attackers.shape[0]
                     def_score = (dead_d.shape[0] - np.sum(defenders['Injury'])/8)/s_defenders.shape[0]
@@ -6341,55 +6342,55 @@ class Regency(object):
                 if off_score > def_score:  # defense won
                     message = message+'{} victory after {} hours of fighting.'.format(defender, days)
                     loser = attacker
-                    for prov_ in set(pd.merge(s_defenders[['Regent']], self.Provences, on='Regent', how='left')['Provence']):
+                    for prov_ in set(pd.merge(s_defenders[['Regent']], self.Provinces, on='Regent', how='left')['Province']):
                         try:
                             self.change_loyalty(prov_,1)
                         except:
-                            print('No Provences.')
+                            print('No Provinces.')
                     for reg in set(s_defenders['Regent']):
                         # reward for winning a battle
                         self.Seasons[self.Season]['Actions'][self.Action][self.Seasons[self.Season]['Actions'][self.Action]['Regent']==reg]['Base Reward'] = self.Seasons[self.Season]['Actions'][self.Action]['Base Reward'] + 10
                     # losers will retreat
-                    prov_find = pd.concat([self.Provences[self.Provences['Regent']==loser], pd.merge(self.Holdings[self.Holdings['Regent']==loser][['Provence']], self.Provences, on='Provence', how='left')], sort=False)
+                    prov_find = pd.concat([self.Provinces[self.Provinces['Regent']==loser], pd.merge(self.Holdings[self.Holdings['Regent']==loser][['Province']], self.Provinces, on='Province', how='left')], sort=False)
                     prov_find = prov_find.sort_values('Capital', ascending=False)
                     if np.sum(attackers['AN'] == 'N')>=1:
                         prov_find = prov_find[prov_find['Waterway']==True]
-                        attackers['Provence'] = prov_find['Provence'].values[0]
+                        attackers['Province'] = prov_find['Province'].values[0]
                     elif prov_find.shape[0]>0:
-                        _, path = self.get_travel_cost(loser, Provence, prov_find['Provence'].values[0], path=True)
-                        attackers['Provence'] = path[1]
+                        _, path = self.get_travel_cost(loser, Province, prov_find['Province'].values[0], path=True)
+                        attackers['Province'] = path[1]
                     else:  # everywhere should be near something
-                        prov_find = self.Geography[self.Geography['Provence']==Provence]
+                        prov_find = self.Geography[self.Geography['Province']==Province]
                         prov_find['roll'] = np.random.randint(1,6,prov_find.shape[0])
                         prov_find = prov_find.sort_values('roll')
                         if prov_find.shape[0] > 0:
-                            attackers['Provence'] = prov_find['Neighbor'].values[0]
+                            attackers['Province'] = prov_find['Neighbor'].values[0]
                 else:   
                     message = message+'{} victory after {} hours of fighting.'.format(attacker,days)
                     loser = defender
-                    for prov_ in set(pd.merge(s_attackers[['Regent']], self.Provences, on='Regent', how='left')['Provence']):
+                    for prov_ in set(pd.merge(s_attackers[['Regent']], self.Provinces, on='Regent', how='left')['Province']):
                         try:
                             self.change_loyalty(prov_,1)
                         except:
-                            print('No Provences.')
+                            print('No Provinces.')
                     for reg in set(s_attackers['Regent']):
                         # reward for winning a battle
                         self.Seasons[self.Season]['Actions'][self.Action][self.Seasons[self.Season]['Actions'][self.Action]['Regent']==reg]['Base Reward'] = self.Seasons[self.Season]['Actions'][self.Action]['Base Reward'] + 10
                     # losers will retreat, but home regent's forces will hole up in the castle
-                    prov_find = self.Provences[self.Provences['Regent']==loser]
+                    prov_find = self.Provinces[self.Provinces['Regent']==loser]
                     prov_find = prov_find.sort_values('Capital', ascending=False)
                     if np.sum(defenders['AN'] == 'N')>=1:
                         prov_find = prov_find[prov_find['Waterway']==True]
-                        defenders['Provence'] = prov_find['Provence'].values[0]
+                        defenders['Province'] = prov_find['Province'].values[0]
                     elif prov_find.shape[0]>0:
-                        _, path = self.get_travel_cost(loser, Provence, prov_find['Provence'].values[0], path=True)
-                        defenders['Provence'] == path[1]
+                        _, path = self.get_travel_cost(loser, Province, prov_find['Province'].values[0], path=True)
+                        defenders['Province'] == path[1]
                     else:                        
-                        prov_find = self.Geography[self.Geography['Provence']==Provence]
+                        prov_find = self.Geography[self.Geography['Province']==Province]
                         prov_find['roll'] = np.random.randint(1,6,prov_find.shape[0])
                         prov_find = prov_find.sort_values('roll')
                         if prov_find.shape[0]>0:
-                            defenders['Provence'] = prov_find['Neighbor'].values[0]
+                            defenders['Province'] = prov_find['Neighbor'].values[0]
                         else:
                             print(prov_find)
                     D0 = defenders[defenders['Garrisoned']==1]
@@ -6401,11 +6402,11 @@ class Regency(object):
                             D0['Garrisoned'].values[n] = 0
                     else:
                         for n in range(Castle - D0.shape[0]):
-                            D1['Provence'].values[n] = Provence
+                            D1['Province'].values[n] = Province
                             D1['Garrisoned'].values[n] = 1
                     D4 = D0[D0['Garrisoned']==0]
                     D0 = D0[D0['Garrisoned']==1]
-                    D0['Provence']=Provence
+                    D0['Province']=Province
                     defenders = pd.concat([D0, D1, D2, D4], sort=False)
                     
                 
@@ -6414,11 +6415,11 @@ class Regency(object):
                 # print(defenders)
                 for i, row in pd.concat([attackers, defenders], sort=False).iterrows():
                     if row['AN'] == 'N':
-                        self.remove_ship(row['Regent'], Provence, row['Ship'], Name=row['Name'])
-                        self.add_ship(row['Regent'], row['Provence'], row['Ship'], row['Name'], row['Seaworthiness'], row['Hull'])
+                        self.remove_ship(row['Regent'], Province, row['Ship'], Name=row['Name'])
+                        self.add_ship(row['Regent'], row['Province'], row['Ship'], row['Name'], row['Seaworthiness'], row['Hull'])
                     else:
-                        self.disband_troops(row['Regent'], Provence, row['Type'], Killed=False, Real=False)
-                        self.add_troops(row['Regent'], row['Provence'], row['Type'], Home=row['Home'], Garrisoned=row['Garrisoned'], Injury=row['Injury'])
+                        self.disband_troops(row['Regent'], Province, row['Type'], Killed=False, Real=False)
+                        self.add_troops(row['Regent'], row['Province'], row['Type'], Home=row['Home'], Garrisoned=row['Garrisoned'], Injury=row['Injury'])
                
                 '''
                 The side that suffers the most results of 1 or lower is considered defeated, and must 
@@ -6435,7 +6436,7 @@ class Regency(object):
                 other force is automatically destroyed and no dice need be rolled (won't do this,
                 since this makes the Spartan thing impossible)
               
-                When done, or when there are no enemies in the provence and you end there, your troops 
+                When done, or when there are no enemies in the provinces and you end there, your troops 
                 will do one of theactions listed:
                 '''
                 
@@ -6456,11 +6457,11 @@ class Regency(object):
                 
                 [Only If we razed/vandalized everything else]
                 '''
-                pop = self.Provences[self.Provences['Provence']==Provence]['Population'].values[0]
-                self.change_provence(Provence, Contested=True)
-                self.change_loyalty(Provence, -1)
+                pop = self.Provinces[self.Provinces['Province']==Province]['Population'].values[0]
+                self.change_provinces(Province, Contested=True)
+                self.change_loyalty(Province, -1)
                 Regent = attackers['Regent'].values[0]
-                message = "{}'s forces occupied {},".format(self.Regents[self.Regents['Regent']==Regent]['Full Name'].values[0], Provence)
+                message = "{}'s forces occupied {},".format(self.Regents[self.Regents['Regent']==Regent]['Full Name'].values[0], Province)
                 '''
                 During occupation on the phase of the turn when War Moves occur, in lieu of moving the occupying 
                 force, the army can perform one of the following activities:
@@ -6470,14 +6471,14 @@ class Regency(object):
                 [Assuming there is a law Holding from an enemy, if not...]
                 '''
                 _, enemies = self.allies_enemies(Regent)
-                temp = pd.merge(enemies, self.Holdings[self.Holdings['Provence']==Provence], on = 'Regent', how='left')
+                temp = pd.merge(enemies, self.Holdings[self.Holdings['Province']==Province], on = 'Regent', how='left')
                 temp = temp[temp['Level']>=1]
                 # print(temp)
                 if temp[temp['Type']=='Law'].shape[0] > 0:
                     message = message + ' quashing all rival law holdings.'
                     law = temp[temp['Type']=='Law'].copy()
                     for i, row in law.iterrows():
-                        self.change_holding(Provence, row['Regent'], 'Law', mult_level=0)
+                        self.change_holding(Province, row['Regent'], 'Law', mult_level=0)
                     '''
                     Disband Guilds: 
                     You permanently reduce the level of all Guild holdings they choose in the province to zero.
@@ -6487,7 +6488,7 @@ class Regency(object):
                     law = temp[temp['Type']=='Guild'].copy()
                     message = message + ' disbanding all rival guilds.'
                     for i, row in law.iterrows():
-                        self.change_holding(Provence, row['Regent'], 'Guild', mult_level=0)
+                        self.change_holding(Province, row['Regent'], 'Guild', mult_level=0)
                     '''
                     Raze Temples: 
                     You permanently reduce the level of all Temple holdings they choose in the province to zero.
@@ -6497,7 +6498,7 @@ class Regency(object):
                     message = message + ' razing all rival temples.'
                     law = temp[temp['Type']=='Temple'].copy()
                     for i, row in law.iterrows():
-                        self.change_holding(Provence, row['Regent'], 'Temple', mult_level=0)
+                        self.change_holding(Province, row['Regent'], 'Temple', mult_level=0)
                     '''
                     Vandalize Sources: 
                     You permanently reduce the level of all Source holdings they choose in the province by one.
@@ -6507,7 +6508,7 @@ class Regency(object):
                     message = message + ' vandalizing all rival Sources.'
                     law = temp[temp['Type']=='Source'].copy()
                     for i, row in law.iterrows():
-                        self.change_holding(Provence, row['Regent'], 'Source', mult_level=0)
+                        self.change_holding(Province, row['Regent'], 'Source', mult_level=0)
                     '''
                     Any holding damaged in this way can be leveled once more through domain actions should the 
                     province be liberated, or if the occupying army’s regent invests the province and becomes 
@@ -6516,14 +6517,14 @@ class Regency(object):
                     '''
                 else:  # here we tax once done with the ruining of guilds and the like
                     try:
-                        a,b = self.provence_taxation[self.provence_taxation['Population']==pop]['Severe'].values[0]
+                        a,b = self.provinces_taxation[self.provinces_taxation['Population']==pop]['Severe'].values[0]
                     except:
                         a,b = 0,1
                     tax = np.random.randint(a,b,1)[0]
                     self.change_regent(Regent, Gold_Bars = self.Regents[self.Regents['Regent']==Regent]['Gold Bars'].values[0] + tax)
-                    self.change_provence(Provence, Population_Change=-1)
-                    message = message + ' sacking and looting the provence.'
-            self.War = self.War.append(pd.DataFrame([[time_reference, Provence, event_name, message]], columns=['Year','Location','Event','Notes']))
+                    self.change_provinces(Province, Population_Change=-1)
+                    message = message + ' sacking and looting the provinces.'
+            self.War = self.War.append(pd.DataFrame([[time_reference, Province, event_name, message]], columns=['Year','Location','Event','Notes']))
                 
   
     def clean_up(self):
@@ -6546,15 +6547,15 @@ class Regency(object):
         '''
         # Levies in foriegn land
         temp = self.Troops[self.Troops['Type'] == 'Levies'].copy()
-        temp = temp[temp['Provence'] != temp['Home']]
-        temp = pd.merge(temp, self.Provences[['Provence', 'Domain']], on='Provence', how='left')    
-        temp_ = self.Provences.copy()
+        temp = temp[temp['Province'] != temp['Home']]
+        temp = pd.merge(temp, self.Provinces[['Province', 'Domain']], on='Province', how='left')    
+        temp_ = self.Provinces.copy()
         temp_['Home Domain'] = temp_['Domain']
-        temp_['Home'] = temp_['Provence']
+        temp_['Home'] = temp_['Province']
         temp = pd.merge(temp, temp_[['Home', 'Home Domain']], on='Home', how='left')
         temp = temp[temp['Home'] != temp['Home Domain']]
-        for Provence in set(temp['Provence']):
-            self.change_loyalty(Provence, -1)
+        for Province in set(temp['Province']):
+            self.change_loyalty(Province, -1)
         '''
         Improve loyalty by one category if:
 
@@ -6575,23 +6576,23 @@ class Regency(object):
         self.Projects = self.Projects[self.Projects['Gold Bars Left']>=1]
         for i, row in temp.iterrows():
             if row['Project Type']=='Castle':  # set the castle number
-                castle = self.Provences[self.Provences['Provence']==row['Details'][0]].iloc[0]['Castle']
-                self.change_provence(row['Details'][0], Castle = castle + row['Details'][1])
+                castle = self.Provinces[self.Provinces['Province']==row['Details'][0]].iloc[0]['Castle']
+                self.change_provinces(row['Details'][0], Castle = castle + row['Details'][1])
             elif row['Project Type']=='Road':  # add the road
                 self.row = row['Details']
                 self.add_geo(row['Details'][0], row['Details'][1], Road=1)
             elif row['Project Type'] == 'Undead Troops':  # disband the troops
                 tfinder = self.Troops[self.Troops['Regent']==row['Regent']][self.Troops['Type']=='Undead Troops'].copy()
                 if tfinder.shape[0]>0:
-                    prov = tfinder.iloc[0]['Provence']
+                    prov = tfinder.iloc[0]['Province']
                     self.disband_troops(row['Regent'], prov, 'Undead Troops', Killed=False)
             elif row['Project Type'] == 'Realm Magic Stronghold':  # destroy the castle
-                castle = self.Provences[self.Provences['Provence']==row['Details'][0]].iloc[0]['Castle']
-                self.change_provence(row['Details'][0], Castle=castle - row['Details'][1] )
-                if self.Provences[self.Provences['Provence']==row['Details'][0]].iloc[0]['Castle'] == 0:
-                    self.change_provence(row['Details'][0], Castle_Name='' )
+                castle = self.Provinces[self.Provinces['Province']==row['Details'][0]].iloc[0]['Castle']
+                self.change_provinces(row['Details'][0], Castle=castle - row['Details'][1] )
+                if self.Provinces[self.Provinces['Province']==row['Details'][0]].iloc[0]['Castle'] == 0:
+                    self.change_provinces(row['Details'][0], Castle_Name='' )
                 else:
-                    self.change_provence(row['Details'][0], Castle_Name=self.Provences[self.Provences['Provence']==row['Details'][0]].iloc[0]['Castle Name'].str.replace(" (Leomund's Massive Fortification)", ''))
+                    self.change_provinces(row['Details'][0], Castle_Name=self.Provinces[self.Provinces['Province']==row['Details'][0]].iloc[0]['Castle Name'].str.replace(" (Leomund's Massive Fortification)", ''))
             elif row['Project Type'] == 'Troop Permissions':  # remove vassalage from troop permissions
                 self.add_relationship(row['Regent'], row['Details'], Vassalage=-1)
             elif row['Project Type'] == 'Build Ship':  # make the ship
@@ -6599,10 +6600,10 @@ class Regency(object):
             elif row['Project Type'] == 'Muster Troops':  # make the troops
                 self.add_troops(row['Regent'], row['Details'][0], row['Details'][1], Home=row['Details'][2])         
             elif row['Project Type'] == 'Ungarrison Troops':  # ungarrison the troops
-                ungarrisoned = self.Troops[self.Troops['Provence']==row['Details'][0]][self.Troops['Type']==row['Details'][1]][self.Troops['Garrisoned']==1].copy()
+                ungarrisoned = self.Troops[self.Troops['Province']==row['Details'][0]][self.Troops['Type']==row['Details'][1]][self.Troops['Garrisoned']==1].copy()
                 if ungarrisoned.shape[0]>0:
-                    self.disband_troops(ungarrisoned['Regent'].values[0], ungarrisoned['Provence'].values[0], ungarrisoned['Type'].values[0], Killed=False, Real=False)
-                    self.add_troops(ungarrisoned['Regent'].values[0], ungarrisoned['Provence'].values[0], ungarrisoned['Type'].values[0], Home=ungarrisoned['Home'].values[0], Garrisoned=0, Injury=ungarrisoned['Injury'].values[0])
+                    self.disband_troops(ungarrisoned['Regent'].values[0], ungarrisoned['Province'].values[0], ungarrisoned['Type'].values[0], Killed=False, Real=False)
+                    self.add_troops(ungarrisoned['Regent'].values[0], ungarrisoned['Province'].values[0], ungarrisoned['Type'].values[0], Home=ungarrisoned['Home'].values[0], Garrisoned=0, Injury=ungarrisoned['Injury'].values[0])
         
         # clear dead regents
         dead = self.Regents[self.Regents['Alive']==False]
@@ -6612,25 +6613,25 @@ class Regency(object):
         # Fix Holding levels
         check = self.Holdings.copy()
         check = check[check['Contested']==0] # when un-contested, it can be fixed.
-        check = check[['Provence', 'Type', 'Level']].groupby(['Provence', 'Type']).sum().reset_index()
-        check = pd.merge(check, self.Provences[['Provence', 'Population', 'Magic']], on='Provence', how='left')
+        check = check[['Province', 'Type', 'Level']].groupby(['Province', 'Type']).sum().reset_index()
+        check = pd.merge(check, self.Provinces[['Province', 'Population', 'Magic']], on='Province', how='left')
         check1 = check[check['Type']=='Source']
         check2 = check[check['Type']!='Source']
         check1['Limit'] = check1['Magic']
         check2['Limit'] = check2['Population']
         check = pd.concat([check1, check2], sort=True)
-        check = check[['Provence', 'Type', 'Level', 'Limit']]
+        check = check[['Province', 'Type', 'Level', 'Limit']]
         check = check[check['Level']>check['Limit']]
         check['Reduction'] = check['Level']-check['Limit']
         for i, row in check.iterrows():
             for a in range(int(row['Reduction'])):
-                temp = self.Holdings[self.Holdings['Provence']==row['Provence']][self.Holdings['Type']==row['Type']].copy()
+                temp = self.Holdings[self.Holdings['Province']==row['Province']][self.Holdings['Type']==row['Type']].copy()
                 temp = temp[temp['Level']>=1]
                 temp['roll'] = np.random.randint(1,temp.shape[0]+1,temp.shape[0]) + temp['Level']
                 temp = temp.sort_values('roll', ascending=False)
                 # drop a mostly-random holding's level by 1.
                 if temp.shape[0]>0:
-                    self.change_holding(row['Provence'], temp['Regent'].values[0], row['Type'], Level=temp['Level'].values[0]-1)
+                    self.change_holding(row['Province'], temp['Regent'].values[0], row['Type'], Level=temp['Level'].values[0]-1)
         
     # tools    
     def set_difficulty(self, base, Regent, Target, hostile=False, assassination=False, player_rbid=None):
@@ -6714,9 +6715,9 @@ class Regency(object):
         else:
             return False, False
             
-    def get_travel_cost(self, Regent, Provence, Target, unit='levies', Path=False):
+    def get_travel_cost(self, Regent, Province, Target, unit='levies', Path=False):
         '''
-        Given a Regent and two Provences, return the travel cost
+        Given a Regent and two Provinces, return the travel cost
         '''
         '''
         valid = self.Relationships[self.Relationships['Regent'] == Regent]
@@ -6731,13 +6732,13 @@ class Regency(object):
         valid = pd.concat([valid[['Other', 'War']], valid_[['Other', 'War']]]).groupby('Other').max().reset_index()
         '''
         
-        # get valid provences
-        # temp = pd.concat([pd.merge(valid, self.Provences, left_on='Other', right_on='Regent', how='left').fillna(0)
+        # get valid provinces
+        # temp = pd.concat([pd.merge(valid, self.Provinces, left_on='Other', right_on='Regent', how='left').fillna(0)
     
-        temp = self.Provences.copy()            
-        temp = temp[temp['Provence'] != 0]
+        temp = self.Provinces.copy()            
+        temp = temp[temp['Province'] != 0]
         
-        #temp=self.Provences.copy()
+        #temp=self.Provinces.copy()
 
         # racial modifiers
         if 'Elf' in unit.split():
@@ -6745,7 +6746,7 @@ class Regency(object):
         if 'Dwarf' in unit.split():
             temp['Terrain'] = temp['Terrain'].str.replace('Mountains', '2').replace('Mountain', '2').replace('Glacier', '2')
             
-        # get provence values
+        # get provinces values
         lst = [('Desert', '2'), ('Tundra', '2')
               , ('Mountains', '4'), ('Mountain', '4'), ('Glacier', '4')
               , ('Forest', '2')
@@ -6755,13 +6756,13 @@ class Regency(object):
         for a in lst:
             temp['Terrain'] = temp['Terrain'].str.replace(a[0], a[1])
         travel = self.Geography[self.Geography['Border']==1].copy()
-        travel = pd.merge(temp[['Provence']], travel, on='Provence', how='left')
-        travel = pd.concat([travel[travel['Neighbor']==P] for P in list(temp['Provence'])], sort=False)
+        travel = pd.merge(temp[['Province']], travel, on='Province', how='left')
+        travel = pd.concat([travel[travel['Neighbor']==P] for P in list(temp['Province'])], sort=False)
         temp['A'] = temp['Terrain'].astype(int)
-        travel = pd.merge(travel, temp[['Provence', 'A', 'Regent', 'Castle']], on='Provence', how='left')
+        travel = pd.merge(travel, temp[['Province', 'A', 'Regent', 'Castle']], on='Province', how='left')
         temp['B'] = temp['Terrain'].astype(int)
         temp['Other'] = temp['Regent']
-        temp['Neighbor'] = temp['Provence']
+        temp['Neighbor'] = temp['Province']
         travel = pd.merge(travel, temp[['Neighbor', 'B', 'Other']], on='Neighbor', how='left')
 
         # set costs
@@ -6770,40 +6771,40 @@ class Regency(object):
         travel['Cost_Cal'] = travel['Cost'] + travel['RiverChasm']*(travel['RiverChasm']-travel['Road'])*10
 
         # castles...
-        temp_ = self.Provences[self.Provences['Castle']>0][['Provence', 'Castle']]
+        temp_ = self.Provinces[self.Provinces['Castle']>0][['Province', 'Castle']]
         allies, _ = self.allies_enemies(Regent)
         allies.append(pd.DataFrame([[Regent]], columns=['Regent']), ignore_index=True)
         temp = pd.merge(allies, self.Troops, on='Regent', how='left').fillna(0)
         temp = temp[temp['CR']>0]
-        temp = temp[['Provence', 'Type']].groupby('Provence').count().reset_index()
-        temp = pd.merge(temp_, temp, on='Provence', how='left').fillna(0)
+        temp = temp[['Province', 'Type']].groupby('Province').count().reset_index()
+        temp = pd.merge(temp_, temp, on='Province', how='left').fillna(0)
         temp = temp[temp['Type']<temp['Castle']]  # otherwise neutralized
         temp['Castle_Cost'] = 20
-        travel = pd.merge(travel, temp[['Provence', 'Castle_Cost']], on='Provence', how='left').fillna(0)
+        travel = pd.merge(travel, temp[['Province', 'Castle_Cost']], on='Province', how='left').fillna(0)
         travel['Cost_Cal'] = travel['Cost_Cal'] + travel['Castle_Cost']
         # by water
-        temp = self.Provences[self.Provences['Waterway']==True]
+        temp = self.Provinces[self.Provinces['Waterway']==True]
         #temp = pd.merge(valid, temp, left_on='Other', right_on='Regent', how='left').fillna(0)
         temp = temp[temp['Regent']!=0]
         
-        temp_ = self.Provences[self.Provences['Waterway']==True]
+        temp_ = self.Provinces[self.Provinces['Waterway']==True]
         temp = pd.concat([temp, temp_[temp_['Regent']==Regent]])
 
-        temp['Neighbor']=temp['Provence']
-        temp = pd.merge(temp[['Provence', 'Waterway']], temp[['Neighbor', 'Waterway']], on='Waterway', how='outer')
-        temp = temp[temp['Neighbor']!=temp['Provence']]
-        temp = pd.merge(self.Navy[self.Navy['Regent']==Regent].groupby('Provence').sum().reset_index(), temp, on='Provence', how='left')
+        temp['Neighbor']=temp['Province']
+        temp = pd.merge(temp[['Province', 'Waterway']], temp[['Neighbor', 'Waterway']], on='Waterway', how='outer')
+        temp = temp[temp['Neighbor']!=temp['Province']]
+        temp = pd.merge(self.Navy[self.Navy['Regent']==Regent].groupby('Province').sum().reset_index(), temp, on='Province', how='left')
         temp['Cost'] = 0
         temp['Cost_Cal'] = 0
-        temp = temp[['Provence', 'Neighbor', 'Cost', 'Cost_Cal']]
-        travel = travel[['Provence', 'Neighbor', 'Cost', 'Cost_Cal']]
-        travel = pd.concat([travel, temp], sort=False).groupby(['Provence', 'Neighbor']).min().reset_index()
+        temp = temp[['Province', 'Neighbor', 'Cost', 'Cost_Cal']]
+        travel = travel[['Province', 'Neighbor', 'Cost', 'Cost_Cal']]
+        travel = pd.concat([travel, temp], sort=False).groupby(['Province', 'Neighbor']).min().reset_index()
         # make network
-        G = nx.from_pandas_edgelist(travel, source='Provence', target='Neighbor', edge_attr=['Cost', 'Cost_Cal'])
+        G = nx.from_pandas_edgelist(travel, source='Province', target='Neighbor', edge_attr=['Cost', 'Cost_Cal'])
         if Path == False:
-            return nx.shortest_path_length(G, Provence, Target, 'Cost_Cal')
+            return nx.shortest_path_length(G, Province, Target, 'Cost_Cal')
         else:
-            return nx.shortest_path_length(G, Provence, Target, 'Cost_Cal'), nx.shortest_path(G, Provence, Target, 'Cost_Cal')
+            return nx.shortest_path_length(G, Province, Target, 'Cost_Cal'), nx.shortest_path(G, Province, Target, 'Cost_Cal')
     
           
     def allies_enemies(self, Regent):
@@ -6833,7 +6834,7 @@ class Regency(object):
         enemies = enemies.drop_duplicates()  
         return allies, enemies
     
-    def name_generator(self, Culture, Provence=None):
+    def name_generator(self, Culture, Province=None):
         if Culture == 'A':  # Anuirean
             names = 'Adaere, Aedric, Aeric, Agelmore, Anphelan, Ansen, Anuvier, Arlen, Arvuor, Bannier, Blaede, Boeric, Brosen, Caelan, Caern, Colier, Carel, Carilon, Coradan, Daene, Dietric, Droene, Duraend, Elamien, Eldried, Foerde, Friemen, Gaelin, Gavin, Hadrien, Halmied, Landen, Liemen, Moerel, Moergan, Mourde, Noelen, Norvien, Oeren, Oervel, Onwen, Parniel, Pierden, Raesene, Raenwe, Riegon, Ruinil, Ruormad, Shaemes, Shaene, Stiele, Tannen, Torele, Trevan, Vaesil, Vordhuine, Adrien, Aerona, Aithne. Arwen, Aubrae, Baele, Blaese, Briende, Caliendre, Cariene, Cristier, Darnae, Dierdren, Donele, Erin, Etiene, Faelan, Fhiele, Friede, Gael, Ghesele, Gwenevier, Halie, Idele, Ivinie, Jadrien, Laera, Laile, Lauriel, Loeren, Maesene, Marlae, Mieve, Morwe, Niela, Noeva, Oerwinde, Paeghen, Ranele, Raesa, Renae, Rieva, Ruimiele, Saebra, Savane, Seriena, Shannen, Tieghan, Rainer, Wimunt, Guian, Fulke, Azelma, Fresende, Arlette, Jeulie, Hawise, Hugbert, Anthoine, Jean, Osmund, Berthille, Jehanne, Adile, Molle, Laurent, Boemund, Madeleine, Aveline, Aaliz, Colas, Drogue, Albreid, Lina, Maria, Isabel, Ezilda, Suzanne, Herluin, Edelmir, Gilles, Haelfreid'.split(', ')
         elif Culture == 'B' or Culture == 'Br':  # Brecht
@@ -6867,8 +6868,8 @@ class Regency(object):
         else:
             names = 'Ander, Blath, Bran, Frath, Geth, Lander, Luth, Malcer, Stor, Taman, Urth, Amafrey, Betha, Cefrey, Kethra, Mara, Olga, Silifrey, Westra, Bor, Fodel, Glar, Grigor, Igan, Ivor, Kosef, Mival, Orel, Pavel, Sergor, Alethra, Kara, Katernin, Mara, Natali, Olma, Tana, Zora, Darvin, Dorn, Evendur, Gorstag, Grim, Helm, Malark, Morn, Randal, Stedd, Arveene, Esvele, Jhessail, Kerri, Lureene, Miri, Rowan, Shandri, Tessele'.split(', ')
         ending = ''
-        if Culture != 'G' and Culture != 'D' and Provence != None:
-            ending = ' of {}'.format(Provence)
+        if Culture != 'G' and Culture != 'D' and Province != None:
+            ending = ' of {}'.format(Province)
         return names[np.random.randint(1, len(names) ,1)[0]] + ending
         
     def score_keeper(self):
@@ -6876,12 +6877,12 @@ class Regency(object):
         Score logic below.  Agent is rewarded based on increase in score.
         '''
         score = self.Regents[self.Regents['Alive']==True][['Regent', 'Full Name', 'Attitude']]
-        # Provences 5 + Population + Castle + 100 if you got City of Anuire
-        temp = self.Provences[['Regent', 'Population','Castle', 'Provence']]
-        temp['Provence'] = 5 + 100*(temp['Provence']=='City of Anuire')
+        # Provinces 5 + Population + Castle + 100 if you got City of Anuire
+        temp = self.Provinces[['Regent', 'Population','Castle', 'Province']]
+        temp['Province'] = 5 + 100*(temp['Province']=='City of Anuire')
         temp = temp.groupby('Regent').sum().reset_index()
         score = pd.merge(score, temp, on='Regent', how='left').fillna(0)
-        score['First Score'] = score['Provence']
+        score['First Score'] = score['Province']
 
         # Holdings 3 + Level
         temp = self.Holdings[['Regent', 'Level']]
@@ -6905,9 +6906,9 @@ class Regency(object):
         score['First Score'] = score['First Score'] + score['Navy']
 
         # Roads + Caravan Yield + Shipping Yield (half again if peaceful)
-        temp = pd.merge(self.Geography,self.Provences[['Provence', 'Regent','Population']],on='Provence',how='left')
-        temp_ = self.Provences[['Provence', 'Population']]
-        temp_['Neighbor'] = temp_['Provence']
+        temp = pd.merge(self.Geography,self.Provinces[['Province', 'Regent','Population']],on='Province',how='left')
+        temp_ = self.Provinces[['Province', 'Population']]
+        temp_['Neighbor'] = temp_['Province']
         temp_['OPOP'] = temp_['Population']
         temp = pd.merge(temp, temp_[['Neighbor', 'OPOP']], on='Neighbor', how='left').fillna(0)
         temp['Caravan'] = temp['Caravan'] * ((temp['Population']+temp['OPOP'])/2).astype(int)
