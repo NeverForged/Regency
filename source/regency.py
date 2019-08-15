@@ -6,6 +6,7 @@ import networkx as nx
 from PIL import Image
 from random import randint
 import matplotlib.pyplot as plt
+from source.mapping import Mapping
 from source.DQNAgent import DQNAgent
 from keras.utils import to_categorical
 from IPython.display import clear_output
@@ -1996,6 +1997,7 @@ class Regency(object):
                     print('-'*33)
                     temp_ = self.Provinces[self.Provinces['Regent']==row['Regent']][['Province','Population', 'Loyalty', 'Taxation']]
                     temp_ = pd.merge(temp_, law[law['Regent']==row['Regent']][['Province', 'Type']].copy(), on='Province', how='left').fillna('')
+					print(temp_.to_string())
                     p = input('Type a Province name, or "DONE" if done:  ')
                     if p.lower() == 'done':
                         check = 1
@@ -2299,42 +2301,45 @@ class Regency(object):
             temp_4 = pd.merge(temp_4, df, on='Regent', how='left').fillna(0)
             temp_4['Check'] = temp_4['Gold Bars'] - temp_4['Cost']
             temp_4['Court'] = 'Dormant'
-            for i, row in temp_4.iterrows():
-                check = 0
-                while check == 0:
-                    self.clear_screen()
-                    print('-- Court Expenses --')
-                    print(temp_4[temp_4['Regent']==row['Regent']][['Regent','Gold Bars','Cost']])
-                    print()
-                    most_can_spend = row['Gold Bars'] - row['Cost']
-                    
-                    print('[0] Dormant')
-                    print('For zero Gold Bars, your court is dormant and only the mice rule the castle guest halls. This option saves money, but you are incapable of performing the Decree or Diplomacy actions on any of your action rounds this season.')
-                    if most_can_spend >= 2:
-                        print()
-                        print('[2] - Bare')
-                        print('For two Gold Bars, your court is at the bare minimum to function. Your Decree and Diplomacy actions are at disadvantage for the domain action check: no one likes a stingy regent, especially expectant ambassadors.')
-                    if most_can_spend >= 5:
-                        print()
-                        print('[5] - Average')
-                        print('For five Gold Bars, your court is of average standing and comfort. Your Decree and Diplomacy actions are at neither advantage nor disadvantage.')
-                    if most_can_spend >= 8:
-                        print()
-                        print('[8] Rich')
-                        print('[8] For eight Gold Bars, your court is the talk of the realm. Fine wines, imported cuisine, mummers and bards -- you have it all, and the pomp is sure to impress the dignitaries. Your Decree and Diplomacy actions are made with advantage on the domain action check.')
-                    print()
-                    q = 'How much does {} want to spend on their court?'.format(row['Regent'])
-                    ex = input(q)
-                    if int(ex) in [0, 2, 5, 8] and int(ex) <= most_can_spend:
-                        temp_4.at[i, 'Cost'] =  row['Cost'] + int(ex)
-                        if ex == '2':
-                            temp_4.at[i, 'Court'] =  'Bare'  # 'Bare'
-                        elif ex == '5':
-                            temp_4.at[i, 'Court'] =  'Average'  # 'Average'
-                        elif ex == '8':
-                            temp_4.at[i, 'Court'] = 'Rich'  # 'Rich'
+            if Update == True:
+                for i, row in temp_4.iterrows():
+                    check = 0
+                    while check == 0:
+                        self.clear_screen()
+                        print('-- Court Expenses --')
                         print(temp_4[temp_4['Regent']==row['Regent']][['Regent','Gold Bars','Cost']])
-                        check = 1   
+                        print()
+                        most_can_spend = row['Gold Bars'] - row['Cost']
+                        
+                        print('[0] Dormant')
+                        print('For zero Gold Bars, your court is dormant and only the mice rule the castle guest halls. This option saves money, but you are incapable of performing the Decree or Diplomacy actions on any of your action rounds this season.')
+                        if most_can_spend >= 2:
+                            print()
+                            print('[2] - Bare')
+                            print('For two Gold Bars, your court is at the bare minimum to function. Your Decree and Diplomacy actions are at disadvantage for the domain action check: no one likes a stingy regent, especially expectant ambassadors.')
+                        if most_can_spend >= 5:
+                            print()
+                            print('[5] - Average')
+                            print('For five Gold Bars, your court is of average standing and comfort. Your Decree and Diplomacy actions are at neither advantage nor disadvantage.')
+                        if most_can_spend >= 8:
+                            print()
+                            print('[8] Rich')
+                            print('[8] For eight Gold Bars, your court is the talk of the realm. Fine wines, imported cuisine, mummers and bards -- you have it all, and the pomp is sure to impress the dignitaries. Your Decree and Diplomacy actions are made with advantage on the domain action check.')
+                        print()
+                        q = 'How much does {} want to spend on their court?'.format(row['Regent'])
+                        ex = input(q)
+                        if ex in ['0', '2', '5', '8']:
+                            temp_4.at[i, 'Cost'] =  row['Cost'] + int(ex)
+                            if ex == '2'and int(ex) <= most_can_spend:
+                                temp_4.at[i, 'Court'] =  'Bare'  # 'Bare'
+                            elif ex == '5'and int(ex) <= most_can_spend:
+                                temp_4.at[i, 'Court'] =  'Average'  # 'Average'
+                            elif ex == '8' and int(ex) <= most_can_spend:
+                                temp_4.at[i, 'Court'] = 'Rich'  # 'Rich'
+                            else:
+                                temp_4.at[i, 'Court'] = 'Dormant'
+                            print(temp_4[temp_4['Regent']==row['Regent']][['Regent','Gold Bars','Cost']])
+                            check = 1   
             df = pd.concat([temp_0, temp_1, temp_2, temp_3, temp_4], sort=False)
             
             if Update == True:
