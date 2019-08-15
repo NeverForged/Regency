@@ -936,7 +936,7 @@ def main():
     Game.add_holding(p, 'CJS', 'Temple', 2)
     Game.add_holding(p, 'GH', 'Guild', 1)
     Game.add_geo(p, 'Nortmoor', Border=1)
-    Game.add_geo(p, 'Lareth', Border=1)
+    Game.add_geo(p, 'Laraeth', Border=1)
     Game.add_geo(p, 'Alaroine', Border=1)
     Game.add_geo(p, 'Hildon', Border=1)
     Game.add_geo(p, "Byrnnor", Border=1, RiverChasm=1)

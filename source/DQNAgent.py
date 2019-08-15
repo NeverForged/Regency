@@ -27,7 +27,7 @@ class DQNAgent(object):
         self.learning_rate = 0.0005
         
         self.action_size = 120
-        self.action_choices = 76
+        self.action_choices = 77
         
         # different models for different decisions
         self.tax_model = self.network(N=4, K=25)
@@ -702,6 +702,18 @@ class DQNAgent(object):
         temp = pd.merge(Game.Troops[Game.Troops['Regent']==Regent], Game.Provinces[Game.Provinces['Regent']==''], on='Province',how='inner')['Province']
         if temp.shape[0] > 0:
             state[117] = 1  # I can claim a nearby province
+        
+        temp = Game.Provinces[Game.Provinces['Regent']=='']
+        if temp.shape[0] > 0:
+            state[118] = 1  # there is an empty province nearby
+        
+        temp = pd.merge(temp, Game.Geography, on='Province', how='left')
+        temp['Province'] = temp['Neighbor']
+        temp = pd.concat([pd.merge(temp[['Province']], Game.Provinces[Game.Provinces['Regent']==Regent][['Province']], on='Province', how='left')
+                          , pd.merge(temp[['Province']], Game.Holdings[Game.Holdings['Regent']==Regent][['Province']], on='Province', how='left')])
+        temp = temp.dropna()
+        if temp.shape[0] > 0:
+            state[119] = 1  # I have an empty province on my border
             
         # save last memory with no reward
         if Game.Train == True and (Game.Season!=0 or Game.Action!=1):
