@@ -1106,7 +1106,11 @@ class Regency(object):
             temp['Name'] = temp['Name'].str.replace('RRR', self.name_generator(self.Regents[self.Regents['Regent']==Regent]['Culture'].values[0]))
             temp['Name'] = temp['Name'].str.title()
             temp['Name'] = temp['Name'].str.replace("'S","'s")
-            Name = temp['Name'].values[0]
+            temp = temp.dropna()
+            try:
+                Name = temp['Name'].values[0]
+            except:
+                Name = 'Boaty McBoatface'
         if Hull==None:
             Hull=temp['Hull'].values[0]
         if Seaworthiness == None:
@@ -3286,7 +3290,7 @@ class Regency(object):
                 else:
                     if Number == None:
                         if state[26] == 0:
-                            Number = 1 + np.random.randint(0,self.Provinces[self.Provinces['Province']==capital]['Population'].values[0],1)[0] + state[7]+state[8]+state[9]+state[10]+2*state[11]
+                            Number = 1 + np.random.randint(0,self.Provinces[self.Provinces['Province']==capital]['Population'].values[0]+1,1)[0] + state[7]+state[8]+state[9]+state[10]+2*state[11]
                         else:
                             Number = 1 + state[7]+state[8]+state[9]+state[10]+2*state[11]
                     success, reward, message = self.domain_action_fortify(Regent, capital, Number, Name)
@@ -3299,13 +3303,13 @@ class Regency(object):
                 else:
                     if Number == None:
                         if state[27] == 0:
-                            Number = Number = 1 + np.random.randint(0,self.Provinces[self.Provinces['Province']==high_pop]['Population'].values[0],1)[0] + state[8]
+                            Number = Number = 1 + np.random.randint(0,self.Provinces[self.Provinces['Province']==high_pop]['Population'].values[0]+1,1)[0] + state[8]
                             Number = 1 + np.random.randint(0,self.Provinces[self.Provinces['Province']==high_pop]['Population'].values[0],1)[0]
                         else:
                             Number = 1 + state[7]
-                success, reward, message = self.domain_action_fortify(Regent, high_pop, Number, Name)
-                reward = reward + int(Number*(1-state[27])/2)
-                return [Regent, actor, Type, 'fortify_high_pop', decision, '', high_pop, '', '',  success, reward, state, False, message]
+                    success, reward, message = self.domain_action_fortify(Regent, high_pop, Number, Name)
+                    reward = reward + int(Number*(1-state[27])/2)
+                    return [Regent, actor, Type, 'fortify_high_pop', decision, '', high_pop, '', '',  success, reward, state, False, message]
             # fortify_low_pop
             elif decision[43] == 1:  # 43, low_pop, [Number, Name]
                 if state[3]==1 or state[94] == 1 or state[95] == 1 or state[23]==0:
@@ -3313,7 +3317,7 @@ class Regency(object):
                 else:
                     if Number == None:
                         if state[28] == 0:
-                            Number = 1 + np.random.randint(0,self.Provinces[self.Provinces['Province']==low_pop]['Population'].values[0],1)[0]
+                            Number = 1 + np.random.randint(0,self.Provinces[self.Provinces['Province']==low_pop]['Population'].values[0]+1,1)[0]
                         else:
                             Number = 1 + state[8]
                 success, reward, message = self.domain_action_fortify(Regent, low_pop, Number, Name)
@@ -3387,7 +3391,7 @@ class Regency(object):
             elif decision[52] == 1 or decision[53] == 1:  # 52, friend, [provinces], 53, rando, [provinces]
                 if decision[52] == 1 and (state[3]==1 or state[95]==1 or state[94]==1 or state[56]==0 or state[23]==0 or state[97]==0):
                     return [Regent, actor, Type, 'establish_trade_route_friend', decision, friend, '', '', '',  False, -1, state, True, '']
-                elif decision[53] == 1 and (state[3]==1 or state[95]==1 or state[94]==1 or state[56]==0 or state[23]==0 or state[98]==0):
+                elif decision[53] == 1 and (state[3]==1 or state[95]==1 or state[94]==1 or state[56]==0 or state[23]==0 or state[105]==0):
                         return [Regent, actor, Type, 'establish_trade_route_rando', decision, rando, '', '', '',  False, -1, state, True, '']
                 else:
                     if len(provinces) == 0:
@@ -3681,13 +3685,13 @@ class Regency(object):
                 else:
                     if Target == None:
                         temp = self.Provinces[self.Provinces['Regent']=='']
-                        temp = pd.merge(temp, self.Geography, on='Province', how='left')
-                        temp['Province'] = temp['Neighbor']
-                        temp = pd.concat([pd.merge(temp[['Province']], self.Provinces[self.Provinces['Regent']==Regent][['Province']], on='Province', how='left')
-                                           , pd.merge(temp[['Province']], Game.Holdings[Game.Holdings['Regent']==Regent][['Province']], on='Province', how='left')])
-                        temp = temp.dropna()  
-                        temp['roll'] = np.random.randint(1,temp.shape[0]+2, temp.shape[0])
-                        temp = temp.sort_values('roll')
+                        # find where I am a neighbor
+                        mine = pd.concat([ self.Provinces[self.Provinces['Regent']==Regent][['Province']],
+                                           self.Holdings[self.Holdings['Regent']==Regent][['Province']]]).drop_duplicates()
+                        temp = pd.merge(temp, self.Geography, on='Province', how='left').dropna()
+                        mine['Neighbor']=mine['Province']
+                        temp = pd.merge(mine[['Neighbor']], temp, on='Neighbor', how='left').dropna()
+                        temp = temp.sort_values('Population', ascending=False)
                         Target = temp['Province'].values[0]
                     if len(troops) == 0:
                         temp = self.Troops[self.Troops['Regent']==Regent]
@@ -5263,7 +5267,7 @@ class Regency(object):
                     if Divest==True:
                         A = 'Divested'
                         B = 'of'
-                    return True, (5+len(invested))*self.Regents[self.Regents['Regent']==Regent]['Alive'].values[0] - 10, '{} {} {} {} {}'.format(self.Regents[self.Regents['Regent']==Regent]['Full Name'].values[0], A, self.Regents[self.Regents['Regent']==Target]['Full Name'].values[0], B, ', '.join(invested))
+                    return True, (10+len(invested))*self.Regents[self.Regents['Regent']==Regent]['Alive'].values[0] - 5, '{} {} {} {} {}'.format(self.Regents[self.Regents['Regent']==Regent]['Full Name'].values[0], A, self.Regents[self.Regents['Regent']==Target]['Full Name'].values[0], B, ', '.join(invested))
             
             A = 'Invest'
             if Divest==True:

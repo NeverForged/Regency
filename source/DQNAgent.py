@@ -707,11 +707,13 @@ class DQNAgent(object):
         if temp.shape[0] > 0:
             state[118] = 1  # there is an empty province nearby
         
-        temp = pd.merge(temp, Game.Geography, on='Province', how='left')
-        temp['Province'] = temp['Neighbor']
-        temp = pd.concat([pd.merge(temp[['Province']], Game.Provinces[Game.Provinces['Regent']==Regent][['Province']], on='Province', how='left')
-                          , pd.merge(temp[['Province']], Game.Holdings[Game.Holdings['Regent']==Regent][['Province']], on='Province', how='left')])
-        temp = temp.dropna()
+        temp = Game.Provinces[Game.Provinces['Regent']=='']
+        # find where I am a neighbor
+        mine = pd.concat([ Game.Provinces[Game.Provinces['Regent']==Regent][['Province']],
+                           Game.Holdings[Game.Holdings['Regent']==Regent][['Province']]]).drop_duplicates()
+        temp = pd.merge(temp, Game.Geography, on='Province', how='left').dropna()
+        mine['Neighbor']=mine['Province']
+        temp = pd.merge(mine[['Neighbor']], temp, on='Neighbor', how='left').dropna()
         if temp.shape[0] > 0:
             state[119] = 1  # I have an empty province on my border
             
