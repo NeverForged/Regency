@@ -408,6 +408,7 @@ class Regency(object):
         self.last_action = self.agent.action_choices -1  
         
         self.score_keeper()
+        self.maps = Mapping(self)
         
     def clear_screen(self):
         '''
@@ -2399,7 +2400,7 @@ class Regency(object):
                             # make sure Actor has not gone...
                             if actor not in list(dfs[dfs['Regent']==Regent]['Actor']):
                                 if row['Player'] == True:
-                                    self.player_action(Regent, actor)
+                                    self.player_action(Regent, actor, True)
                                 type = 'Bonus'
                                 invalid = True
                                 if invalid == True:
@@ -2431,17 +2432,18 @@ class Regency(object):
                                     
                         self.Bonus = 0
                         # time for the actual action...
-                        if row['Player'] == True:
-                            self.player_action(Regent, Actor)
-                        try:
-                            over = self.override[Regent]
-                            #print(over)
-                        except:
-                            over = None
-                        state, capital, high_pop, low_pop, friend, enemy, rando, enemy_capital = self.agent.get_action_state(row['Regent'], self, over)  # allow player actions to inform Agent
+                        
                         invalid = True
                         tries = 0
                         while invalid == True:
+                            if row['Player'] == True:
+                                self.player_action(Regent, Actor)
+                            try:
+                                over = self.override[Regent]
+                                #print(over)
+                            except:
+                                over = None
+                            state, capital, high_pop, low_pop, friend, enemy, rando, enemy_capital = self.agent.get_action_state(row['Regent'], self, over)  # allow player actions to inform Agent
                             Type = 'Action'
                             if tries == 0:
                                 decision = self.make_decision('', self.agent.action_choices, 'Action', state, row['Regent'], over)
@@ -2527,7 +2529,7 @@ class Regency(object):
             # build_road_from_capital_to_high_pop
             if decision[0] == 1:  # 0, capital, high_pop
                 if state[23]==0 or state[94]==1:
-                    return [Regent, actor, Type, 'build_road', decision, '', '', '', '', False, -10, state, True, '']
+                    return [Regent, actor, Type, 'build_road', decision, '', '', '', '', False, -1, state, True, '']
                 else:
                     # builds a road from capital to high_pop... or any province to any province 
                     temp = pd.merge(self.Provinces[['Province']][self.Provinces['Regent'] == Regent], self.Geography, on='Province', how='left')
@@ -3308,8 +3310,7 @@ class Regency(object):
                 else:
                     if Number == None:
                         if state[27] == 0:
-                            Number = Number = 1 + np.random.randint(0,self.Provinces[self.Provinces['Province']==high_pop]['Population'].values[0]+1,1)[0] + state[8]
-                            Number = 1 + np.random.randint(0,self.Provinces[self.Provinces['Province']==high_pop]['Population'].values[0],1)[0]
+                            Number = 1 + np.random.randint(0,self.Provinces[self.Provinces['Province']==high_pop]['Population'].values[0]+1,1)[0]
                         else:
                             Number = 1 + state[7]
                     success, reward, message = self.domain_action_fortify(Regent, high_pop, Number, Name)
@@ -3715,16 +3716,88 @@ class Regency(object):
             self.errors.append((Regent, decision, actor, Type, state, capital, high_pop, low_pop, friend, enemy, rando, enemy_capital))
             return [Regent, actor, Type, 'error', decision, '', '', '', '',  False, -1, state, True, '']
     
-    def player_action(self, Regent, Actor):
+    def player_action(self, Regent, Actor, bonus=False):
         '''
         Player Interfacem for actions.  Placeholder.
         '''
-        maps = Mapping(self)
-        maps.focus_regents([Regent])
-        maps.show(show_abbreviations=True, show_troops=True, printable=True)
-        print("{}: It's {}'s Turn!".format(Regent, Actor))
+        capital=None
+        high_pop=None
+        low_pop=None
+        enemy=None
+        friend=None
+        rando=None
+        enemy_capital=None
+        troops=list()
+        provinces=list()
+        Number=None
+        Name=None
+        Target=None
+        Type=None
+        holdings=list()
+        
+        action = None
+        self.clear_screen()
         
         
+        if bonus==True:
+            print("----- {}'s Bonus Action -----".format(Actor))
+        else:
+            print("----- {}'s Domain Action -----".format(Actor))
+        print(self.Regents[self.Regents['Regent']==Regent][['Gold Bars','Regency Points']].to_string(index_names=False))
+            
+        self.maps.focus_regents([Regent])
+        self.maps.show(show_abbreviations=True, show_troops=True, printable=True)
+        while action == None:
+            GB = self.Regents[self.Regents['Regent']==Regent]['Gold Bars'].values[0]
+            RP = self.Regents[self.Regents['Regent']==Regent]['Regency Points'].values[0]
+            qy = input('[GB {}, RP {}] What does {} want to do? '.format(GB, RP, Actor))
+            if qy.lower() == 'actions' or  qy.lower() == 'help' or qy.lower() == 'list': # ACTION LIST
+                action_lst = '''
+                            Build (road or ship), Decree, Disband, Ungarrison, Agitate,\n
+                            Espionage, Grant, Lieutenant (hire), Move (troops), Muster,
+                            '''
+                if bonus == False:
+                    action_lst = action_lst+'\n'
+                    action_lst = action_lst + '''
+                            Adventure, Contest, Create (Holding), Declare (War), Diplomacy,\n 
+                            Forge (Ley Lines), Fortify, Investiture, Rule, Trade (Route),\n
+                            Magic (Cast a Realm Spell).
+                                              '''
+                print(action_lst)
+            # Build (Road or Ship)
+            elif qy.lower() == 'build': 
+                q2 = '0'
+                while q2 != '1' and q2 != '2':
+                    q2 = input('[1] for Road [2] for boat')
+                    if q2 == '1' and self.Provinces[self.Provinces['Regent']==Regent].shape[0]==0:
+                        print('You must own provinces to build roads.\n')
+                    elif q2 == '1':  # Build a Road!
+                        action = 0
+                        while capital not in list(self.Provinces['Province']):
+                            capital = input('From which Province?')
+                        while high_pop not in list(self.Provinces['Province']):
+                            high_pop = input('To which Province?')
+                    elif q2 == '2':  # build a boat!
+                        action = 71
+                        ships = self.ship_units.copy()
+                        ships = ships[ships['Cost'] <= GB]
+                        print()
+                        print(ships.to_string())
+                        print()
+                        while Target not in list(ships['Ship']):
+                            Target = input('What type of ship would you like to build? (note that ships of another culture are harder to build)')
+                        prov = None
+                        while prov not in list(pd.concat([self.Provinces[self.Provinces['Regent']==Regent][['Province']], self.Holdings[self.Holdings['Regent']==Regent][['Province']]])['Province']):
+                            prov = input('Where would you like to build this ship?')
+                        provinces = [prov]
+                        Name = input('What will you name this {}?'.format(Target))
+            # Decree
+            #  elif qy.lower() == 'decree':      
+        
+        # the action!
+        self.set_override(Regent, action, bonus, capital, high_pop, low_pop, enemy, friend, rando, enemy_capital, troops, provinces, Number, Name, Target, Type, holdings)
+        print(self.override)
+        print(self.bonus_override)
     # Bonus Actions First
     def bonus_action_build(self, Regent, Province, Road=None, Ship=None, player_gbid=None, Name=None):
         '''

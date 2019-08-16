@@ -30,6 +30,7 @@ class Mapping(object):
         '''
         Game = self.Game
         Province_List = []
+        My_Province_List = []
         Troop_List = []
         self.suptitle = 'Lands & Holdings: '
         lst = []
@@ -37,13 +38,24 @@ class Mapping(object):
             lst.append(Game.Regents[Game.Regents['Regent']==Regent]['Full Name'].values[0])
             temp = pd.concat([Game.Provinces[Game.Provinces['Regent']==Regent][['Province']]
                      , Game.Holdings[Game.Holdings['Regent']==Regent][['Province']]], sort=False)
+            myprov = temp.copy()
+            My_Province_List = list(set(My_Province_List + list(myprov['Province'])))
+            dip = Game.Relationships[Game.Relationships['Regent']==Regent]
+            dip['Regent'] = dip['Other']
+            temp = pd.concat([temp
+                              , pd.merge(dip[['Regent']], Game.Provinces[['Regent', 'Province']], on='Regent', how='left')[['Province']]
+                              , pd.merge(dip[['Regent']], Game.Holdings[['Regent', 'Province']], on='Regent', how='left')[['Province']]])
+            nei = pd.merge(myprov, Game.Geography[Game.Geography['Border']==1], on='Province',how='left')
+            nei['Province'] = nei['Neighbor']
+            temp = pd.concat([temp, nei[['Province']]])
+            temp = temp.drop_duplicates()
             Province_List = list(set(Province_List + list(temp['Province'])))
             # troop stuff
             temp = Game.Troops[Game.Troops['Regent']==Regent].copy()
             temp2 = temp[temp['Type'].str.lower().str.contains('scout')]
             temp2 = pd.merge(temp2[['Province']], Game.Geography[Game.Geography['Border']==1].copy(), on='Province', how='left')
             temp = pd.concat([temp[['Province']], temp2[['Neighbor']]], keys=['Province'])
-            Troop_List = list(set(Province_List + list(temp['Province'])))
+            Troop_List = list(set(Troop_List + list(temp['Province'])))
         self.suptitle = self.suptitle + ', '.join(lst)
         temp = pd.merge(temp, Game.Geography[Game.Geography['Border']==1].copy(), on='Province')
         Province_List = list(set(Province_List + list(temp['Neighbor'])))
@@ -302,21 +314,31 @@ class Mapping(object):
                     # figure out allies or enemies
                     allies, enemies = Game.allies_enemies(Game.Provinces[Game.Provinces['Province']==Prov]['Regent'].values[0])
                     temp2 = pd.merge(temp, allies, on='Regent')
+                    temp3 = pd.merge(temp, enemies, on='Regent')
                     if temp2.shape[0] > 0:
                         text = text +'\n\n'+'Allied Units Present'
-                    
-                    temp2 = pd.merge(temp, enemies, on='Regent')
-                    if temp2.shape[0] > 0:
+                    elif temp3.shape[0] > 0:
                         text = text +'\n\n'+'Enemy Units Present'
+                    elif temp.shape[0]>0:
+                        text = text +'\n\n'+'Neutral Units Present'
                 self.regents_list = list(set(self.regents_list + list(temp['Regent'])))
             if show_ships:
                 temp = Game.Navy[Game.Navy['Province']==Prov].copy()
                 temp = temp.sort_values('Troop Capacity', ascending=False)
                 temp['Ship'] = '(' + temp['Ship'].astype(str) + ')'
                 temp['Name'] = '"' + temp['Name'].astype(str) + '"'
-                if temp.shape[0]>0:
-                    text = text +'\n\n'+temp[['Name', 'Ship']].to_string(index=False, col_space=8, header=False, justify='left')
-            
+                if Prov in self.troop_provinces and temp.shape[0] > 0:
+                    text = text +'\n\n'+temp[['Name', 'Ship', 'Regent']].to_string(index=False, col_space=8, header=False, justify='left')
+                elif temp.shape[0] > 0:
+                    allies, enemies = Game.allies_enemies(Game.Provinces[Game.Provinces['Province']==Prov]['Regent'].values[0])
+                    temp2 = pd.merge(temp, allies, on='Regent')
+                    temp3 = pd.merge(temp, enemies, on='Regent')
+                    if temp2.shape[0] > 0:
+                        text = text +'\n\n'+'Allied Ships Present'
+                    elif temp3.shape[0] > 0:
+                        text = text +'\n\n'+'Enemy Ships Present'   
+                    elif temp.shape[0]>0:
+                        text = text +'\n\n'+'Neutral Ships Present'
                 self.regents_list = list(set(self.regents_list + list(temp['Regent'])))        
             self.text_list.append(text)
 
@@ -337,7 +359,7 @@ class Mapping(object):
             while N < len(xtext):
                 N = xtext.find(' ', N)
                 xtext = xtext[:N] + '\n' + xtext[N+1:]
-                N = line_len + N - N%line_len
+                N = line_len + N #- N%line_len
                 
             if printable == True:
                 xtext = xtext + '\n\n'+'\n\n'.join(self.text_list)
