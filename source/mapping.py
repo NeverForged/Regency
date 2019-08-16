@@ -138,7 +138,7 @@ class Mapping(object):
     def show(self, fig_size=(10,10), bg=True, map_alpha=0.5, adj=100, line_len=90
                 , caravans=True, shipping=False, roads=True, borders=False, show_holdings = True
                 , show_abbreviations=False, show_troops=False, show_castle=True, show_ships=True
-				, printable=False):
+                , printable=False):
         '''
         Show the map
         '''
@@ -331,16 +331,16 @@ class Mapping(object):
                     xlabel.append(reg+' = '+Game.Regents[Game.Regents['Regent']==reg].iloc[0]['Full Name'])
                 except:
                     print(reg)
-			
+            
             xtext =  r"$\bf{"+ 'Abbreviations:'+ r"}$" + ' ' +'; '.join(xlabel) 
             N = line_len
             while N < len(xtext):
                 N = xtext.find(' ', N)
                 xtext = xtext[:N] + '\n' + xtext[N+1:]
                 N = line_len + N - N%line_len
-				
-			if printable == True:
-				xtext = xtext + '\n\n'+'\n\n'.join(self.text_list)
+                
+            if printable == True:
+                xtext = xtext + '\n\n'+'\n\n'.join(self.text_list)
             ax.set_xlabel(xtext)
 
         # Turn off tick labels

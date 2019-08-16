@@ -1997,7 +1997,7 @@ class Regency(object):
                     print('-'*33)
                     temp_ = self.Provinces[self.Provinces['Regent']==row['Regent']][['Province','Population', 'Loyalty', 'Taxation']]
                     temp_ = pd.merge(temp_, law[law['Regent']==row['Regent']][['Province', 'Type']].copy(), on='Province', how='left').fillna('')
-					print(temp_.to_string())
+                    print(temp_.to_string())
                     p = input('Type a Province name, or "DONE" if done:  ')
                     if p.lower() == 'done':
                         check = 1
@@ -2399,7 +2399,7 @@ class Regency(object):
                             # make sure Actor has not gone...
                             if actor not in list(dfs[dfs['Regent']==Regent]['Actor']):
                                 if row['Player'] == True:
-                                    self.player_action(Regent, Actor)
+                                    self.player_action(Regent, actor)
                                 type = 'Bonus'
                                 invalid = True
                                 if invalid == True:
@@ -3719,6 +3719,9 @@ class Regency(object):
         '''
         Player Interfacem for actions.  Placeholder.
         '''
+        maps = Mapping(self)
+        maps.focus_regents([Regent])
+        maps.show(show_abbreviations=True, show_troops=True, printable=True)
         print("{}: It's {}'s Turn!".format(Regent, Actor))
         
         
