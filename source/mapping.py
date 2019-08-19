@@ -37,27 +37,27 @@ class Mapping(object):
         for Regent in Regents:
             lst.append(Game.Regents[Game.Regents['Regent']==Regent]['Full Name'].values[0])
             temp = pd.concat([Game.Provinces[Game.Provinces['Regent']==Regent][['Province']]
-                     , Game.Holdings[Game.Holdings['Regent']==Regent][['Province']]], sort=False)
+                     , Game.Holdings[Game.Holdings['Regent']==Regent][['Province']]], sort=False).dropna()
             myprov = temp.copy()
             My_Province_List = list(set(My_Province_List + list(myprov['Province'])))
             dip = Game.Relationships[Game.Relationships['Regent']==Regent]
             dip['Regent'] = dip['Other']
             temp = pd.concat([temp
                               , pd.merge(dip[['Regent']], Game.Provinces[['Regent', 'Province']], on='Regent', how='left')[['Province']]
-                              , pd.merge(dip[['Regent']], Game.Holdings[['Regent', 'Province']], on='Regent', how='left')[['Province']]])
-            nei = pd.merge(myprov, Game.Geography[Game.Geography['Border']==1], on='Province',how='left')
+                              , pd.merge(dip[['Regent']], Game.Holdings[['Regent', 'Province']], on='Regent', how='left')[['Province']]]).dropna()
+            nei = pd.merge(myprov, Game.Geography[Game.Geography['Border']==1], on='Province',how='left').dropna()
             nei['Province'] = nei['Neighbor']
             temp = pd.concat([temp, nei[['Province']]])
-            temp = temp.drop_duplicates()
+            temp = temp.drop_duplicates().dropna()
             Province_List = list(set(Province_List + list(temp['Province'])))
             # troop stuff
-            temp = Game.Troops[Game.Troops['Regent']==Regent].copy()
+            temp = Game.Troops[Game.Troops['Regent']==Regent].copy().dropna()
             temp2 = temp[temp['Type'].str.lower().str.contains('scout')]
             temp2 = pd.merge(temp2[['Province']], Game.Geography[Game.Geography['Border']==1].copy(), on='Province', how='left')
             temp = pd.concat([temp[['Province']], temp2[['Neighbor']]], keys=['Province'])
             Troop_List = list(set(Troop_List + list(temp['Province'])))
         self.suptitle = self.suptitle + ', '.join(lst)
-        temp = pd.merge(temp, Game.Geography[Game.Geography['Border']==1].copy(), on='Province')
+        temp = pd.merge(temp, Game.Geography[Game.Geography['Border']==1].copy(), on='Province').dropna()
         Province_List = list(set(Province_List + list(temp['Neighbor'])))
         self.node_list = Province_List
         self.troop_provinces = Troop_List
@@ -181,7 +181,7 @@ class Mapping(object):
 
         # Positions
         pos = {}
-        Provinces = pd.merge(pd.DataFrame(node_list, columns=['Province']), Game.Provinces, on='Province', how='left')
+        Provinces = pd.merge(pd.DataFrame(node_list, columns=['Province']), Game.Provinces, on='Province', how='left').dropna()
         xmin, xmax = Provinces['Position'].values[0][0], Provinces['Position'].values[0][0]
         ymin, ymax = Provinces['Position'].values[0][1], Provinces['Position'].values[0][1]
         for pro in list(node_list):

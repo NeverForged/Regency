@@ -1437,7 +1437,7 @@ class Regency(object):
                 self.change_lieutenant(reg, lst[0], Busy=True)
         for reg in set(dfmp['Regent']):
             ans = 0
-            while ans != 1:
+            while ans not in ['1', '2']:
                 self.clear_screen()
                 print('           --- Monsters ---')
                 print('How will {} deal with Monsters in their realm?'.format(self.Regents[self.Regents['Regent']==reg]['Full Name']))
@@ -1449,10 +1449,9 @@ class Regency(object):
                     lieu = True
                 ans = input('Type a Valid Number')
                 if ans == '1':
-                    self.add_to_override(Regent, ('Adventure'))
-                elif ans == 2 and self.Lieutenants[self.Lieutenants['Regent']==reg].shape[0] > 0:
-                    ans = 1
-                    self.change_lieutenant(reg, lst[0], Busy=True)
+                    self.set_override(Regent, 40)
+                elif ans == '2' and self.Lieutenants[self.Lieutenants['Regent']==reg].shape[0] > 0:
+                    self.change_lieutenant(row['Regent'], lst[0], Busy=True)
                     
     def random_event_corruption(self, df):
         '''
@@ -1565,7 +1564,7 @@ class Regency(object):
                     while ans.lower()[0] != 'y' and ans.lower()[0] != 'n':
                         self.clear_screen()
                         print('{}: There is a festival in {}: would you like to provide gifts for {} gold bars [you have {} Gold Bars]?'.format(self.Regents[self.Regents['Regent']==row['Regent']]['Full Name'], row['Province'], row['Cost'], row['Gold Bars'] ))
-                        ans = imput('[y/n]')
+                        ans = input('[y/n]')
                         if ans == 'y':
                             self.change_regent(row['Regent'], Gold_Bars = row['Gold Bars'] - row['Cost'])
                             self.change_province(row['Province'], Loyalty=row['Loyalty'])
@@ -1814,9 +1813,10 @@ class Regency(object):
                 if ans == '1':
                     self.change_province(row['Province'], Loyalty=row['Loyalty'])
                 elif ans == '2' and row['Cost'] <= row['Gold Bars']:
-                    self.change_regent(reg,Gold_Bars = row['Gold Bars'] - row['Cost'])
+                    self.change_regent(row['Regent'],Gold_Bars = row['Gold Bars'] - row['Cost'])
                 elif ans == '3' and len(temp) > 0:
-                    self.change_lieutenant(reg, lst[0], Busy=True)
+                    lst = list(self.Lieutenants[self.Lieutenants['Regent']==Regent][self.Lieutenants['Busy']==False]['Lieutenant'])
+                    self.change_lieutenant(row['Regent'], lst[0], Busy=True)
                 else:
                     ans = 0
                     
@@ -2380,6 +2380,7 @@ class Regency(object):
         
         '''
         if self.Action < 4:
+            self.clear_screen()
             # Make A DataFrame
             self.Initiative = np.max(self.Seasons[self.Season]['Season']['Initiative']) + 1
             while self.Initiative >= np.min(self.Seasons[self.Season]['Season']['Initiative']):
@@ -2399,7 +2400,7 @@ class Regency(object):
                         for actor in actors:
                             # make sure Actor has not gone...
                             if actor not in list(dfs[dfs['Regent']==Regent]['Actor']):
-                                if row['Player'] == True:
+                                if row['Player'] == True and row['Regent'] != self.bonus_override.keys():
                                     self.player_action(Regent, actor, True)
                                 type = 'Bonus'
                                 invalid = True
@@ -2413,6 +2414,8 @@ class Regency(object):
                                     # translate into action...
                                     index = self.Seasons[self.Season]['Actions'][self.Action].shape[0]
                                     Regent, Actor, Action_Type, action, Decision, Target_Regent, Province, Target_Province, Target_Holding, Success, reward, State, invalid, Message = self.take_action(decision, Regent, actor, type, state, capital, high_pop, low_pop, friend, enemy, rando, enemy_capital)
+                                    if row['Player']==True:
+                                        input(Message)
                                     # update memory if invalid
                                     if invalid == True:
                                         next_state = state
@@ -2422,7 +2425,7 @@ class Regency(object):
                                         self.failed_actions.append(pd.DataFrame([[Regent,action,Success]], columns=['Regent','Action','Success?']))
                                         # and train it... to prevent future mistakes
                                         self.agent.train_short_memory(state, action, -5, next_state, 'Action', invalid)
-                                    else:  # update action vector
+                                    else:  # update action vector 
                                         # minor rewards are short-term trained...
                                         self.agent.train_short_memory(state, action, reward, self.agent.get_action_state(row['Regent'], self, None)[0], 'Action', invalid)
                                         # self.agent.remember(state, decision,0, self.agent.get_action_state(row['Regent'], self, None)[0], 'Action', invalid)
@@ -2436,8 +2439,8 @@ class Regency(object):
                         invalid = True
                         tries = 0
                         while invalid == True:
-                            if row['Player'] == True:
-                                self.player_action(Regent, Actor)
+                            if row['Player'] == True and row['Regent'] != self.override.keys():
+                                self.player_action(Regent, actor)
                             try:
                                 over = self.override[Regent]
                                 #print(over)
@@ -2462,6 +2465,8 @@ class Regency(object):
                                         self.agent.remember(state, decision, -50, next_state, 'Action', invalid)
                                 self.agent.train_short_memory(state, action, reward, next_state, 'Action', invalid)
                             else:  # update action vector
+                                if row['Player']==True:
+                                    input(Message)
                                 self.Seasons[self.Season]['Actions'][self.Action].loc[index] = [Regent, Actor, Action_Type, action, Decision, Target_Regent, Province, Target_Province, Target_Holding, Success, reward, State, invalid, Message, self.agent.get_action_state(row['Regent'], self, None)[0]]
                                 with open('games/' + self.GameName + '_' + str(self.Season) + '_' + str(self.Action) +'.pickle', 'wb') as handle:
                                     pickle.dump(self, handle, protocol=pickle.HIGHEST_PROTOCOL)
@@ -2492,7 +2497,8 @@ class Regency(object):
         
         ['Regent', 'Actor', 'Action Type', 'Action', 'Target Regent', 'Province', 'Target Province', 'Target Holding', 'Success?', 'Base Reward', 'State', invalid, message]
         '''
-        try:
+        #try:
+        if True:
             invalid = False
             self.action = decision
             self.state = state
@@ -2532,19 +2538,22 @@ class Regency(object):
                     return [Regent, actor, Type, 'build_road', decision, '', '', '', '', False, -1, state, True, '']
                 else:
                     # builds a road from capital to high_pop... or any province to any province 
-                    temp = pd.merge(self.Provinces[['Province']][self.Provinces['Regent'] == Regent], self.Geography, on='Province', how='left')
-                    temp = temp[temp['Border'] == 1]
-                    temp = temp[temp['Road'] == 0]
-                    # will build from capital if valid...
-                    if temp[temp['Province']==capital].shape[0] > 0:
-                        temp = temp[temp['Province']==capital]
-                    # will build a random road from capital if high-pop no valid
-                    if temp[temp['Neighbor']==high_pop].shape[0]>0:
-                        temp[temp['Neighbor']==high_pop]
-                    temp['Roll'] = np.random.randint(1,100,temp.shape[0]) + 10*temp['RiverChasm']
-                    temp = temp.sort_values('Roll')                
-                    success, reward, message = self.bonus_action_build(Regent, temp.iloc[0]['Province'], temp.iloc[0]['Neighbor'])
-                    return [Regent, actor, Type, 'build_road', decision, '', temp.iloc[0]['Province'], temp.iloc[0]['Neighbor'], '', success, reward, state, invalid, message]
+                    temp = self.Geography[self.Geography['Province']==capital]
+                    if temp[temp['Neighbor'] == high_pop]['Border'].values[0]!= 1 or temp[temp['Neighbor'] == high_pop]['Road'].values[0]!= 0:
+                        # check capital validity
+                        check = list(self.Provinces[self.Provinces['Regent']==Regent]['Province'])
+                        tries = 0
+                        while np.sum(temp['Road']) == temp.shape[0] and tries <= len(check):
+                            capital = check[tries]
+                            tries += 1
+                            temp = self.Geography[self.Geography['Province']==capital]
+                        if temp[temp['Neighbor']==high_pop]['Road']==1:
+                            check = list(temp['Neighbor'])
+                            tries = 0
+                            while temp[temp['Neighbor']==high_pop]['Road']==1:
+                                high_pop = check[0]
+                    success, reward, message = self.bonus_action_build(Regent, capital, high_pop)
+                    return [Regent, actor, Type, 'build_road', decision, '', capital, high_pop, '', success, reward, state, invalid, message]
             #decree_general
             elif decision[1] == 1:  # 1
                 if state[94]==1 or state[4] + state[5] + state[6] == 0:  # Dormant Court, not a valid action
@@ -2578,20 +2587,18 @@ class Regency(object):
                     return [Regent, actor, Type, 'disband_army', decision, '', '', '', '', False, -1, state, invalid, '']
                 else:
                     success, reward, message = False, -1, 'Failed to disband troops'
-                    try:
-                        if len(self.override[Regent][8]) > 0 and len(self.override[Regent][9])>0:
-                            success, reward, message = self.bonus_action_disband(Regent, self.override[Regent][8], self.override[Regent][9])
-                    except:
-                        reward = -1
-                    if reward == -1:
-                        temp = self.Troops[self.Troops['Regent'] == Regent].copy()
+                    temp = self.Troops[self.Troops['Regent'] == Regent].copy()
+                    if len(troops) == 0:
                         if temp[temp['Injury']<=-2].shape[0] > 0:
                             temp = temp[temp['Injury']<=-2]
-                            success, reward, message = self.bonus_action_disband(Regent, temp['Type'].values, temp['Province'].values)
+                            troops = temp['Type'].values
+                            provinces = temp['Province'].values
                         else:
                             temp['target'] = temp['CR'] - temp['Cost'] + temp['Injury']
                             temp = temp.sort_values('target')
-                            success, reward, message = self.bonus_action_disband(Regent, [temp['Type'].values[0]], [temp['Province'].values[0]])
+                            troops.append(temp['Type'].values[0])
+                            provinces.append(temp['Province'].values[0])
+                    success, reward, message = self.bonus_action_disband(Regent, troops, provinces)
                     reward = 0
                     if state[87] == 1:  #Aggressive
                         reward = -3
@@ -2616,19 +2623,17 @@ class Regency(object):
             elif decision[5] == 1:  #5, disband_mercenaries
                 if state[44] == 0 or state[46] == 0:
                     invalid = True
-                    return [Regent, actor, Type, 'disband_mercenaries', decision, '', '', '', '', False, -10, state, invalid, '']  
+                    return [Regent, actor, Type, 'disband_mercenaries', decision, '', '', '', '', False, -1, state, invalid, '']  
                 else:
-                    temp = self.Troops[self.Troops['Regent'] == Regent].copy()
-                    temp = temp[temp['Type'].str.lower().str.contains('mercenary')]
                     units = []
                     provinces = []
-                    reward = int(len(units)/3)
-                    if state[87] == 1:  #Aggressive
-                        reward = reward -3
+                    temp = self.Troops[self.Troops['Regent'] == Regent].copy()
+                    temp = temp[temp['Type'].str.lower().str.contains('mercenary')]
                     for i, row in temp.iterrows():
                         units.append(row['Type'])
                         provinces.append(row['Province'])
-                        self.bonus_action_disband(Regent, [row['Type']], [row['Province']])
+                    reward = int(len(units)/3)
+                    success, reward, message = self.bonus_action_disband(Regent, units, provinces)
                     return [Regent, actor, Type, 'disband_mercenaries', decision, '', ', '.join(provinces), '', '', True, reward, state, invalid, '{} disbanded all mercenaries'.format(actor)]
             # agitate_for_friend
             elif decision[6] == 1:  #6, friend
@@ -3711,7 +3716,7 @@ class Regency(object):
             # Nothing Doin'
             else:
                 return [Regent, actor, Type, 'None/Error', decision, '', '', '', '', False, 0, state, False, 'Error: No Action Returned']
-        except:
+        #except:
             print('error', np.argmax(decision), Regent)
             self.errors.append((Regent, decision, actor, Type, state, capital, high_pop, low_pop, friend, enemy, rando, enemy_capital))
             return [Regent, actor, Type, 'error', decision, '', '', '', '',  False, -1, state, True, '']
@@ -3751,6 +3756,7 @@ class Regency(object):
             GB = self.Regents[self.Regents['Regent']==Regent]['Gold Bars'].values[0]
             RP = self.Regents[self.Regents['Regent']==Regent]['Regency Points'].values[0]
             qy = input('[GB {}, RP {}] What does {} want to do? '.format(GB, RP, Actor))
+            q1 = None
             if qy.lower() == 'actions' or  qy.lower() == 'help' or qy.lower() == 'list': # ACTION LIST
                 action_lst = '''
                             Build (road or ship), Decree, Disband, Ungarrison, Agitate,\n
@@ -3768,38 +3774,83 @@ class Regency(object):
             elif qy.lower() == 'build': 
                 q2 = '0'
                 while q2 != '1' and q2 != '2':
-                    q2 = input('[1] for Road [2] for boat')
+                    q2 = input('[1] for Road [2] for Ship')
                     if q2 == '1' and self.Provinces[self.Provinces['Regent']==Regent].shape[0]==0:
                         print('You must own provinces to build roads.\n')
                     elif q2 == '1':  # Build a Road!
                         action = 0
-                        while capital not in list(self.Provinces['Province']):
-                            capital = input('From which Province?')
-                        while high_pop not in list(self.Provinces['Province']):
-                            high_pop = input('To which Province?')
+                        while capital not in list(self.Provinces[self.Provinces['Regent']==Regent]['Province']):
+                            capital = input('From which Province?\n['+', '.join(list(self.Provinces[self.Provinces['Regent']==Regent]['Province']))+']\n')
+                        while high_pop not in list(self.Geography[self.Geography['Province']==capital][self.Geography['Border']==1]['Neighbor']):
+                            high_pop = input('To which Province?\n['+', '.join(list(self.Geography[self.Geography['Province']==capital][self.Geography['Border']==1]['Neighbor']))+']\n')
                     elif q2 == '2':  # build a boat!
-                        action = 71
-                        ships = self.ship_units.copy()
-                        ships = ships[ships['Cost'] <= GB]
-                        print()
-                        print(ships.to_string())
-                        print()
-                        while Target not in list(ships['Ship']):
-                            Target = input('What type of ship would you like to build? (note that ships of another culture are harder to build)')
-                        prov = None
-                        while prov not in list(pd.concat([self.Provinces[self.Provinces['Regent']==Regent][['Province']], self.Holdings[self.Holdings['Regent']==Regent][['Province']]])['Province']):
-                            prov = input('Where would you like to build this ship?')
-                        provinces = [prov]
-                        Name = input('What will you name this {}?'.format(Target))
+                        legit = pd.concat([self.Provinces[self.Provinces['Regent']==Regent][self.Provinces['Waterway']==True][['Province']], self.Holdings[self.Holdings['Regent']==Regent][['Province']]])
+                        legit = pd.merge(legit[['Province']], self.Provinces[self.Provinces['Waterway']==True], on='Province', how='left').dropna()
+                        # print(legit)
+                        if legit.shape[0] > 0:
+                            action = 71
+                            ships = self.ship_units.copy().groupby(['Ship','Cost','Hull','Troop Capacity','Seaworthiness']).agg({'Availability':lambda x: ', '.join(x)}).reset_index()
+                            
+                            print()
+                            print(ships.to_string())
+                            print()
+                            while Target not in list(ships['Ship']):
+                                Target = input('What type of ship would you like to build? (note that ships of another culture are harder to build)')
+                            prov = None 
+                            while prov not in list(legit['Province']):
+                                prov = input('Where would you like to build this ship? \n[' + ', '.join(list(set(legit['Province']))) + ']\n')
+                            provinces = [prov]
+                            Name = input('What will you name this {}?'.format(Target))
+                        else:
+                            print('You need a Holding or a Province with Water access to build a ship!')
             # Decree
-            #  elif qy.lower() == 'decree':      
-        
+            elif qy.lower() == 'decree':
+                temp = self.Seasons[0]['Season']
+                if temp[temp['Regent']==Regent]['Court'].values[0]=='Dormant':
+                    print("You don't have a Court to make Decrees from")
+                else:
+                    while q1 not in ['0', '1', '2']:
+                        q1 = input('Which type of Decree: [1] General, [2] Assest Seizure, ([0] Escape)')
+                    if q1 != '0':
+                        action = int(q1)    
+            # Disband
+            temp = self.Troops[self.Troops['Regent']==Regent]
+            if temp.shape[0]>0:
+                while q1 not in ['0', '1', '2', '3']:
+                    levies = temp[temp['Type'].str.lower().str.contains('levies')]
+                    mercs = temp[temp['Type'].str.lower().str.contains('mercenary')]
+                    text = 'Select the method of disbanding: [1] Pick Individuals'
+                    if levies.shape[0]>0:
+                        text = text+' [2] Disband ALL Levies'
+                    if mercs.shape[0] > 0:
+                        text = text+' [3] Disband ALL Mercenaries'
+                    q1 = input(text + ' ([0] Exit)')
+                    if q1 == '2' and levies.shape[0]==0:
+                        q1 = None
+                    if q1 == '3' and mercs.shape[0]==0:
+                        q1 = None
+                if q1 != '0':
+                    action = 2+int(q1)
+                if q1 == '1':
+                    while q1.lower() != 'done':
+                        print(temp)
+                        while q1 not in list(temp['Type']) and q1.lower() != 'done':
+                            q1 = input('What Type of Troop would you like to disband? [Type DONE to finish] \n['+', '.join(list(set(temp['Type'])))+']\n')
+                        if q1.lower() != 'done':
+                            troops.append(q1)
+                            while q1 not in list(temp[temp['Type']==troops[-1]]['Province']):
+                                q1 = input('From which Province will you disband {}? \n['.format(troops[-1])+', '.join(list(set(temp[temp['Type']==troops[-1]]['Province'])))+']\n')
+                            provinces.append(q1)
+            # Ungarrison
+                    
+                    
         # the action!
         self.set_override(Regent, action, bonus, capital, high_pop, low_pop, enemy, friend, rando, enemy_capital, troops, provinces, Number, Name, Target, Type, holdings)
         print(self.override)
         print(self.bonus_override)
+    
     # Bonus Actions First
-    def bonus_action_build(self, Regent, Province, Road=None, Ship=None, player_gbid=None, Name=None):
+    def bonus_action_build(self, Regent, Province, Road=None, Ship=None, player_gbid=None, Name=None, Actor=None):
         '''
         
         
@@ -3867,6 +3918,7 @@ class Regency(object):
         build_road
         '''
         sucess, reward, message = False, 0, ''
+        Actor = self.Regents[self.Regents['Regent']==Regent]['Full Name'].values[0]
         if Road!=None:
             message = ''
             temp = pd.concat([self.Provinces[self.Provinces['Province']==Province], self.Provinces[self.Provinces['Province']==Road]], sort=False)
@@ -3916,7 +3968,7 @@ class Regency(object):
                 else:
                     self.Projects = self.Projects.append(pd.DataFrame([[Regent, 'Road',(Province, Road), progress]],columns=cols)).reset_index(drop=True)
                     self.Projects = self.Projects[cols]
-                message = '{} built a road between {} and {}'.format(Regent, Province, Road)
+                message = '{} built a road between {} and {}'.format(Actor, Province, Road)
             else:
                 message = '{} failed to build a road between {} and {}.'.format(Regent, Province, Road)
             # reward
@@ -3946,7 +3998,7 @@ class Regency(object):
                 message = '{} tried to build a {} in a landlocked area!'.format(self.Regents[self.Regents['Regent']==Regent]['Full Name'].values[0], Ship)
             elif success==True:
                 reward = temp['Hull'] + temp['Troop Capacity']
-                message = '{} commissioned a {} to be built in {}'.format(self.Regents[self.Regents['Regent']==Regent]['Full Name'].values[0], Ship, Province)
+                message = '{} commissioned a {} to be built in {}'.format(Actor, Ship, Province)
                 self.change_regent(Regent, Gold_Bars = GB - cost)
                 if crit == True:
                     cost = cost - (np.random.randint(1,6,1) + np.random.randint(1,6,1))
