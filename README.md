@@ -38,6 +38,7 @@ Based on the 5e Conversion of the Regency system from Birthright,
        'Injury']*
 - **Navy:** *['Regent', 'Provence','Ship','Hull','Troop Capacity', 'Seaworthiness', 'Name']*
 - **LeyLines:** *['Regent', 'Provence', 'Other']*
+- **Espionage** *['Regent', 'Target', 'Assassination', 'Diplomacy', 'Troop Movement', 'Other']*
 - **Seasons:** A dictionary of season-dataframes (to keep track of what happened)
 - **Lieutenants:** A List of regent-lieutenant pairs
 
@@ -46,8 +47,6 @@ Lifted from [maurock/snake-ga](https://github.com/maurock/snake-ga), this was us
 
 - Determining taxation strategies based on money gained and influence lost.
 - Choosing an action or bonus action from the lists of [actions](https://www.gmbinder.com/share/-L4h_QHUKh2NeYhgD96A) based on a huge array of information about the regent and their neighbors.
-- Determine how many gold bars to spend on an action
-- Determine how much regency to spend on a thing.
 
 ### mapping.py
 This shows maps of the world based on the parameters entered by the user.

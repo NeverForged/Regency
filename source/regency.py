@@ -1449,9 +1449,9 @@ class Regency(object):
                     lieu = True
                 ans = input('Type a Valid Number')
                 if ans == '1':
-                    self.set_override(Regent, 40)
+                    self.set_override(reg, 40)
                 elif ans == '2' and self.Lieutenants[self.Lieutenants['Regent']==reg].shape[0] > 0:
-                    self.change_lieutenant(row['Regent'], lst[0], Busy=True)
+                    self.change_lieutenant(reg, self.Lieutenants[self.Lieutenants['Regent']==reg]['Lieutenant'].values[0], Busy=True)
                     
     def random_event_corruption(self, df):
         '''
@@ -2539,6 +2539,8 @@ class Regency(object):
                 else:
                     # builds a road from capital to high_pop... or any province to any province 
                     temp = self.Geography[self.Geography['Province']==capital]
+                    if temp[temp['Neighbor'] == high_pop].shape[0] == 0:
+                        high_pop = temp['Neighbor'].values[0]
                     if temp[temp['Neighbor'] == high_pop]['Border'].values[0]!= 1 or temp[temp['Neighbor'] == high_pop]['Road'].values[0]!= 0:
                         # check capital validity
                         check = list(self.Provinces[self.Provinces['Regent']==Regent]['Province'])
@@ -2739,14 +2741,22 @@ class Regency(object):
                     if state[3] == 1:
                         check = self.Holdings[self.Holdings['Regent']==Regent]
                         temp = pd.merge(check[check['Type']=='Guild'][['Province']], temp, on='Province', how='left')
-                    if temp.shape[0] == 0:  # no valid targets
-                        invalid = True
-                        return [Regent, actor, Type, 'espionage_assassination', decision, '', '', '', '', False, -10, state, True, '']
-                    if temp[temp['Capital']==True].shape[0] == 0:
-                        temp = temp.sort_values('Population', ascending=False)
-                        Province = temp.iloc[0]['Province']  # hardest one to hit
+                        if temp.shape[0] == 0:  # no valid targets
+                            invalid = True
+                            return [Regent, actor, Type, 'espionage_assassination', decision, '', '', '', '', False, -10, state, True, '']
+                        if temp[temp['Capital']==True].shape[0] == 0:
+                            temp = temp.sort_values('Population', ascending=False)
+                            Province = temp.iloc[0]['Province']  # hardest one to hit
                     else:
-                        Province = temp[temp['Capital']==True]['Province'].values[0]
+                        try:
+                            Province = temp[temp['Capital']==True]['Province'].values[0]
+                        except:
+                            # must not have a province
+                            temp = pd.concat([self.Provinces[self.Provinces['Regent'] == enemy][['Province']],
+                                              self.Holdings[self.Holdings['Regent']==enemy][['Province']]])
+                            temp['roll'] = np.random.randint(1,temp.shape[0]+1,temp.shape[0])
+                            temp = temp.sort_values('roll')
+                            Province = temp['Province'].values[0]
                     success, reward, message = self.domain_action_espionage(Regent, enemy, Province, 'Assassination')
                     return [Regent, actor, Type, 'espionage_assassination', decision, enemy, '', Province, '', success, reward, state, False, message]
             # espionage_discover_troop_movements
@@ -2760,14 +2770,22 @@ class Regency(object):
                     if state[3] == 1:
                         check = self.Holdings[self.Holdings['Regent']==Regent]
                         temp = pd.merge(check[check['Type']=='Guild'][['Province']], temp, on='Province', how='left')
-                    if temp.shape[0] == 0:  # no valid targets
-                        invalid = True
-                        return [Regent, actor, Type, 'espionage_discover_troop_movements', decision, '', '', '', '', False, -10, state, invalid, '']
-                    if temp[temp['Capital']==True].shape[0] == 0:
-                        temp = temp.sort_values('Population', ascending=False)
-                        Province = temp.iloc[0]['Province']  # hardest one to hit
+                        if temp.shape[0] == 0:  # no valid targets
+                            invalid = True
+                            return [Regent, actor, Type, 'espionage_discover_troop_movements', decision, '', '', '', '', False, -10, state, invalid, '']
+                        if temp[temp['Capital']==True].shape[0] == 0:
+                            temp = temp.sort_values('Population', ascending=False)
+                            Province = temp.iloc[0]['Province']  # hardest one to hit
                     else:
-                        Province = temp[temp['Capital']==True]['Province'].values[0]
+                        try:
+                            Province = temp[temp['Capital']==True]['Province'].values[0]
+                        except:
+                            # must not have a province
+                            temp = pd.concat([self.Provinces[self.Provinces['Regent'] == enemy][['Province']],
+                                              self.Holdings[self.Holdings['Regent']==enemy][['Province']]])
+                            temp['roll'] = np.random.randint(1,temp.shape[0]+1,temp.shape[0])
+                            temp = temp.sort_values('roll')
+                            Province = temp['Province'].values[0]
                     success, reward, message = self.domain_action_espionage(Regent, enemy, Province, 'Troops')
                     return [Regent, actor, Type, 'espionage_discover_troop_movements', decision, enemy, '', Province, '', success, reward, state, invalid, message]     
             # espionage_diplomatic_details
@@ -2781,14 +2799,22 @@ class Regency(object):
                     if state[3] == 1:
                         check = self.Holdings[self.Holdings['Regent']==Regent]
                         temp = pd.merge(check[check['Type']=='Guild'][['Province']], temp, on='Province', how='left')
-                    if temp.shape[0] == 0:  # no valid targets
-                        invalid = True
-                        return [Regent, actor, Type, 'espionage_diplomatic_details', decision, '', '', '', '', False, -10, state, invalid, '']
-                    if temp[temp['Capital']==True].shape[0] == 0:
-                        temp = temp.sort_values('Population', ascending=False)
-                        Province = temp.iloc[0]['Province']  # hardest one to hit
+                        if temp.shape[0] == 0:  # no valid targets
+                            invalid = True
+                            return [Regent, actor, Type, 'espionage_diplomatic_details', decision, '', '', '', '', False, -10, state, invalid, '']
+                        if temp[temp['Capital']==True].shape[0] == 0:
+                            temp = temp.sort_values('Population', ascending=False)
+                            Province = temp.iloc[0]['Province']  # hardest one to hit
                     else:
-                        Province = temp[temp['Capital']==True]['Province'].values[0]
+                        try:
+                            Province = temp[temp['Capital']==True]['Province'].values[0]
+                        except:
+                            # must not have a province
+                            temp = pd.concat([self.Provinces[self.Provinces['Regent'] == enemy][['Province']],
+                                              self.Holdings[self.Holdings['Regent']==enemy][['Province']]])
+                            temp['roll'] = np.random.randint(1,temp.shape[0]+1,temp.shape[0])
+                            temp = temp.sort_values('roll')
+                            Province = temp['Province'].values[0]
                     success, reward, message = self.domain_action_espionage(Regent, enemy, Province, 'Trade')
                     return [Regent, actor, Type, 'espionage_diplomatic_details', decision, enemy, '', Province, '', success, reward, state, invalid, message]
             # espionage_intrigue 
@@ -2802,13 +2828,21 @@ class Regency(object):
                     if state[3] == 1:
                         check = self.Holdings[self.Holdings['Regent']==Regent]
                         temp = pd.merge(check[check['Type']=='Guild'][['Province']], temp, on='Province', how='left')
-                    if temp.shape[0] == 0:  # no valid targets
-                        return [Regent, actor, Type, 'espionage_intrigue', decision, '', '', '', '', False, -1, state, True, '']
-                    if temp[temp['Capital']==True].shape[0] == 0:
-                        temp = temp.sort_values('Population', ascending=False)
-                        Province = temp.iloc[0]['Province']  # hardest one to hit
+                        if temp.shape[0] == 0:  # no valid targets
+                            return [Regent, actor, Type, 'espionage_intrigue', decision, '', '', '', '', False, -1, state, True, '']
+                        if temp[temp['Capital']==True].shape[0] == 0:
+                            temp = temp.sort_values('Population', ascending=False)
+                            Province = temp.iloc[0]['Province']  # hardest one to hit
                     else:
-                        Province = temp[temp['Capital']==True]['Province'].values[0]
+                        try:
+                            Province = temp[temp['Capital']==True]['Province'].values[0]
+                        except:
+                            # must not have a province
+                            temp = pd.concat([self.Provinces[self.Provinces['Regent'] == enemy][['Province']],
+                                              self.Holdings[self.Holdings['Regent']==enemy][['Province']]])
+                            temp['roll'] = np.random.randint(1,temp.shape[0]+1,temp.shape[0])
+                            temp = temp.sort_values('roll')
+                            Province = temp['Province'].values[0]
                     success, reward, message = self.domain_action_espionage(Regent, enemy, Province, 'Intrigue')
                     return [Regent, actor, Type, 'espionage_intrigue', decision, enemy, '', Province, '', success, reward, state, invalid, message]
             # espionage_corruption 
@@ -2822,13 +2856,21 @@ class Regency(object):
                     if state[3] == 1:
                         check = self.Holdings[self.Holdings['Regent']==Regent]
                         temp = pd.merge(check[check['Type']=='Guild'][['Province']], temp, on='Province', how='left')
-                    if temp.shape[0] == 0:  # no valid targets
-                        return [Regent, actor, Type, 'espionage_corruption', decision, '', '', '', '', False, -1, state, True, '']
-                    if temp[temp['Capital']==True].shape[0] == 0:
-                        temp = temp.sort_values('Population', ascending=False)
-                        Province = temp.iloc[0]['Province']  # hardest one to hit
+                        if temp.shape[0] == 0:  # no valid targets
+                            return [Regent, actor, Type, 'espionage_corruption', decision, '', '', '', '', False, -1, state, True, '']
+                        if temp[temp['Capital']==True].shape[0] == 0:
+                            temp = temp.sort_values('Population', ascending=False)
+                            Province = temp.iloc[0]['Province']  # hardest one to hit
                     else:
-                        Province = temp[temp['Capital']==True]['Province'].values[0]
+                        try:
+                            Province = temp[temp['Capital']==True]['Province'].values[0]
+                        except:
+                            # must not have a province
+                            temp = pd.concat([self.Provinces[self.Provinces['Regent'] == enemy][['Province']],
+                                              self.Holdings[self.Holdings['Regent']==enemy][['Province']]])
+                            temp['roll'] = np.random.randint(1,temp.shape[0]+1,temp.shape[0])
+                            temp = temp.sort_values('roll')
+                            Province = temp['Province'].values[0]
                     success, reward, message = self.domain_action_espionage(Regent, enemy, Province, 'Corruption')
                     return [Regent, actor, Type, 'espionage_corruption', decision, enemy, '', Province, '', success, reward, state, invalid, message]
             # espionage_heresy 
@@ -2842,14 +2884,22 @@ class Regency(object):
                     if state[3] == 1:
                         check = self.Holdings[self.Holdings['Regent']==Regent]
                         temp = pd.merge(check[check['Type']=='Guild'][['Province']], temp, on='Province', how='left')
-                    if temp.shape[0] == 0:  # no valid targets
-                        invalid = True
-                        return [Regent, actor, Type, 'espionage_heresy', decision, '', '', '', '', False, -10, state, invalid, '']
-                    if temp[temp['Capital']==True].shape[0] == 0:
-                        temp = temp.sort_values('Population', ascending=False)
-                        Province = temp.iloc[0]['Province']  # hardest one to hit
+                        if temp.shape[0] == 0:  # no valid targets
+                            invalid = True
+                            return [Regent, actor, Type, 'espionage_heresy', decision, '', '', '', '', False, -10, state, invalid, '']
+                        if temp[temp['Capital']==True].shape[0] == 0:
+                            temp = temp.sort_values('Population', ascending=False)
+                            Province = temp.iloc[0]['Province']  # hardest one to hit
                     else:
-                        Province = temp[temp['Capital']==True]['Province'].values[0]
+                        try:
+                            Province = temp[temp['Capital']==True]['Province'].values[0]
+                        except:
+                            # must not have a province
+                            temp = pd.concat([self.Provinces[self.Provinces['Regent'] == enemy][['Province']],
+                                              self.Holdings[self.Holdings['Regent']==enemy][['Province']]])
+                            temp['roll'] = np.random.randint(1,temp.shape[0]+1,temp.shape[0])
+                            temp = temp.sort_values('roll')
+                            Province = temp['Province'].values[0]
                     success, reward, message = self.domain_action_espionage(Regent, enemy, Province, 'Heresy')
                     return [Regent, actor, Type, 'espionage_heresy', decision, enemy, '', Province, '', success, reward, state, invalid, message]
             # espionage_trace_espionage: 
@@ -2864,14 +2914,22 @@ class Regency(object):
                     if state[3] == 1:
                         check = self.Holdings[self.Holdings['Regent']==Regent]
                         temp = pd.merge(check[check['Type']=='Guild'][['Province']], temp, on='Province', how='left')
-                    if temp.shape[0] == 0 or state[50] == 0:  # no valid targets
-                        invalid = True
-                        return [Regent, actor, Type, 'espionage_trace_espionage', decision, '', '', '', '', False, -10, state, invalid, '']
-                    if temp[temp['Capital']==True].shape[0] == 0:
-                        temp = temp.sort_values('Population', ascending=False)
-                        Province = temp.iloc[0]['Province']  # hardest one to hit
+                        if temp.shape[0] == 0 or state[50] == 0:  # no valid targets
+                            invalid = True
+                            return [Regent, actor, Type, 'espionage_trace_espionage', decision, '', '', '', '', False, -10, state, invalid, '']
+                        if temp[temp['Capital']==True].shape[0] == 0:
+                            temp = temp.sort_values('Population', ascending=False)
+                            Province = temp.iloc[0]['Province']  # hardest one to hit
                     else:
-                        Province = temp[temp['Capital']==True]['Province'].values[0]
+                        try:
+                            Province = temp[temp['Capital']==True]['Province'].values[0]
+                        except:
+                            # must not have a province
+                            temp = pd.concat([self.Provinces[self.Provinces['Regent'] == enemy][['Province']],
+                                              self.Holdings[self.Holdings['Regent']==enemy][['Province']]])
+                            temp['roll'] = np.random.randint(1,temp.shape[0]+1,temp.shape[0])
+                            temp = temp.sort_values('roll')
+                            Province = temp['Province'].values[0]
                     success, reward, message = self.domain_action_espionage(Regent, enemy, Province, 'Investigate')
                     return [Regent, actor, Type, 'espionage_trace_espionage', decision, enemy, '', Province, '', success, reward, state, invalid, message]
             # bonus_action_grant_rando 
@@ -3756,7 +3814,7 @@ class Regency(object):
             GB = self.Regents[self.Regents['Regent']==Regent]['Gold Bars'].values[0]
             RP = self.Regents[self.Regents['Regent']==Regent]['Regency Points'].values[0]
             qy = input('[GB {}, RP {}] What does {} want to do? '.format(GB, RP, Actor))
-            q1 = None
+            q1 = ''
             if qy.lower() == 'actions' or  qy.lower() == 'help' or qy.lower() == 'list': # ACTION LIST
                 action_lst = '''
                             Build (road or ship), Decree, Disband, Ungarrison, Agitate,\n
@@ -3814,37 +3872,105 @@ class Regency(object):
                     if q1 != '0':
                         action = int(q1)    
             # Disband
-            temp = self.Troops[self.Troops['Regent']==Regent]
-            if temp.shape[0]>0:
-                while q1 not in ['0', '1', '2', '3']:
-                    levies = temp[temp['Type'].str.lower().str.contains('levies')]
-                    mercs = temp[temp['Type'].str.lower().str.contains('mercenary')]
-                    text = 'Select the method of disbanding: [1] Pick Individuals'
-                    if levies.shape[0]>0:
-                        text = text+' [2] Disband ALL Levies'
-                    if mercs.shape[0] > 0:
-                        text = text+' [3] Disband ALL Mercenaries'
-                    q1 = input(text + ' ([0] Exit)')
-                    if q1 == '2' and levies.shape[0]==0:
-                        q1 = None
-                    if q1 == '3' and mercs.shape[0]==0:
-                        q1 = None
-                if q1 != '0':
-                    action = 2+int(q1)
-                if q1 == '1':
+            elif qy.lower() == 'disband':
+                temp = self.Troops[self.Troops['Regent']==Regent]
+                if temp.shape[0]>0:
+                    while q1 not in ['0', '1', '2', '3']:
+                        levies = temp[temp['Type'].str.lower().str.contains('levies')]
+                        mercs = temp[temp['Type'].str.lower().str.contains('mercenary')]
+                        text = 'Select the method of disbanding: [1] Pick Individuals'
+                        if levies.shape[0]>0:
+                            text = text+' [2] Disband ALL Levies'
+                        if mercs.shape[0] > 0:
+                            text = text+' [3] Disband ALL Mercenaries'
+                        q1 = input(text + ' ([0] Exit)')
+                        if q1 == '2' and levies.shape[0]==0:
+                            q1 = None
+                        if q1 == '3' and mercs.shape[0]==0:
+                            q1 = None
+                    if q1 != '0':
+                        action = 2+int(q1)
+                    if q1 == '1':
+                        while q1.lower() != 'done':
+                            print(temp)
+                            while q1 not in list(temp['Type']) and q1.lower() != 'done':
+                                q1 = input('What Type of Troop would you like to disband? [Type DONE to finish] \n['+', '.join(list(set(temp['Type'])))+']\n')
+                            if q1.lower() != 'done':
+                                troops.append(q1)
+                                while q1 not in list(temp[temp['Type']==troops[-1]]['Province']):
+                                    q1 = input('From which Province will you disband {}? \n['.format(troops[-1])+', '.join(list(set(temp[temp['Type']==troops[-1]]['Province'])))+']\n')
+                                provinces.append(q1)
+            # Ungarrison
+            elif qy.lower() == 'ungarrison':      
+                temp = self.Troops[self.Troops['Regent']==Regent][self.Troops['Garrisoned']==True]
+                if temp.shape[0]==0:
+                    print('You have no troops Garrisoned!')
+                else:
                     while q1.lower() != 'done':
-                        print(temp)
-                        while q1 not in list(temp['Type']) and q1.lower() != 'done':
-                            q1 = input('What Type of Troop would you like to disband? [Type DONE to finish] \n['+', '.join(list(set(temp['Type'])))+']\n')
+                        while q1.lower() != 'done' and q1 not in list(temp['Type']):
+                            q1 = input('Choose a Troop Type to Ungarrison: (DONE to exit)\n[' + ', '.join(list(set(temp['Type']))) + ']\n')
                         if q1.lower() != 'done':
                             troops.append(q1)
                             while q1 not in list(temp[temp['Type']==troops[-1]]['Province']):
-                                q1 = input('From which Province will you disband {}? \n['.format(troops[-1])+', '.join(list(set(temp[temp['Type']==troops[-1]]['Province'])))+']\n')
+                                q1 = input('From which Province? \n[' + ', '.join(list(set(temp[temp['Type']==troops[-1]]['Province']))) + ']\n')
                             provinces.append(q1)
-            # Ungarrison
-                    
-                    
-        # the action!
+                    if len(troops) > 0:
+                        action = 75
+            # Agitate
+            elif qy.lower() == 'agitate':
+                if bonus==True and self.Holdings[self.Holdings['Regent']==Regent][self.Holdings['Type']=='Temple'].shape[0] == 0:
+                    input('Agitate can only be done as a Bonus Action if you have a Temple Holding')
+                elif self.Holdings[self.Holdings['Regent']==Regent].shape[0] == 0:
+                    input('You need Holdings to do this.')
+                elif GB == 0:
+                    input('You need Gold Bars to do this.')
+                else:
+                    while q1 not in ['0', '1', '2']:
+                        if q1 != '0':
+                            q1 = input('First: [1] For or [2] Against? ([0] to exit)')
+                            ag = q1
+                            df = pd.merge(self.Holdings[self.Holdings['Regent']==Regent][['Province']],self.Provinces[['Province','Regent']],on='Province',how='left')
+                            if df.shape[0] > 0:
+                                while q1 not in list(df['Regent']):
+                                    q1 = input('Select a Regent by Abbreviation \n[' + ', '.join(list(set(df['Regent']))) + ']\n')
+                                if self.Relationships[self.Relationships['Regent']==Regent][self.Relationships['Other']==q1].shape[0] > 0:
+                                    if self.Relationships[self.Relationships['Regent']==Regent][self.Relationships['Other']==q1]['Diplomacy'].values[0] > 1:
+                                        if ag == '1':
+                                            friend = q1
+                                            action = 6
+                                            q1 = '0'
+                                        else:
+                                            rando = q1
+                                            action = 9
+                                            q1 = '0'
+                                if action not in [6,9]:
+                                    if ag == '1':
+                                        rando = q1
+                                        action = 8
+                                        q1 = '0'
+                                    else:
+                                        enemy = q1
+                                        action = 7
+                                        q1 = '0'
+            # Espionage
+            elif qy.lower() == 'espionage':
+                if bonus==True and self.Holdings[self.Holdings['Regent']==Regent][self.Holdings['Type']=='Guild'].shape[0] == 0:
+                    input('Espionage is only a bonus Action if you have Guild Holdings')
+                elif GB == 0:
+                    input('You have no Gold Bars')
+                else:
+                    while q1 not in [str(a) for a in range(8)]:
+                        q1 = input('Choose a method of Espionage: [1] Assassination, [2] Discover Troop Movements, [3] Uncover Diplomatic Details, [4] Cause Intrigue, [5] Cause Corruption, [6] Heresey, [7] Investigate Espionage')
+                    lst = ['','Who would you like to assassinate', 'Whose troops are you spying on', 'Who are you spying on', "Create intrigue in which regent's court", "Cause corruption in which regent's court", 'Cause heresey in whose lands', 'Whom do you suspect of Intrigue against you']
+                    if q1 != '0':
+                        while enemy not in list(self.Regents['Regent']) + ['0']:
+                            enemy = input('{}?'.format(lst[int(q1)]))
+                        if enemy == '0':
+                            q1 = '0'
+                            enemy = None
+                        else:
+                            action = 9 + int(q1)    
+        # the action!       
         self.set_override(Regent, action, bonus, capital, high_pop, low_pop, enemy, friend, rando, enemy_capital, troops, provinces, Number, Name, Target, Type, holdings)
         print(self.override)
         print(self.bonus_override)
@@ -4193,17 +4319,13 @@ class Regency(object):
             add = 2*add
         if success:
             # make the changes
-            temp = {}
-            temp['Province'] = Provinces
-            temp = pd.DataFrame(temp)
-            temp = pd.merge(temp, self.Provinces.copy(), on='Province', how='left')
-            for i, row in temp.iterrows():
-                self.change_loyalty(row['Province'], add)
+            for p in list(set(Provinces)):
+                self.change_loyalty(p, add)
             
             if dip == -1:
-                message = '{} agitated the people against {} in the following provinces: {}'.format('!Regent!', tname, ', '.join(Provinces))
+                message = '{} agitated the people against {} in the following provinces: {}'.format('!Regent!', tname, ', '.join(list(set(Provinces))))
             else:
-                message = '{} used their influence to rally the people behind {} in the following provinces: {}'.format('!Regent!', tname, ', '.join(Provinces))
+                message = '{} used their influence to rally the people behind {} in the following provinces: {}'.format('!Regent!', tname, ', '.join(list(set(Provinces))))
             # change diplomacy (Target cares)
             self.add_relationship(Target, Regent, Diplomacy=dip)
             temp = self.Relationships[self.Relationships['Regent']==Regent].copy()
@@ -4213,7 +4335,7 @@ class Regency(object):
                 reward = 0
             attitude = self.Regents[self.Regents['Regent']==Regent]['Attitude']
         else:
-            message = '{} failed to change peoples minds about {} in {}'.format('!Regent!', tname, ', '.join(Provinces))
+            message = '{} failed to change peoples minds about {} in {}'.format('!Regent!', tname, ', '.join(list(set(Provinces))))
             # change diplomacy (Target cares)
             self.add_relationship(Target, Regent, Diplomacy=dip)
             reward = 0
@@ -4283,6 +4405,7 @@ class Regency(object):
         espionage_trace_espionage
         
         '''
+        reward = 0
         # assassination flag for roll
         assassination = False
         if Type == 'Assassination':
@@ -4350,7 +4473,7 @@ class Regency(object):
                     reward = 5
                 if self.Regents[self.Regents['Regent']==Regent]['Attitude'].values[0] == 'Aggressive':
                     reward = 2*reward
-            message = "Spied on {}'s troops!".format(victim)
+            message = self.Troops[self.Troops['Regent']==Target].to_string()
         elif Type == 'Trade':
             lst[3] = self.Season
             reward = 0
@@ -4364,34 +4487,44 @@ class Regency(object):
                     reward = 5 + -1*temp[temp['Other']==Target]['Diplomacy'].values[0]
                 except:
                     reward = 5
-            message = "Spied on {}'s Trade Routes!".format(victim)
+            message = self.Relationships[self.Relationships['Regent']==Target].to_string()
         elif Type == 'Investigate':
-            reward = 0
-            temp = self.Geography[self.Geography['Province']==Province].copy()
-            message = "Failed to find evidence that {} used espionage on them.".format(victim)
-            temp = self.Espionage[self.Espionage['Regent']==Target].copy()
-            temp = temp[temp['Target']==Regent].copy()
-            found = 0
-            if temp.shape[0] == 0:
-                success = False  # no espionage from target
-            else:  # change diplomacy to show what they did and how it impacts relations
-                temp['roll'] = np.random.randint(1,100,temp.shape[0])
-                temp = temp.sort_values('roll')
-                found = np.sum(pd.concat([temp[temp[a]==self.Season][a] for a in ['Assassination', 'Assassination', 'Diplomacy', 'Troop Movements', 'Other']]))
-                if crit and temp.shape[0] >= 2:
-                    found = np.sum(pd.concat([temp[temp[a]==self.Season-1][a] for a in ['Assassination', 'Assassination', 'Diplomacy', 'Troop Movements', 'Other']]))
-                self.add_relationship(Target, Regent, Diplomacy=-1*found)
-            if success:
-                temp = self.Relationships.copy()
-                temp = temp[temp['Regent']==Regent].copy()
-                try:
-                    reward = 5 + -1*temp[temp['Other']==Target]['Diplomacy'].values[0]
-                except:
-                    reward = 5
-                message = "Determined if {} used espionage on them.".format(victim)
-            
+            if success == False:
+                message = 'No Espionage uncovered from {}.'.format(victim)
+            else:
+                temp = self.Espionage[self.Espionage['Regent']==Target][self.Espionage['Target']==Regent].groupby(['Regent','Target']).max().reset_index()
+                if temp.shape[0] == 0:
+                    message = 'No Espionage uncovered from {}.'.format(victim)
+                else:
+                    message = '{} tried to'.format(victim)
+                    found = 0
+                    if temp['Assassination'].values[0] != '' and found == 0:
+                        when = 3*(self.Season - temp['Assassination'].values[0])
+                        message = message + ' tried to assassinate you roughly {} months ago'.format(str(when))
+                        if crit == False:
+                            found = 1
+                        self.add_relationship(Regent, Target, Diplomacy=-5)
+                    if temp['Diplomacy'].values[0] != '' and found == 0:
+                        when = 3*(self.Season - temp['Diplomacy'].values[0])
+                        message = message + ' looked into your alliances roughly {} months ago'.format(str(when))
+                        if crit == False:
+                            found = 1
+                        self.add_relationship(Regent, Target, Diplomacy=-2)
+                    if temp['Troop Movements'].values[0] != '' and found == 0:
+                        when = 3*(self.Season - temp['Troop Movements'].values[0])
+                        message = message + ' spied on your troop movements roughly {} months ago'.format(str(when))
+                        if crit == False:
+                            found = 1
+                        self.add_relationship(Regent, Target, Diplomacy=-2)
+                    if temp['Other'].values[0] != '' and found == 0:
+                        when = 3*(self.Season - temp['Troop Movements'].values[0])
+                        message = message + ' caused issues in your court nearly {} months ago'.format(str(when))
+                        if crit == False:
+                            found = 1
+                        self.add_relationship(Regent, Target, Diplomacy=-1)
+                    message = message + '.'
         else:
-            lst[5] = 1
+            lst[5] = self.Season
             reward = 0
             message = 'Failed attampt at {} against {}.'.format(Type, victim)
             if success == True:

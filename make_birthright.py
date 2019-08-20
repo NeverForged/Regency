@@ -1120,7 +1120,6 @@ def main():
         Game.add_ship('DA', 'Anuire', 'Coaster')
         Game.add_ship('DA', 'Anuire', 'Caravel')
     
-    
     Region = 'The Southern Coast'
     d = 'Roesone'
     p = 'Abbatuor'
@@ -2133,7 +2132,7 @@ def main():
     Game.add_troops('Go', p, 'Mercenary Cavalry')
     Game.add_troops('Go', p, 'Mercenary Cavalry')
     Game.add_troops('Go', p, 'Scouts')
-    p = 'Mettle'
+    p = 'Mettles'
     Game.add_province(p, d, Region, 'Go', Population=2, Magic=4, x=1690, y=1215, Terrain='Hills')
     Game.add_holding(p, 'Go', 'Law', 2)
     Game.add_holding(p, 'Go', 'Source', 3)
@@ -2194,7 +2193,7 @@ def main():
     Game.add_geo(p, 'Kal-Saitharak', Border=1)
     Game.add_geo(p, 'Abattoir', Border=1)
     Game.add_geo(p, 'Motile', Border=1)
-    Game.add_geo(p, 'Mettle', Border=1)
+    Game.add_geo(p, 'Mettles', Border=1)
 
     p = 'Sideath'
     Game.add_province(p, d, Region, 'Go', Population=2, Magic=7, x=1425, y=1385, Terrain='Forest')
@@ -2229,9 +2228,9 @@ def main():
     Game.add_holding(p, 'Go', 'Source', 4)
     Game.add_geo(p, "Mutian's Point", Border=1)
     Game.add_geo(p, 'Anathar', Border=1)
-    Game.add_geo(p, 'Mettle', Border=1)
+    Game.add_geo(p, 'Mettles', Border=1)
     Game.add_geo(p, "Sage's Fen", Border=1)
-    Game.add_geo(p, "Elfseye", Border=1)
+    Game.add_geo(p, "Elfseyes", Border=1)
     Game.add_geo(p, "Sunder Falls", Border=1)
     
     
