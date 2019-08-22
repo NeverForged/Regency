@@ -242,7 +242,7 @@ class DQNAgent(object):
                     low_pop = over[3]
                 provinces_i_care_about = [capital, high_pop, low_pop]
             for i, prov in enumerate(provinces_i_care_about):
-                if my_provinces[Game.Provinces['Province'] == prov]['Castle'].values[0] == 0:
+                if Game.Provinces[Game.Provinces['Province'] == prov]['Castle'].values[0] == 0:
                     state[26+i] = 1  # capital_no_castle, high_pop_no_castle, low_pop_no_castle
             '''
                 capital_can_have_road

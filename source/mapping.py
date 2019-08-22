@@ -147,7 +147,7 @@ class Mapping(object):
         G = nx.from_pandas_edgelist(travel, source='Provence', target='Neighbor', edge_attr=['Cost', 'Cost_Cal'])
         return nx.shortest_path(G, Start, End, 'Cost_Cal')
         
-    def show(self, fig_size=(10,10), bg=True, map_alpha=0.5, adj=100, line_len=90
+    def show(self, fig_size=(10,10), bg=True, map_alpha=0.5, adj=100, line_len=75
                 , caravans=True, shipping=False, roads=True, borders=False, show_holdings = True
                 , show_abbreviations=False, show_troops=False, show_castle=True, show_ships=True
                 , printable=False):

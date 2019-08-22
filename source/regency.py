@@ -1175,6 +1175,9 @@ class Regency(object):
         try:
             self.Seasons[self.Season]['Season']['Random Event'].values[0]
         except:
+            # un-busy Lieutenants
+            self.Lieutenants['Busy'] = False
+            #override
             override = self.random_override.copy()
             if Threshold < 1:  # flaot to int
                 Threshold = int(100*Threshold)
@@ -1440,7 +1443,7 @@ class Regency(object):
             while ans not in ['1', '2']:
                 self.clear_screen()
                 print('           --- Monsters ---')
-                print('How will {} deal with Monsters in their realm?'.format(self.Regents[self.Regents['Regent']==reg]['Full Name']))
+                print('How will {} deal with Monsters in their realm?'.format(self.Regents[self.Regents['Regent']==reg]['Full Name'].values[0]))
                 print()
                 print('[1] Adventure - Deal with it personally')
                 lieu = False
@@ -1563,7 +1566,7 @@ class Regency(object):
                     ans = 'hi'
                     while ans.lower()[0] != 'y' and ans.lower()[0] != 'n':
                         self.clear_screen()
-                        print('{}: There is a festival in {}: would you like to provide gifts for {} gold bars [you have {} Gold Bars]?'.format(self.Regents[self.Regents['Regent']==row['Regent']]['Full Name'], row['Province'], row['Cost'], row['Gold Bars'] ))
+                        print('{}: There is a festival in {}: would you like to provide gifts for {} gold bars [you have {} Gold Bars]?'.format(self.Regents[self.Regents['Regent']==row['Regent']]['Full Name'].values[0], row['Province'], row['Cost'], row['Gold Bars'] ))
                         ans = input('[y/n]')
                         if ans == 'y':
                             self.change_regent(row['Regent'], Gold_Bars = row['Gold Bars'] - row['Cost'])
@@ -1614,7 +1617,7 @@ class Regency(object):
                     ans = '0'
                     while ans.lower()[0] != '1' and ans.lower()[0] != '2':
                         self.clear_screen()
-                        print('{}, there is a Feud in {}, would you like to try and deal with it, or just pay {} for the damages?'.format(self.Regents[self.Regents['Regent']==row['Regent']]['Full Name'], row['Province'], row['Cost']))
+                        print('{}, there is a Feud in {}, would you like to try and deal with it, or just pay {} for the damages?'.format(self.Regents[self.Regents['Regent']==row['Regent']]['Full Name'].values[0], row['Province'], row['Cost']))
                         ans = input('[1] for Adventure to deal with it, [2] to pay for damages.')
                         if ans == '1':
                             self.add_to_override('Regent', ('Adventure'))
@@ -1724,7 +1727,7 @@ class Regency(object):
             while ans != 1:
                 self.clear_screen()
                 print('           --- Magical Event ---')
-                print('How will {} deal with a Magical Event in their realm?'.format(self.Regents[self.Regents['Regent']==reg]['Full Name']))
+                print('How will {} deal with a Magical Event in their realm?'.format(self.Regents[self.Regents['Regent']==reg]['Full Name'].values[0]))
                 print()
                 print('[1] Adventure - Deal with it personally')
                 lieu = False
@@ -1802,7 +1805,7 @@ class Regency(object):
             while ans == 0:
                 self.clear_screen()
                 print('   --- Natural Disaster ---  ')
-                print('A Natural disaster has struck in {}.  How will {} respond?'.format(row['Province'], self.Regents[self.Regents['Regent']==row['Regent']]['Full Name']))
+                print('A Natural disaster has struck in {}.  How will {} respond?'.format(row['Province'], self.Regents[self.Regents['Regent']==row['Regent']]['Full Name'].values[0]))
                 print()
                 print('[1] Ignore it and let {} fall to {} loyalty.'.format(row['Province'], row['Loyalty']))
                 if row['Cost'] <= row['Gold Bars']:
@@ -2395,8 +2398,7 @@ class Regency(object):
                         Regent = row['Regent']
                         # bonus first
                         self.Bonus = 1
-                        actors = list(self.Lieutenants[self.Lieutenants['Regent'] == Regent]['Lieutenant'])
-                        actors.append(self.Regents[self.Regents['Regent'] == Regent]['Full Name'].values[0])
+                        actors = [self.Regents[self.Regents['Regent'] == Regent]['Full Name'].values[0]] + list(self.Lieutenants[self.Lieutenants['Regent'] == Regent]['Lieutenant'])
                         for actor in actors:
                             # make sure Actor has not gone...
                             if actor not in list(dfs[dfs['Regent']==Regent]['Actor']):
@@ -2428,6 +2430,9 @@ class Regency(object):
                                     else:  # update action vector 
                                         # minor rewards are short-term trained...
                                         self.agent.train_short_memory(state, action, reward, self.agent.get_action_state(row['Regent'], self, None)[0], 'Action', invalid)
+                                        # Make Lieutenant Busy
+                                        if actor != self.Regents[self.Regents['Regent']==Regent]['Full Name'].values[0]:
+                                            self.change_lieutenant(Regent, actor, True)
                                         # self.agent.remember(state, decision,0, self.agent.get_action_state(row['Regent'], self, None)[0], 'Action', invalid)
                                         self.Seasons[self.Season]['Actions'][self.Action].loc[index] = [Regent, Actor, Action_Type, action, Decision, Target_Regent, Province, Target_Province, Target_Holding, Success, reward, State, invalid, Message, self.agent.get_action_state(row['Regent'], self, None)[0]]
                                         with open('games/' + self.GameName +'_' + str(self.Season) + '_' + str(self.Action) + '.pickle', 'wb') as handle:
@@ -2435,7 +2440,7 @@ class Regency(object):
                                     
                         self.Bonus = 0
                         # time for the actual action...
-                        
+                        actor = self.Regents[self.Regents['Regent']==Regent]['Full Name'].values[0]
                         invalid = True
                         tries = 0
                         while invalid == True:
@@ -2747,6 +2752,8 @@ class Regency(object):
                         if temp[temp['Capital']==True].shape[0] == 0:
                             temp = temp.sort_values('Population', ascending=False)
                             Province = temp.iloc[0]['Province']  # hardest one to hit
+                        else:
+                            Province = temp[temp['Capital']==True]['Province'].values[0]
                     else:
                         try:
                             Province = temp[temp['Capital']==True]['Province'].values[0]
@@ -2962,7 +2969,7 @@ class Regency(object):
                     return [Regent, actor, Type, 'Lieutenant', decision, '', '', '', '',  success, reward, state, False, message]
             # move_troops_defend_province
             elif decision[20] == 1:  #20, [troops, province, Target]
-                if state[44] == 0 or state[23]==0 or state[80] == 0 or state[94]==1:  # no defense needed/able to be done
+                if state[44] == 0 or state[94]==1:  
                     return [Regent, actor, Type, 'move_troops_defend_province', decision, '', '', '', '',  False, -1, state, True, '']
                 else:
                     if Target == None:
@@ -2980,7 +2987,9 @@ class Regency(object):
                         temp = temp[temp['Type'] != 0]
                         temp = temp[temp['Regent_x'] != temp['Regent_y']]
                         temp = temp[['Province', 'CR']].groupby('Province').sum().reset_index()
-                    Target_CR = temp.iloc[0]['CR']
+                    Target_CR = 0
+                    if temp.shape[0]>0:
+                        Target_CR = temp.iloc[0]['CR']
                     if len(troops) == 0 or len(provinces) == 0:
                         my_troops = self.Troops[self.Troops['Regent']==Regent]
                         my_troops = my_troops[my_troops['Garrisoned']==0]
@@ -3801,9 +3810,11 @@ class Regency(object):
         action = None
         self.clear_screen()
         
-        
+        lieu = False
         if bonus==True:
             print("----- {}'s Bonus Action -----".format(Actor))
+            if Actor != self.Regents[self.Regents['Regent']==Regent]['Full Name'].values[0]:
+                lieu = True
         else:
             print("----- {}'s Domain Action -----".format(Actor))
         print(self.Regents[self.Regents['Regent']==Regent][['Gold Bars','Regency Points']].to_string(index_names=False))
@@ -3811,10 +3822,11 @@ class Regency(object):
         self.maps.focus_regents([Regent])
         self.maps.show(show_abbreviations=True, show_troops=True, printable=True)
         while action == None:
-            GB = self.Regents[self.Regents['Regent']==Regent]['Gold Bars'].values[0]
-            RP = self.Regents[self.Regents['Regent']==Regent]['Regency Points'].values[0]
+            GB = int(self.Regents[self.Regents['Regent']==Regent]['Gold Bars'].values[0])
+            RP = int(self.Regents[self.Regents['Regent']==Regent]['Regency Points'].values[0])
             qy = input('[GB {}, RP {}] What does {} want to do? '.format(GB, RP, Actor))
             q1 = ''
+            # menu
             if qy.lower() == 'actions' or  qy.lower() == 'help' or qy.lower() == 'list': # ACTION LIST
                 action_lst = '''
                             Build (road or ship), Decree, Disband, Ungarrison, Agitate,\n
@@ -3826,8 +3838,13 @@ class Regency(object):
                             Adventure, Contest, Create (Holding), Declare (War), Diplomacy,\n 
                             Forge (Ley Lines), Fortify, Investiture, Rule, Trade (Route),\n
                             Magic (Cast a Realm Spell).
-                                              '''
+                                             '''
+                if lieu == True:
+                    action_lst = action_lst + 'Skip [to save Lieutenent Action for later]'
                 print(action_lst)
+            # skip
+            elif qy.lower() == 'skip' and lieu==True:
+                action = 44
             # Build (Road or Ship)
             elif qy.lower() == 'build': 
                 q2 = '0'
@@ -3969,8 +3986,92 @@ class Regency(object):
                             q1 = '0'
                             enemy = None
                         else:
-                            action = 9 + int(q1)    
-        # the action!       
+                            action = 9 + int(q1)
+            # grant
+            elif qy.lower() == 'grant':
+                while q1 not in list(self.Regents['Regent']) + ['0']:
+                    friends = set(list(list(self.Relationships[self.Relationships['Regent']==Regent][self.Relationships['Diplomacy']>0]['Other']) + 
+                                       list(self.Relationships[self.Relationships['Regent']==Regent][self.Relationships['Vassalage']>0]['Other']) +
+                                       list(self.Relationships[self.Relationships['Other']==Regent][self.Relationships['Vassalage']>0]['Regent'])))
+                    q1 = input('Who would you like to grant Gold Bars to? ["0" TO EXIT]\n['+', '.join(friends)+']\n')
+                if q1 != '0':
+                    targ = q1
+                    name = self.Regents[self.Regents['Regent']==targ]['Full Name'].values[0]
+                    while q1 not in [str(a) for a in range(GB+1)]:
+                        q1 = input('How many Gold Bars are you granting to {}?\n[Type "0" to exit]\n'.format(name))
+                    if q1 != '0':
+                        Number = int(q1)
+                        if targ in friends:
+                            action = 18
+                            friend = targ
+                        else:
+                            action = 17
+                            rando = targ
+            #lieutenant
+            elif qy.lower() == 'lieutenant':
+                while q1.lower() not in ['y','0']:
+                    q1 = input('Who are you hiring as a Lieutenant? [0 to exit]')
+                    if q1 != 0:
+                        Name = q1.title()
+                        q1 = input('Hire {} as a Lieutenant?'.format(Name))
+                        if q1.lower()=='y':
+                            action = 19
+                        else:
+                            Name = None
+            # Move
+            elif qy.lower() == 'move':
+                mytroops = self.Troops[self.Troops['Regent']==Regent][self.Troops['Garrisoned']==0].copy()
+                mytroops['Units'] = 1
+                mytroops = mytroops[['Type','Province','CR','Units']].groupby(['Type','Province','CR']).sum().reset_index()
+                if mytroops.shape[0] > 0:
+                    valid_regents = [Regent] + list(self.Relationships[self.Relationships['Regent']==Regent][self.Relationships['Vassalage']>0]['Other']) +  list(self.Relationships[self.Relationships['Regent']==Regent][self.Relationships['At War']>0]['Other']) + list(self.Relationships[self.Relationships['Other']==Regent][self.Relationships['Vassalage']>0]['Regent'])  # my vassals
+                    valid_regents = list(set(valid_regents))
+                    valid_targets = pd.merge(pd.DataFrame(valid_regents, columns=['Regent']), self.Provinces, on='Regent', how='left')
+                    valid_targets = valid_targets[['Province','Domain','Regent','Terrain','Waterway']]
+                    # get target
+                    while q1 not in list(valid_targets['Province']) + ['0']:
+                        print(valid_targets.to_string(index=False))
+                        q1 = input ("Where would you like to move troops to? \n[0 to exit/change action; must have Permission, be in a Vassalage Arrangement, or have Declared War to move in other Regent's Provinces]\n")
+                    if q1 != '0':
+                        Target = q1
+                        cost = 0
+                        # select troops to move
+                        lst = list(mytroops['Type'])
+                        while q1 != '0':
+                            while q1 not in lst + ['0']:
+                                print(mytroops.to_string(index=False))
+                                print()
+                                q1 = input('Which unit will you move? [Cost: {} GB]\n[One at a time until done, 0 to exit]\n'.format(str(cost)))
+                            if q1 != '0':
+                                troop_choice = (q1)
+                                while q1 not in list(mytroops[mytroops['Type']==troop_choice]['Province']):
+                                    q1 = input('From Where?\n['+', '.join(list(set(list(mytroops[mytroops['Type']==troop_choice]['Province']))))+']\n')
+                                from_prov = q1
+                                mytroops[mytroops['Type']==troop_choice][mytroops['Province']==from_prov]['Units'] = mytroops[mytroops['Type']==troop_choice][mytroops['Province']==from_prov]['Units'].values[0] - 1
+                                lst = list(mytroops['Type'])
+                                # get cost so far...
+                                ncost = self.get_travel_cost(Regent, from_prov, Target, unit=troop_choice, Path=False)
+                                print('This will cost {} GB to move {} from {} to {}'.format(str(ncost), troop_choice, from_prov, Target))
+                                while q1.lower() not in ['y', 'n', '0'] and cost + ncost <= GB:
+                                    q1 = input('Still want to move {} from {} to {}? [y/n]'.format(troop_choice, from_prov, Target))
+                                if q1.lower()=='y':
+                                    troops.append(troop_choice)
+                                    provinces.append(from_prov)
+                                    cost = cost + ncost
+                        if len(troops) != 0:
+                            tar_reg = self.Provinces[self.Provinces['Province']==Target]['Regent'].values[0]
+                            if tar_reg == Regent:
+                                action = 20
+                            elif tar_reg == '':
+                                action = 76
+                            elif self.Relationships[self.Relationships['Regent']==Regent][self.Relationships['Other']==tar_reg][self.Relationships['At War']==1]:
+                                action = 22
+                                enemy = tar_reg
+                            else:
+                                action = 21
+                                friend = tar_reg
+            # next
+        # the action!
         self.set_override(Regent, action, bonus, capital, high_pop, low_pop, enemy, friend, rando, enemy_capital, troops, provinces, Number, Name, Target, Type, holdings)
         print(self.override)
         print(self.bonus_override)
@@ -4406,6 +4507,7 @@ class Regency(object):
         
         '''
         reward = 0
+        message = 'Espionage attempt around {} failed.'.format(Type)
         # assassination flag for roll
         assassination = False
         if Type == 'Assassination':
@@ -4473,7 +4575,7 @@ class Regency(object):
                     reward = 5
                 if self.Regents[self.Regents['Regent']==Regent]['Attitude'].values[0] == 'Aggressive':
                     reward = 2*reward
-            message = self.Troops[self.Troops['Regent']==Target].to_string()
+                message = self.Troops[self.Troops['Regent']==Target].to_string()
         elif Type == 'Trade':
             lst[3] = self.Season
             reward = 0
@@ -4541,6 +4643,7 @@ class Regency(object):
         # update espionage thing ['Regent', 'Target', 'Assassination', 'Diplomacy', 'Troop Movements', 'Other']
         if success == True:
             self.Espionage = self.Espionage.append(pd.DataFrame([lst], columns=['Regent', 'Target', 'Assassination', 'Diplomacy', 'Troop Movements', 'Other']), sort=True)
+            self.Espionage = self.Espionage.reset_index()[['Regent', 'Target', 'Assassination', 'Diplomacy', 'Troop Movements', 'Other']]
         return success, reward, message
         
     def bonus_action_grant(self, Regent, Target, Amount):
@@ -4847,7 +4950,7 @@ class Regency(object):
         '''
         
         temp = self.Regents[self.Regents['Regent']==Regent].copy()
-        message = '{} went adventuring.'.format(temp.iloc[0]['Full Name'])
+        message = '{} went adventuring.'.format(temp['Full Name'].values[0])
         reward = 0
         if temp.iloc[0]['Player'] == False:
             check = int(temp.iloc[0]['Level']/3)+2
@@ -5272,7 +5375,7 @@ class Regency(object):
         cost = shortest
         dc = 5*shortest
         temp = self.Regents[self.Regents['Regent']==Regent]
-        message = '{} failed to make a ley line from {} to {}'.format(temp.iloc[0]['Full Name'], Province, Target)
+        message = '{} failed to make a ley line from {} to {}'.format(temp['Full Name'].values[0], Province, Target)
         if temp.iloc[0]['Gold Bars'] < cost or temp.iloc[0]['Regency Points'] < cost:
             success = False
         else:
@@ -5286,7 +5389,7 @@ class Regency(object):
                 dc = self.set_difficulty(dc, Regent, enemy)
             success, crit = self.make_roll(Regent, dc, 'Regency Bonus')  # classic for reasons  
         if success == True:
-            message = '{} forged ley lines from {} to {}'.format(temp.iloc[0]['Full Name'], Province, Target)
+            message = '{} forged ley lines from {} to {}'.format(temp['Full Name'].values[0], Province, Target)
             lst = nx.shortest_path(G, pair[0], pair[1], 'Border')
             for a in range(len(lst)-1):  # make all the paths
                 self.LeyLines = self.LeyLines.append(pd.DataFrame([[Regent, lst[a], lst[a+1]]], columns=self.LeyLines.keys()), ignore_index=True)
@@ -5393,7 +5496,7 @@ class Regency(object):
                     if cost <= temp.iloc[0]['Gold Bars']:
                         # make the castle
                         reward = 5+level
-                        message = '{} started construction on {}, a level {} castle in {}'.format(temp.iloc[0]['Full Name'],temp.iloc[0]['Castle Name'], level, Province)
+                        message = '{} started construction on {}, a level {} castle in {}'.format(temp['Full Name'].values[0],temp.iloc[0]['Castle Name'], level, Province)
                         # charge 'em
                         self.change_regent(Regent, Gold_Bars = temp.iloc[0]['Gold Bars'] - cost)
                         if crit == True:  # 2d6 off of the cost as per the rules
@@ -6426,8 +6529,8 @@ class Regency(object):
 
                 if len(set(attackers['Regent'])) > 1 or len(set(defenders['Regent'])) > 1:
                     message = message + '\n\nLeaders:'
-                    message = message + '\n[Offense]\n' + pd.merge(attackers[['Regent']],self.Regents[['Regent','Full Name']], on='Regent', how='left').copy().drop_duplicates()['Full Name'].to_string(index=False, header=False)
-                    message = message + '\n[Defense]\n' + pd.merge(defenders[['Regent']],self.Regents[['Regent','Full Name']], on='Regent', how='left').copy().drop_duplicates()['Full Name'].to_string(index=False, header=False)
+                    message = message + '\n[Offense]\n' + pd.merge(attackers[['Regent']],self.Regents[['Regent','Full Name']], on='Regent', how='left').copy().drop_duplicates()['Full Name'].values[0].to_string(index=False, header=False)
+                    message = message + '\n[Defense]\n' + pd.merge(defenders[['Regent']],self.Regents[['Regent','Full Name']], on='Regent', how='left').copy().drop_duplicates()['Full Name'].values[0].to_string(index=False, header=False)
                     
 
                 message = message + '\n\nStrength:'

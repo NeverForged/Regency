@@ -824,7 +824,7 @@ def main():
     Game.add_holding(p, 'Ca', 'Source', 2)
     Game.add_geo(p, 'Avarien', Border=1)
     Game.add_geo(p, 'Duriene', Border=1)
-    Game.add_geo(p, 'Bhrein', Border=1)
+    Game.add_geo(p, 'Bherin', Border=1)
     Game.add_geo(p, 'Alamsreft', Border=1)
     Game.add_geo(p, 'Haesrien', Border=1)
     Game.add_geo(p, 'Elevesnemiere', Border=1)
@@ -847,7 +847,7 @@ def main():
     Game.add_holding(p, 'Ca', 'Source', 2)
     Game.add_geo(p, 'Alamsreft', Border=1)
     Game.add_geo(p, 'Nabhriene', Border=1)
-    Game.add_geo(p, 'Bhrein', Border=1)
+    Game.add_geo(p, 'Bherin', Border=1)
     Game.add_geo(p, 'Caulnor', Border=1)
 
     Game.add_regent('LF', 'Laela Flaertes (Tuornen)', Archetype='Bard', Alignment='NG'
