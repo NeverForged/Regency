@@ -75,7 +75,7 @@ class Regency(object):
                             , 'Irregulars', 'Irregulars', 'Irregulars'
                             , 'Knights'
                             , 'Levies'
-                            , 'Mercenary Cavalry', 'Mercenary Infantry', 'Mercenary Irregulars', 'Mercenary Archers', 'Mercenary Pikeman'
+                            , 'Mercenary Cavalry', 'Mercenary Infantry', 'Mercenary Irregulars', 'Mercenary Archers', 'Mercenary Pikemen'
                             , 'Pikemen', 'Pikemen', 'Pikemen'
                             , 'Scouts', 'Scouts'
                             ]  
@@ -3011,7 +3011,7 @@ class Regency(object):
                     return [Regent, actor, Type, 'move_troops_defend_province',decision, '', '', Target, '', success, reward, state, invalid, message]
             # move_troops_defend_friend
             elif decision[21] == 1:  # 21, [friend, troops, province, Target]
-                if state[44] == 0 or state[81] == 0 or state[94]==1 or state[97]==0:  # no defense needed/able to be done
+                if state[44] == 0 or state[94]==1 or state[97]==0:  #
                     return [Regent, actor, Type, 'move_troops_defend_friend', decision, friend, '', '', '',  False, -1, state, True, '']
                 else:
                     if Target == None:
@@ -3045,7 +3045,7 @@ class Regency(object):
                                     i += 1
                                     cr = cr + row['CR']
                     success, reward, message = self.bonus_action_move_troops(Regent, troops, provinces, Target)
-                    reward = Target_CR
+                    reward = Target_CR + 5*state[81]
                     return [Regent, actor, Type, 'move_troops_defend_province', '', '', "", Target, '', success, reward, state, invalid, message]
             # move_troops_into_enemy_territory 
             elif decision[22] == 1:  # 22, [enemy, troops, provinces, Target]
@@ -3126,7 +3126,7 @@ class Regency(object):
                 else:
                     success, reward, message = self.bonus_action_muster_armies(Regent, troops, provinces)
                     reward = reward + 5*state[87] + state[43]
-                return [Regent, actor, Type, 'muster_army', decision, '',  provinces[0], '', '',  success, reward, state, False, '']
+                return [Regent, actor, Type, 'muster_army', decision, '',  provinces[0], '', '',  success, reward, state, False, message]
             #  muster_levies
             elif decision[24] == 1:  # 24, [provinces (troop = Levies)]
                 if state[34] == 0 or state[115] == 0:
@@ -3150,7 +3150,7 @@ class Regency(object):
                 troops = ['Levies' for a in range(len(provinces))]
                 success, reward, message = self.bonus_action_muster_armies(Regent, troops, provinces)
                 reward = reward +len(provinces)*state[43]
-                return [Regent, actor, Type, 'muster_levies', decision, '',  provinces[0], '', '',  success, reward, state, False, '']
+                return [Regent, actor, Type, 'muster_levies', decision, '',  provinces[0], '', '',  success, reward, state, False, message]
             # muster_mercenaries
             elif decision[25] == 1:  # 25, [troops, provinces]
                 if state[94]==1:
@@ -4024,10 +4024,10 @@ class Regency(object):
                 mytroops['Units'] = 1
                 mytroops = mytroops[['Type','Province','CR','Units']].groupby(['Type','Province','CR']).sum().reset_index()
                 if mytroops.shape[0] > 0:
-                    valid_regents = [Regent] + list(self.Relationships[self.Relationships['Regent']==Regent][self.Relationships['Vassalage']>0]['Other']) +  list(self.Relationships[self.Relationships['Regent']==Regent][self.Relationships['At War']>0]['Other']) + list(self.Relationships[self.Relationships['Other']==Regent][self.Relationships['Vassalage']>0]['Regent'])  # my vassals
+                    valid_regents = [Regent] + list(self.Relationships[self.Relationships['Regent']==Regent][self.Relationships['Vassalage']>0]['Other']) +  list(self.Relationships[self.Relationships['Regent']==Regent][self.Relationships['At War']>0]['Other']) + list(self.Relationships[self.Relationships['Other']==Regent][self.Relationships['Vassalage']>0]['Regent'])
                     valid_regents = list(set(valid_regents))
-                    valid_targets = pd.merge(pd.DataFrame(valid_regents, columns=['Regent']), self.Provinces, on='Regent', how='left')
-                    valid_targets = valid_targets[['Province','Domain','Regent','Terrain','Waterway']]
+                    valid_targets = pd.merge(pd.DataFrame(valid_regents, columns=['Regent']), self.Provinces, on='Regent', how='left').dropna()
+                    valid_targets = valid_targets[['Province','Domain','Regent','Terrain','Waterway']].dropna()
                     # get target
                     while q1 not in list(valid_targets['Province']) + ['0']:
                         print(valid_targets.to_string(index=False))
@@ -4038,16 +4038,17 @@ class Regency(object):
                         # select troops to move
                         lst = list(mytroops['Type'])
                         while q1 != '0':
+                            print(mytroops.to_string(index=False))
+                            print()
                             while q1 not in lst + ['0']:
-                                print(mytroops.to_string(index=False))
-                                print()
                                 q1 = input('Which unit will you move? [Cost: {} GB]\n[One at a time until done, 0 to exit]\n'.format(str(cost)))
                             if q1 != '0':
                                 troop_choice = (q1)
                                 while q1 not in list(mytroops[mytroops['Type']==troop_choice]['Province']):
                                     q1 = input('From Where?\n['+', '.join(list(set(list(mytroops[mytroops['Type']==troop_choice]['Province']))))+']\n')
                                 from_prov = q1
-                                mytroops[mytroops['Type']==troop_choice][mytroops['Province']==from_prov]['Units'] = mytroops[mytroops['Type']==troop_choice][mytroops['Province']==from_prov]['Units'].values[0] - 1
+                                temp1 = mytroops[mytroops['Type']==troop_choice][mytroops['Province'] == from_prov]
+                                
                                 lst = list(mytroops['Type'])
                                 # get cost so far...
                                 ncost = self.get_travel_cost(Regent, from_prov, Target, unit=troop_choice, Path=False)
@@ -4058,19 +4059,127 @@ class Regency(object):
                                     troops.append(troop_choice)
                                     provinces.append(from_prov)
                                     cost = cost + ncost
+                                    old1 = mytroops[mytroops['Type']==troop_choice]
+                                    old1 = old1[old1['Province']!=from_prov]
+                                    old = mytroops[mytroops['Type']!=troop_choice]
+                                    temp1['Units'] = temp1['Units'] - 1
+                                    temp1 = temp1[temp1['Units']>0]
+  
+                                    mytroops = pd.concat([old1,old,temp1])
+
                         if len(troops) != 0:
                             tar_reg = self.Provinces[self.Provinces['Province']==Target]['Regent'].values[0]
                             if tar_reg == Regent:
                                 action = 20
                             elif tar_reg == '':
                                 action = 76
-                            elif self.Relationships[self.Relationships['Regent']==Regent][self.Relationships['Other']==tar_reg][self.Relationships['At War']==1]:
+                            elif self.Relationships[self.Relationships['Regent']==Regent][self.Relationships['Other']==tar_reg][self.Relationships['At War']==1].shape[0]>0:
                                 action = 22
                                 enemy = tar_reg
                             else:
                                 action = 21
                                 friend = tar_reg
-            # next
+            # Muster
+            elif qy.lower() == 'muster':
+                while q1 not in ['0','1','2','3']:
+                    q1 = input('Which would you like to do: [1] Muster Armies [2] Raise Levies [3] Hire Mercenaries ([0] Exit)?\n')
+                if q1 == '1':  # muster
+                    race = self.Regents[self.Regents['Regent']==Regent]['Race'].values[0]
+                    temp = pd.merge(self.Holdings[self.Holdings['Regent']==Regent].copy()
+                                    , self.troop_units[self.troop_units['Type'] == race].copy()
+                                    , left_on='Type', right_on='Requirements Holdings'
+                                    , how='left').fillna(0)
+                    temp = temp[temp['Requirements Level']<=temp['Level']]
+                    temp = temp[temp['Unit Type'] != 0]
+                    temp = temp[temp['Unit Type'] != 'Levies']
+                    # can I afford it
+                    gold = self.Regents[self.Regents['Regent'] == Regent]['Gold Bars'].values[0]
+                    temp = temp[temp['Muster Cost'] <= gold]
+                    ttype = temp[['Unit Type','Muster Cost','Maintenance Cost','BCR']].drop_duplicates()
+                    cost = 0
+                    while q1 != '0':
+                        while q1 not in list(temp['Unit Type']) + ['0']:
+                            q1 =input(ttype.to_string(index=False) + '\n\n[Cost: {} GB] Muster which type of unit?\n[So Far:'.format(cost)+', '.join(troops)+']\n')
+                        if q1 != '0':
+                            troop_selected = q1
+                            ptemp = temp[temp['Unit Type']==troop_selected]
+                            while q1 not in list(ptemp['Province']) + ['0']:
+                                q1 = input('Where will you muster {}?\n['.format(troop_selected) + ', '.join(list(set(ptemp['Province'])))+']\n')
+                            if q1 != '0':
+                                cost = cost + temp[temp['Unit Type']==troop_selected]['Muster Cost'].values[0]
+                                troops.append(troop_selected)
+                                provinces.append(q1)
+                                action = 23
+                elif q1 == '2':  # levies
+                    temp = pd.merge(self.Holdings[self.Holdings['Regent']==Regent].copy()
+                        , self.troop_units[self.troop_units['Unit Type'] == 'Levies'].copy()
+                        , left_on='Type', right_on='Requirements Holdings'
+                        , how='left').fillna(0)
+                    temp = temp[temp['Requirements Level']<=temp['Level']]
+                    temp = temp[temp['Unit Type'] != 0]
+                    temp_ = pd.merge(temp[['Regent', 'Province']], self.Provinces[['Province', 'Regent', 'Population']], on=['Province', 'Regent'], how='left')
+                    temp_ = temp_[temp_['Population'] > 0]
+                    temp = pd.merge(temp_[['Province']], temp, on='Province', how='left')
+                    temp = pd.merge(temp[['Province', 'Level', 'BCR']], self.Provinces[['Province','Population']], on='Province', how='left')
+                    while q1 not in list(temp['Province'])+['0']:
+                        print(temp.to_string(index=False))
+                        q1 = input('Where are you raising Levies from? ([0] to exit)\n')
+                    prov_selected = q1
+                    if q1 != '0':
+                        limit = min(temp[temp['Province']==prov_selected]['Population'].values[0], temp[temp['Province']==prov_selected]['Level'].values[0]) 
+                        while q1 not in [str(a) for a in range(limit+1)]:
+                            q1 = input('How many units of Levies?\n[Each unit lowers the Population of the Province by 1]\n')
+                        if q1 != '0':
+                            for a in range(int(q1)):
+                                troops.append('Levies')
+                                provinces.append(prov_selected)
+                                action = 24
+                elif q1 == '3':  #mercs!
+                    temp = pd.concat([self.Provinces[self.Provinces['Regent']==Regent][['Province']]
+                                      , self.Holdings[self.Holdings['Regent']==Regent][['Province']]], sort=False)
+                    hire_provs = list(set(temp['Province']))
+                    mercs = self.troop_units[self.troop_units['Unit Type'].str.contains('Mercenary')]
+                    mercs = mercs[mercs['Muster Cost'] <= GB]
+                    mercs = mercs[['Unit Type', 'Type', 'Muster Cost', 'Maintenance Cost', 'BCR']]
+                    mercs['Unit Type'] = mercs['Unit Type'].str.replace('Mercenary ','')
+                    cost = 0
+                    while q1 != '0':
+                        while q1 not in list(mercs['Unit Type']) + ['0']:
+                            print(mercs.to_string(index=False)+'\n')
+                            q1 = input('[Cost: {} GB] Hire what type of Mercenaries? ([0] to exit)\n[So far: '.format(cost) + ', '.join(troops)+']\n')
+                        troop_selected = 'Mercenary ' + q1
+                        if q1 != '0':
+                            while q1 not in hire_provs + ['0']:
+                                q1 = input('Hire them in which Province?\n[' + ', '.join(hire_provs) + ']\n')
+                            if q1 != '0':
+                                cost = cost + self.troop_units[self.troop_units['Unit Type']==troop_selected]['Muster Cost'].values[0]
+                                troops.append(troop_selected)
+                                provinces.append(q1)
+                                action = 25
+            # Adventure
+			elif qy.lower() == 'adventure' and bonus==False:
+				action = 40
+			# contest
+			elif qy.lower() == 'contest' and bonus == False:
+				while q1 not in ['0', '1', '2']:
+					q1 = input('Contest [1] Holding(s) or [2] a Province')
+				if q1 == '1':
+					while q1 not in list(self.Holdings['Regent']) + ['0']:
+						q1 = input('Whose Holding will you contest?\n')
+					if q1 != '0':
+						enemy = q1
+						temp = self.Holdings[self.Holdings['Regent']==enemy]
+						print(temp.to_string(index=False))
+						types = ['Exit/None'] + list(set(temp['Type']))
+						while q1 not in 
+							q1 = input('Select a holding type:' + ', '.join(['[{}] {}'.format(i, a) for i, a in enmuerate(types))+'\n')
+						if q1 != '0':
+							Type = types[int(q1)]
+							temp = temp[temp['Type']==Type]
+							while q1 not in list(temp['Type']):
+								q1 = 'In which province?
+						
+			# next
         # the action!
         self.set_override(Regent, action, bonus, capital, high_pop, low_pop, enemy, friend, rando, enemy_capital, troops, provinces, Number, Name, Target, Type, holdings)
         print(self.override)
@@ -4950,7 +5059,7 @@ class Regency(object):
         '''
         
         temp = self.Regents[self.Regents['Regent']==Regent].copy()
-        message = '{} went adventuring.'.format(temp['Full Name'].values[0])
+        message = '{} went adventuring (advneturing = adventures that take more than 4 weeks game time).'.format(temp['Full Name'].values[0])
         reward = 0
         if temp.iloc[0]['Player'] == False:
             check = int(temp.iloc[0]['Level']/3)+2
