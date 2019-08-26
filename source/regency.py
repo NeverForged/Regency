@@ -3194,7 +3194,7 @@ class Regency(object):
                         else:
                             if target_type == None:
                                 target_type = temp.iloc[0]['Type_y']
-                            temp = temp[temp['Type']==target_type]
+                            temp = temp[temp['Type_y']==target_type]
                             check = 1+state[12]+state[13]+state[14]+state[15]+state[16]+3*state[17]
                             check2 = temp.shape[0]
                             for i in range(min([check, check2])):
@@ -3204,11 +3204,11 @@ class Regency(object):
                          reward = reward + state[87]*3 + 4*state[74]
                     return [Regent, actor, Type, 'contest_holding', decision, enemy, Target, '', target_type,  success, reward, state, False, message]
             # contest_province
-            elif decision[27] == 1:  # 27, enemy, [Target]
+            elif decision[27] == 1:  # 27, enemy, [provinces]
                 if state[3] == 1 or state[95] == 1 or state[116]==0:
                     return [Regent, actor, Type, 'contest_province', decision, '', '', '', '',  False, -1, state, True, '']
                 else:
-                    if Target==None:
+                    if len(provinces)==0:
                         temp = self.Provinces[self.Provinces['Regent'] == enemy]
                         temp = temp[temp['Contested'] == False]
                         temp = temp[temp['Loyalty'] != 'High']
@@ -3220,8 +3220,8 @@ class Regency(object):
                         temp = temp[temp['Level']==0]
                         temp['roll'] = np.random.randint(1,100,temp.shape[0])
                         temp = temp.sort_values('roll')
-                        Target = temp.iloc[0]['Province']
-                    success, reward, message = self.domain_action_contest(Regent, enemy, Target, 'Province')
+                        provinces.append(temp.iloc[0]['Province'])
+                    success, reward, message = self.domain_action_contest(Regent, enemy, Type='Province', Provinces=provinces)
                     reward = reward + state[87]*3
                     return [Regent, actor, Type, 'contest_province', decision, enemy, Target, '', '',  success, reward, state, False, message]
             # create_law_holding, _guild_, _temple_, _source_
@@ -4198,29 +4198,34 @@ class Regency(object):
                                     provinces.append(q1)
                                     provinces = list(set(provinces))
                 elif q1 == '2':
-                    while q1 not in list(self.Provinces['Regent']) + ['0']:
-                        q1 = input('Whose Province will you contest?\n')
-                    if q1 != '0':
-                        enemy = q1
-                        temp = Game.Provinces[Game.Provinces['Regent'] == enemy]
-                        temp = temp[temp['Contested'] == False]
-                        temp = temp[temp['Loyalty'] != 'High']
-                        temp = temp[temp['Loyalty'] != 'Average']
-                        temp_ =  Game.Holdings[Game.Holdings['Type']=='Law']
-                        temp_ = temp_[temp_['Regent'] != Regent]
-                        temp_ = temp_[temp_['Contested'] == False]
-                        temp = pd.merge(temp, temp_, on='Province', how='left').fillna(0)
-                        temp = temp[temp['Level']==0]
-                        print(temp[['Province', 'Domain', 'Region', 'Loyalty', 'Population', 'Magic']].to_string(index=False))
-                        if temp.shape[0] == 0:
-                            q1 = '0'
-                        else:
-                            while q1 not in list(temp['Province']) + ['0']:
-                                q1 = input('Which Province will you contest?\n')
-                            if q1 != '0':
-                                provinces.append(q1)
-                                action = 27
+                    temp = self.Provinces.copy()
+                    temp = temp[temp['Contested'] == False]
+                    temp = temp[temp['Loyalty'] != 'High']
+                    temp = temp[temp['Loyalty'] != 'Average']
+                    temp_ =  self.Holdings[self.Holdings['Type']=='Law']
+                    temp_ = temp_[temp_['Regent'] != Regent]
+                    temp_ = temp_[temp_['Contested'] == False]
+                    temp = pd.merge(temp, temp_[['Province','Level']], on='Province', how='left').fillna(0)
+                    temp = temp[temp['Level']==0]
+                    if temp.shape[0]==0:
+                        print('There are no Provinces that can be contested!')
+                    else:
+                        while q1 not in list(temp['Regent']) + ['0']:
+                            q1 = input('Whose Province will you contest?\n['+', '.join(list(set(temp['Regent'])))+']\n')
+                        if q1 != '0':
+                            enemy = q1
+                            temp = temp[temp['Regent']==enemy]
+                            print(temp[['Province', 'Domain', 'Region', 'Loyalty', 'Population', 'Magic']].to_string(index=False))
+                            if temp.shape[0] == 0:
                                 q1 = '0'
+                            else:
+                                while q1 not in list(temp['Province']) + ['0']:
+                                    q1 = input('Which Province will you contest?\n')
+                                if q1 != '0':
+                                    provinces.append(q1)
+                                    action = 27
+                                    q1 = '0'
+                                    Type = 'Province'
             # next
         # the action!
         self.set_override(Regent, action, bonus, capital, high_pop, low_pop, enemy, friend, rando, enemy_capital, troops, provinces, Number, Name, Target, Type, holdings)
@@ -5158,6 +5163,7 @@ class Regency(object):
         contest_provinces
         '''
         reward = 0
+        success = False
         Actor = self.Regents[self.Regents['Regent']==Regent]['Full Name'].values[0]
         Victim = self.Regents[self.Regents['Regent']==Target]['Full Name'].values[0]
         RP = self.Regents[self.Regents['Regent']==Regent]['Regency Points'].values[0]
@@ -5190,21 +5196,18 @@ class Regency(object):
             if len(failed_lst) > 0:
                 message = message + "failed to contest {}'s {} Holdings in {}.".format(Victim, Type, ', '.join(failed_lst))
             reward = len(contested_lst)
-        elif Type == 'Province':
-            try:
-                df = self.Provinces.copy()
-                Level = df[df['Regent']==Target][df['Province']==Provinces[0]]['Population'].values[0]
-                dc = self.set_difficulty(10 + Level, Regent, Target, hostile=True, action='Contest Province')
-                success, crit = self.make_roll(Regent, dc, 'Deception', action='Contest Province')
-                if crit == False:
-                    RP = RP - 1
-                if success == True:
-                    self.change_province(Provinces[0], Contested=True)
-                    message = "{} contested {}'s regency over {}.".format(Actor, Victim, Provinces[0])
-                else:
-                    message = "{} failed to contest {}'s regency over {}.".format(Actor, Victim, Provinces[0])
-            except:
-                message = "{} failed to contest {}'s regency over {}.".format(Actor, Victim, Provinces[0])
+        elif Type == 'Province':     
+            df = self.Provinces.copy()
+            Level = df[df['Regent']==Target][df['Province']==Provinces[0]]['Population'].values[0]
+            dc = self.set_difficulty(10 + Level, Regent, Target, hostile=True, action='Contest Province')
+            success, crit = self.make_roll(Regent, dc, 'Deception', action='Contest Province')
+            if crit == False:
+                RP = RP - 1
+            if success == True:
+                self.change_province(Provinces[0], Contested=True)
+                message = "{} contested {}'s regency over {}.".format(Actor, Victim, Provinces[0])
+            else:
+                message = "{} failed to contest {}'s regency over {}.".format(Actor, Victim, Provinces[0])     
         else:
             sucess = False
             message = ''
