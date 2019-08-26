@@ -236,7 +236,7 @@ def main():
             x, y, Population, Magic, Terrain, Capital, Waterway = 1751, 1851, 1, 6, 'Mountain', False, True
         elif i == 6:
             x, y, Population, Magic, Terrain, Capital, Waterway = 1762, 2031, 1, 5, 'Mountain', False, True
-        Game.add_province(p, domain, Region, 'CoL', x, y, Population=Population, Magic=Magic, Capital=Capital, Waterway=Waterway)
+        Game.add_province(p, domain, Region, 'CoL', x, y, Population=Population, Magic=Magic, Capital=Capital, Waterway=Waterway, Terrain=Terrain)
         
         if i == 0:
             Game.add_holding(p, 'CoL', 'Law', 1)

@@ -421,8 +421,8 @@ class DQNAgent(object):
         '''
         
         temp = Game.Regents.copy()
-        temp = pd.concat([temp[temp['Regent']==a] for a in regents_i_care_about])
-        temp = pd.concat([temp, Game.Regents[Game.Regents['Regent']==Regent]])
+        # temp = pd.concat([temp[temp['Regent']==a] for a in regents_i_care_about])
+        # temp = pd.concat([temp, Game.Regents[Game.Regents['Regent']==Regent]])
         if temp.shape[0] > 0:
             if temp[temp['Regent'] == friend]['Regency Points'].values[0] > temp[temp['Regent'] == Regent]['Regency Points'].values[0]:
                 state[51] = 1  # friend_has_more_regency

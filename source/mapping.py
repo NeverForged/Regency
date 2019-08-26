@@ -150,7 +150,7 @@ class Mapping(object):
     def show(self, fig_size=(10,10), bg=True, map_alpha=0.5, adj=100, line_len=75
                 , caravans=True, shipping=False, roads=True, borders=False, show_holdings = True
                 , show_abbreviations=False, show_troops=False, show_castle=True, show_ships=True
-                , printable=False):
+                , printable=False, ley_lines=True):
         '''
         Show the map
         '''
@@ -235,6 +235,11 @@ class Mapping(object):
             edgelist = [(row['Province'], row['Neighbor']) for i, row in Geography[Geography['Road']==1].iterrows() 
                         if row['Province'] in Plist and  row['Neighbor'] in Plist]
             nx.draw_networkx_edges(G,pos,edgelist,width=2.0,alpha=0.5,edge_color='xkcd:brown')
+            
+        if ley_lines:
+            edgelist = [(row['Province'], row['Other']) for i, row in Game.LeyLines.iterrows() 
+                        if row['Province'] in Plist and  row['Other'] in Plist]
+            nx.draw_networkx_edges(G,pos,edgelist,width=4.0,alpha=0.25,edge_color='aqua')
 
         # labels
         temp = pd.merge(pd.DataFrame(node_list, columns=['Province']), Game.Provinces.copy(), on='Province', how='left')

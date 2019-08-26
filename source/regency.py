@@ -1082,7 +1082,7 @@ class Regency(object):
             # start disbanding
             if 'Mercenary' in Type.split() and Real == True:
                 # oh no, potential Brigands!
-                success, _ = self.make_roll(Regent, 10, 'Persuasion', adj=False, dis=False)
+                success, _ = self.make_roll(Regent, 10, 'Persuasion', adj=False, dis=False, action='Disband Mercenaries and avoid Brigands')
                 if success == False:
                     self.change_province(Province, Brigands=True)
             if 'Levies' in Type.split() and Killed == False and Real == True:  # disbanded, so go back to their stuff.
@@ -3821,7 +3821,7 @@ class Regency(object):
         
         lieu = False
         if bonus==True:
-            print("----- {}'s Bonus Action -----".format(Actor))
+            print("----- {}'s Bonus Action [{}] -----".format(Actor, Regent))
             if Actor != self.Regents[self.Regents['Regent']==Regent]['Full Name'].values[0]:
                 lieu = True
         else:
@@ -3830,10 +3830,16 @@ class Regency(object):
             
         self.maps.focus_regents([Regent])
         self.maps.show(show_abbreviations=True, show_troops=True, printable=True)
+        temp = self.Regents[self.Regents['Regent']==Regent]
+        Divine, Arcane = False, False
+        if temp['Divine'].values[0]==True:
+            Divine = True
+        if temp['Arcane'].values[0]==True:
+            Arcane = True
         while action == None:
             GB = int(self.Regents[self.Regents['Regent']==Regent]['Gold Bars'].values[0])
             RP = int(self.Regents[self.Regents['Regent']==Regent]['Regency Points'].values[0])
-            qy = input('[GB {}, RP {}] What does {} want to do? '.format(GB, RP, Actor))
+            qy = input('[GB {}, RP {}] What does {} [{}] want to do? \n[LIST for a list of actions available]\n'.format(GB, RP, Actor, Regent))
             q1 = ''
             # menu
             if qy.lower() == 'actions' or  qy.lower() == 'help' or qy.lower() == 'list': # ACTION LIST
@@ -3849,7 +3855,7 @@ class Regency(object):
                             Magic (Cast a Realm Spell).
                                              '''
                 if lieu == True:
-                    action_lst = action_lst + 'Skip [to save Lieutenent Action for later]'
+                    action_lst = action_lst + 'Skip (to save Lieutenent Action for later)'
                 print(action_lst)
             # skip
             elif qy.lower() == 'skip' and lieu==True:
@@ -4226,6 +4232,179 @@ class Regency(object):
                                     action = 27
                                     q1 = '0'
                                     Type = 'Province'
+            # create holding
+            elif qy.lower() == 'create' and bonus == False:
+                lst = ['Law','Guild']
+                temp = self.Regents[self.Regents['Regent']==Regent]
+                if Divine == True:
+                    lst.append('Temple')
+                if Arcane == True:
+                    lst.append('Source')
+                while q1 not in [str(a) for a in range(len(lst)+1)]:
+                    q1 = input('Which type of Holding would you like to create:\n    '+', '.join(['[{}] {}'.format(i+1,t) for i, t in enumerate(lst)]) + '; [0] to exit\n')
+                if q1 != '0':
+                    Type = lst[int(q1)-1]
+                    temp = pd.merge(self.Provinces, self.Holdings[self.Holdings['Regent']==Regent][self.Holdings['Type']==Type][['Province','Level']], on='Province', how='left').fillna(-1)
+                    temp = temp[temp['Level']==-1]
+                    while q1 not in list(temp['Province']) + ['0']:
+                        q1 = input('Where would you like to make this {} holding?/n'.format(Type))
+                    if q1 != '0' and q1 != '':
+                        Target = q1
+                        if Type == 'Law':
+                            action = 28
+                        elif Type == 'Guild':
+                            action = 29
+                        elif Type == 'Temple':
+                            action = 30
+                        elif Type == 'Source':
+                            action = 31
+                        q1 = '0'
+            # declare
+            elif qy.lower() == 'declare' and bonus == False:
+                q1 = None
+                while q1 not in list(self.Provinces['Regent']) + ['0']:
+                    q1 = input('Who would you like to declare war on?\n[Target must be in control of a Province]\n')
+                if q1 != '0':
+                    enemy = q1
+                    action = 32
+            # diplomacy
+            elif qy.lower() == 'diplomacy' and bonus == False:
+                temp = self.Seasons[0]['Season']
+                if temp[temp['Regent']==Regent]['Court'].values[0]=='Dormant':
+                    print("You don't have a Court to alloow for Diplomatic Actions.")
+                else:
+                    lst = ['Form Alliance', 'Trade Agreement', 'Allow Troop Movement', 'Force Tribute']
+                    if self.Provinces[self.Provinces['Regent']==Regent][self.Provinces['Brigands']==True].shape[0]>0:
+                        lst.append('Deal With Brigands')
+                    try:
+                        oride = Game.random_override[Regent]
+                        if oride == 'Unrest or Rebellion':
+                            lst.append('Handle Unrest/Rebellion')
+                    except:
+                        None
+                    while q1 not in [str(a) for a in range(len(lst)+1)]:
+                        q1 = input('Which Diplomatic Activity will you engage in:\n'+', '.join(['[{}] {}'.format(i+1, a) for i, a in enumerate(lst)])+'; [0] to exit')
+                    if q1 != '0':
+                        if lst[int(q1)-1] == 'Form Alliance':
+                            while q1 not in list(self.Regents['Regent']) + ['0']:
+                                q1 = input('Which Regent will you form an Alliance with? ([0] to exit)\n')
+                            if q1 != '0':
+                                friend = q1
+                                action = 33
+                        elif lst[int(q1)-1] == 'Trade Agreement':
+                            while q1 not in list(self.Regents['Regent']) + ['0']:
+                                q1 = input('Which Regent will you form a Trade Agreement with? ([0] to exit)\n')
+                            if q1 != '0':
+                                rando = q1
+                                action = 34
+                        elif lst[int(q1)-1] == 'Allow Troop Movement':
+                            while q1 not in list(self.Provinces['Regent']) + ['0']:
+                                q1 = input('Which Regent will you ask to permission to march Troops through the domain of? ([0] to exit)\n')
+                            if q1 != '0':
+                                friend = q1
+                                action = 35
+                        elif lst[int(q1)-1] == 'Force Tribute':
+                            while q1 not in list(self.Regents['Regent']) + ['0']:
+                                q1 = input('Which Regent will you try to force to pay you 1 GB a Season? ([0] to exit)\n')
+                            if q1 != '0':
+                                enemy = q1
+                                action = 36
+                        elif lst[int(q1)-1] == 'Deal With Brigands':
+                            action = 37
+                        elif lst[int(q1)-1] == 'Handle Unrest/Rebellion':
+                            action = 38
+            # forge
+            elif qy.lower() == 'forge' and bonus == False and Arcane == True:
+                print(Arcane)
+                temp = self.Holdings[self.Holdings['Regent']==Regent][self.Holdings['Type']=='Source']
+                lst = list(set(temp['Province']))
+                print(temp.to_string())
+                if len(lst) > 0:                    
+                    while q1 not in lst + ['0']:
+                        q1 = input('Build a LeyLine From ...?\n['+', '.join(lst)+']\n')
+                    if q1 != '0':
+                        provinces.append(q1)
+                        q1 = None
+                        while q1 not in lst + ['0']:
+                            q1 = input('Build Ley Line from {} to ...?\n['+', '.join(lst)+']\n')
+                        if q1 != '0':
+                            provinces.append(q1)
+                            q1 = '0'
+                            action = 39
+            # fortify
+            elif qy.lower() == 'fortify' and bonus == False:
+                temp = self.Provinces[self.Provinces['Regent']==Regent]
+                print(temp[['Province','Domain', 'Population','Castle Name','Castle','Terrain','Capital']].to_string())
+                while temp.shape[0] > 0 and q1 not in list(temp['Province']) + ['0']:
+                    q1 = input('Where do you want to build a Castle?\n[' + ', '.join(list(temp['Province'])) + ']\n')
+                if q1 != '0':
+                    location = q1
+                    while q1 not in [str(a) for a in range(20)]:
+                        q1 = input('How large a castle?\n')
+                    if q1 != 0:
+                        Number = int(q1)
+                    if temp[temp['Province']==location]['Castle Name'].values[0] == '':
+                        while q1.lower() != 'y':
+                            q1 = input('What will you name this castle?\n')
+                            Name = q1
+                            q1 = input('Name your castle "{}"?\n([Y] or [N])\n'.format(Name))
+                    if temp[temp['Province']==location]['Capital'].values[0]==True:
+                        action = 41
+                        capital = location
+                    elif temp[temp['Province']==location]['Population'].values[0] > np.mean(temp['Population']):
+                        action = 42
+                        high_pop = location
+                    else:
+                        action = 43
+                        low_pop = location
+            # investiture
+            elif qy.lower() == 'investiture' and bonus == False:
+                lst = ['Invest']
+                if self.Provinces[self.Provinces['Contested']==True].shape[0] + self.Holdings[self.Holdings['Contested']==1].shape[0] > 0:
+                    lst.append('Divest')
+                lst.append('Become Vassal')
+                temp = pd.merge(self.Provinces[self.Provinces['Regent']==''], self.Troops[self.Troops['Regent']==Regent][['Province','Type']].groupby('Province').count().reset_index(), on='Province', how='left').fillna(0)
+                if temp[temp['Type']>0].shape[0]>0:
+                    lst.append('Claim')
+                while q1 not in [str(a) for a in range(len(lst)+1)]:
+                    q1 = input('What type of Investiture?\n[' + ', '.join(['[{}] {}'.format(i+1,a) for i, a in enumerate(lst)]) + '; [0] to exit]\n')
+                if q1 != '0':
+                    if q1 == '1':  # Investiture
+                        while q1 not in list(self.Regents['Regent']):
+                            q1 = input('Who are you going to Invest your lands or holdings to?\n')
+                        if q1 != '0':
+                            while q1 != '0':
+                                friend = q1
+                                action = 44
+                                if len(provinces) > 0:
+                                    print('Investing Provinces: '+', '.join(provinces))
+                                if len(holdings) > 0:
+                                    print('Investing Holdings: ' + ', '.join(['{} in {}'.format(a[1],a[0]) for a in holdings]))
+                                in_lst = []
+                                if self.Provinces[self.Provinces['Regent']==Regent].shape[0]>0:
+                                    in_lst.append('Provinces')
+                                if self.Holdings[self.Holdings['Regent']==Regent].shape[0]>0:
+                                    in_lst.append('Holdings')
+                                while q1 not in [str(a) for a in range(len(in_lst)+1)]:
+                                    q1 = input('Which to Invest: '+','.join(['[{}] {}'.format(i+1,a) for i, a in enumerate(in_lst)]))
+                                if q1 != '0':
+                                    if in_lst[int(q1)-1] == 'Provinces':
+                                        temp = self.Provinces[self.Provinces['Regent']==Regent]
+                                        while q1 not in list(temp['Province']) + ['0']:
+                                            q1 = input('Invest which province:\n[' + ', '.join(list(temp['Province'])) + ']\n')
+                                        provinces.append(q1)
+                                    elif in_lst[int(q1)-1] == 'Holdings':
+                                        temp = self.Holdings[self.Holdings['Regent']==Regent]
+                                        while q1 not in list(temp['Type']):
+                                            q1 = input('Invest which type of holding:\n[' + ', '.join(list(set(temp['Type']))) + ']\n')
+                                        AA = q1
+                                        while q1 not in list(temp[temp['Type']==AA]['Province']):
+                                            q1 = input('Invest which {} holding:\n[' + ', '.join(list(set(temp[temp['Type']==AA]['Province']))) + ']\n')
+                                        BB = q1
+                                        holdings.append((BB,AA))
+
+                            
+                                        
             # next
         # the action!
         self.set_override(Regent, action, bonus, capital, high_pop, low_pop, enemy, friend, rando, enemy_capital, troops, provinces, Number, Name, Target, Type, holdings)
@@ -4326,7 +4505,7 @@ class Regency(object):
             # not always opposed
             target = temp[temp['Province']==Road]['Regent'].values[0]
             if target != Regent:
-                dc = self.set_difficulty(5, Regent, target)
+                dc = self.set_difficulty(5, Regent, target, action='Build Road', hostile=True)
             else:
                 dc = 5
 
@@ -4335,7 +4514,7 @@ class Regency(object):
                 crit =  False
             else:
                 self.change_regent(Regent, Gold_Bars = self.Regents[self.Regents['Regent']==Regent]['Gold Bars'].values[0] - cost)
-                success, crit = self.make_roll(Regent, dc, 'Persuasion')
+                success, crit = self.make_roll(Regent, dc, 'Persuasion', action='Build Road')
             if success:
                 progress = cost
                 if crit:
@@ -4370,7 +4549,7 @@ class Regency(object):
                 dc = 10
             else:
                 dc = 5
-            success, crit = self.make_roll(Regent, dc, 'Persuasion')   
+            success, crit = self.make_roll(Regent, dc, 'Persuasion', action='Build Ship')   
             if cost > GB:
                 success = False
                 reward = 0
@@ -4429,7 +4608,7 @@ class Regency(object):
             success = False
             crit =  False
         else:
-            success, crit = self.make_roll(Regent, dc, skill, adj, dis)
+            success, crit = self.make_roll(Regent, dc, skill, adj, dis, action='Make Decree')
         if success:
             if decType == 'Asset Seizure':
                 roll = np.random.randint(1,6,1)[0]
@@ -4561,7 +4740,7 @@ class Regency(object):
         tname = self.Regents[self.Regents['Regent']==Target]['Full Name'].values[0]
         # set the dc
         adj = (Conflict == False)
-        dc = self.set_difficulty(dc, Regent, Target, hostile=Conflict)
+        dc = self.set_difficulty(dc, Regent, Target, hostile=Conflict, action='Agitate')
         # roll 'em
         success, crit = self.make_roll(Regent, dc, 'Persuasion', adj=False, dis=False, action='Agitate')
         add = -1*Conflict + 1-Conflict
@@ -4682,11 +4861,11 @@ class Regency(object):
             dc = dc + np.sum(temp[temp['Type']=='Law']['Level'])
             
         # now, opposition
-        dc = self.set_difficulty(dc, Regent, Target, hostile=True, assassination=assassination, action='Espionage')
+        dc = self.set_difficulty(dc, Regent, Target, hostile=True, assassination=assassination, action='Espionage {}'.format(Type))
         if Type == 'Investigate':
-            success, crit = self.make_roll(Regent, dc, 'Insight')
+            success, crit = self.make_roll(Regent, dc, 'Insight', action='Espionage: {}'.format(Type))
         else:
-            success, crit = self.make_roll(Regent, dc, 'Deception')
+            success, crit = self.make_roll(Regent, dc, 'Deception', action='Espionage: {}'.format(Type))
         # capital check
         Capital = self.Provinces[self.Provinces['Province'] == Province]['Capital'].values[0]
         if cost > self.Regents[self.Regents['Regent']==Regent]['Gold Bars'].values[0]:
@@ -4827,7 +5006,7 @@ class Regency(object):
         cost = Amount
         dc = 9 + Amount
         reward = 0 - cost
-        success, crit = self.make_roll(Regent, dc, 'Persuasion')
+        success, crit = self.make_roll(Regent, dc, 'Persuasion', action='Grant')
         if cost > self.Regents[self.Regents['Regent']==Regent]['Gold Bars'].values[0]:
             success = False
         else:
@@ -5259,8 +5438,8 @@ class Regency(object):
                 dc = dc + temp.iloc[0]['Population']
                 if temp.iloc[0]['Diplomacy'] < -1:
                     hostile = True
-            dc = self.set_difficulty(dc, Regent, temp.iloc[0]['Regent_x'], hostile=hostile)
-        success, crit = self.make_roll(Regent, dc, 'Persuasion')
+            dc = self.set_difficulty(dc, Regent, temp.iloc[0]['Regent_x'], hostile=hostile, action='Create Holding')
+        success, crit = self.make_roll(Regent, dc, 'Persuasion', action='Create Holding')
         
         message = '!Regent! failed to start a {} Holding in {}'.format(Type, Province)
         if (Type == 'Temple' and self.Regents[self.Regents['Regent']==Regent]['Divine'].values[0]==False) or (Type == 'Source' and self.Regents[self.Regents['Regent']==Regent]['Arcane'].values[0]==False):
@@ -5401,8 +5580,8 @@ class Regency(object):
             
         # make check
         if change_dc == True:
-            dc = self.set_difficulty(dc, Regent, Target, hostile=hostile)
-        success, crit = self.make_roll(Regent, dc, 'Persuasion')
+            dc = self.set_difficulty(dc, Regent, Target, hostile=hostile, action='Diplomacy {}'.format(Type.replace('_',' ').title()))
+        success, crit = self.make_roll(Regent, dc, 'Persuasion', action='Diplomacy {}'.format(Type.replace('_',' ').title()))
         message = message_f
         
         if crit == False:  # recoup costs on a crit
@@ -5548,8 +5727,8 @@ class Regency(object):
             temp_ = temp_.sort_values('Diplomacy')
             enemy = temp_.iloc[0]['Regent']
             if enemy != Regent:
-                dc = self.set_difficulty(dc, Regent, enemy)
-            success, crit = self.make_roll(Regent, dc, 'Regency Bonus')  # classic for reasons  
+                dc = self.set_difficulty(dc, Regent, enemy, hostile=True, action='Forge Ley Line')
+            success, crit = self.make_roll(Regent, dc, 'Regency Bonus', action='Forge Ley Lines')  # classic for reasons  
         if success == True:
             message = '{} forged ley lines from {} to {}'.format(temp['Full Name'].values[0], Province, Target)
             lst = nx.shortest_path(G, pair[0], pair[1], 'Border')
@@ -5634,7 +5813,7 @@ class Regency(object):
         if temp.shape[0]>0:
             self.change_regent(Regent, Regency_Points= temp.iloc[0]['Regency Points']-1)
             if temp.iloc[0]['Population']>=0:  # valid action
-                success, crit = self.make_roll(Regent, 5, 'Persuasion')
+                success, crit = self.make_roll(Regent, 5, 'Persuasion', action='Fortify')
                 if success == True:
                     if temp.iloc[0]['Castle Name'] == '':
                         if name == None:
@@ -5748,8 +5927,8 @@ class Regency(object):
             Regency = self.Regents[self.Regents['Regent']==Regent]['Regency Points'].values[0]
             success = True
             if Divest == True:
-                dc = self.set_difficulty(10+self.Regents[self.Regents['Regent']==Target]['Regency Bonus'].values[0], Regent, Target, hostile=True)
-                success, crit = self.make_roll(Regent, dc, 'Regency Bonus')
+                dc = self.set_difficulty(10+self.Regents[self.Regents['Regent']==Target]['Regency Bonus'].values[0], Regent, Target, hostile=True, action='Investiture: Divest')
+                success, crit = self.make_roll(Regent, dc, 'Regency Bonus', action='Investiture: Divest')
             if Regency > 0 and Provinces.shape[0]+Holdings.shape[0] > 0:
                 # Provinces
                 invested = []
@@ -5820,7 +5999,7 @@ class Regency(object):
         elif Claim == True:
             dc = 10
             message = 'Failed to claim {}'.format(Target)
-            success, crit = self.make_roll(Regent, dc, 'Regency Bonus')
+            success, crit = self.make_roll(Regent, dc, 'Regency Bonus', action='Claim')
             if self.Provinces[self.Provinces['Province']==Target].shape[0] == 0 and self.Provinces[self.Provinces['Province']==Target]['Regent'].values[0]!='':
                 success = False
             else:
@@ -5922,7 +6101,7 @@ class Regency(object):
                 temp = temp[temp['Level']>-1]
             
                 # do it...
-                success, crit = self.make_roll(Regent, 10, 'Persuasion')
+                success, crit = self.make_roll(Regent, 10, 'Persuasion', action='Rule')
                 ruled = []
                 for i, row in temp.iterrows():
                     if GB >= 1 and RP >= row['Level']+1:
@@ -5948,7 +6127,7 @@ class Regency(object):
                 crit = False
             else:
                 self.change_regent(Regent, Gold_Bars = GB - value - 1, Regency_Points = RP - value - 1)
-                success, crit = self.make_roll(Regent, 10, 'Persuasion')
+                success, crit = self.make_roll(Regent, 10, 'Persuasion', action='Rule')
                 if success == True and crit == True:
                     self.change_province(Province, Population_Change=2)
                     reward = 5*(value+2)
@@ -6015,7 +6194,7 @@ class Regency(object):
             if self.Provinces[self.Provinces['Province']==Base][self.Provinces['Waterway']==True].shape[0] > 0 and self.Provinces[self.Provinces['Province']==Target][self.Provinces['Waterway']==True].shape[0] > 0:
                 Waterway = True
             self.change_regent(Regent, Gold_Bars = rrow['Gold Bars'] - 1, Regency_Points =  rrow['Regency Points'] - 1)
-            success, crit = self.make_roll(Regent, 10, 'Persuasion')
+            success, crit = self.make_roll(Regent, 10, 'Persuasion', action='Trade Route')
             if success == True:
                 if Waterway == True:
                     self.add_geo(Base, Target, Shipping=1)
@@ -6162,7 +6341,7 @@ class Regency(object):
                         # The province may also lose a grade of loyalty
                         save_ = False  # if no Regent, no protection
                         if Reg != '':
-                            save_, _ = self.make_roll(Reg, 10+self.Regents[self.Regents['Regent']==Regent]['Regency Bonus'].values[0], 'Regency Bonus')
+                            save_, _ = self.make_roll(Reg, 10+self.Regents[self.Regents['Regent']==Regent]['Regency Bonus'].values[0], 'Regency Bonus', action='Cast Blight')
                         if save_ == False:
                             self.change_loyalty(Province, -1)
                         if Reg != '':
@@ -6489,7 +6668,7 @@ class Regency(object):
                     dmg += 1
                     RP = RP - 10
                     GB = GB - 2
-            save, _ = self.make_roll(self.Provinces[self.Provinces['Province']==Target]['Regent'].values[0], 10+RB, 'Regency Bonus')
+            save, _ = self.make_roll(self.Provinces[self.Provinces['Province']==Target]['Regent'].values[0], 10+RB, 'Regency Bonus', action='Cast Raze')
             if save == True:
                 dmg = int(dmg/2)
                 if dmg == 0:
@@ -7197,20 +7376,46 @@ class Regency(object):
     # tools    
     def set_difficulty(self, base, Regent, Target, hostile=False, assassination=False, action=None):
         '''
-        This is how much money is thrown at the problem and how
-        much regeny is used to oppose it
+       How much regeny is used to oppose it
         '''
         rbid = 0
         gbid = 0
         base = int(base)
         temp = pd.concat([self.Regents[self.Regents['Regent']==a] for a in [Regent, Target]], sort=False)
         temp = pd.merge(temp, pd.concat([self.Relationships[self.Relationships['Other']==a] for a in [Regent, Target]], sort=False), on='Regent', how='left').fillna(0)
-        mult = -1*hostile + 1-hostile
         # enemy spends Regency
+        if hostile:
+            if temp[temp['Regent']==Target]['Player'].values[0]==True:
+                # ask player
+                q = None
+                while q not in [str(a) for a in range(11)]:
+                    q = input('Someone is trying to perform the following action against {} [{}]: {}\nHow much Regency will they spend to counter this?\n[RP {}, DC {}]'.format(temp[temp['Regent']==Target]['Full Name'].values[0], Target, action, temp[temp['Regent']==Target]['Regency Points'].values[0], base))
+                rbid = int(q)
+            else:
+                try:
+                    check = self.Relationships[self.Relationships['Regent']==Target][self.Relationships['Other']==Regent]['Diplomacy'].values[0]
+                    war = self.Relationships[self.Relationships['Regent']==Target][self.Relationships['Other']==Regent]['At War'].values[0]
+                except:
+                    check = 0
+                    war = 0
+                rbid = int(temp[temp['Regent']==Target]['Regency Bonus']/10) + int(temp[temp['Regent']==Target]['Regency Bonus']/100)
+                if check < 0:
+                    rbid = rbid - check
+                if war == 1:
+                    rbid = rbid + 3
+                if assassination == True:
+                    rbid = 10  # max!
+        if rbid > 10:
+            rbid = 10
+        if rbid > temp[temp['Regent']==Target]['Regency Bonus'].values[0]:
+            rbid = temp[temp['Regent']==Target]['Regency Bonus'].values[0]
+        
         if temp[temp['Regent']==Target].shape[0]>0:
             self.change_regent(Target, Regency_Points = temp[temp['Regent']==Target]['Regency Points'].values[0] - rbid)
+            
+        
 
-        difficulty = base - gbid - rbid
+        difficulty = base - rbid
         return difficulty
         
     def make_roll(self, Regent, dc, skill, adj=False, dis=False, action=None):
@@ -7229,6 +7434,11 @@ class Regency(object):
             # Regent spends gold to counter...
             if dc > 10 + bonus and  temp[temp['Regent']==Regent]['Gold Bars'].values[0] > 10:
                 gbid = dc - (10 + bonus)
+        else:
+            q = None
+            while q not in [str(a) for a in range(11)]:
+                q = input('How much gold will {}[{}] spend to boost their chances of succeeding on {}?\n[GB {}, DC {}]'.format(temp['Full Name'].values[0], Regent, action, int(temp['Gold Bars'].values[0]), dc))
+            gbid = int(q)
         if gbid >= temp[temp['Regent'] == Regent]['Gold Bars'].values[0]:
             # can't spend what you don't have
             gbid = temp[temp['Regent'] == Regent]['Gold Bars'].values[0] - 1
