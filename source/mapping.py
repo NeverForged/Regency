@@ -291,7 +291,7 @@ class Mapping(object):
             text = text + ' '.join(name) + r"$\bf{" + ']' + r"}$"
             # add regent name
             if Game.Regents[Game.Regents['Regent'] == Game.Provinces[Game.Provinces['Province']==Prov]['Regent'].values[0]].shape[0]>0:
-                text = text + '\n' + Game.Regents[Game.Regents['Regent'] == Game.Provinces[Game.Provinces['Province']==Prov]['Regent'].values[0]]['Full Name'].values[0]
+                text = text + '\n' + Game.Regents[Game.Regents['Regent'] == Game.Provinces[Game.Provinces['Province']==Prov]['Regent'].values[0]]['Full Name'].values[0] + ' [' + Game.Provinces[Game.Provinces['Province']==Prov]['Regent'].values[0] + ']'
             else:
                 text = text + '\n(Unclaimed)' 
             if show_castle:

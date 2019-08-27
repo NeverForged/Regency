@@ -741,10 +741,12 @@ class Regency(object):
                 if Waterway == True:
                     if sp <= 7:
                         sp = 7
-                sp = sp - Population
+                if race.lower() != 'elf':
+                    sp = sp - Population
+                    
                 if sp <0:
                     sp = 0
-                if Magic > sp:
+                if Magic > sp and race.lower() != 'elf':
                     Magic = sp
                 # change Holding Levels
                 for i, a in enumerate(['Law', 'Guild', 'Temple', 'Source']):
@@ -3438,12 +3440,13 @@ class Regency(object):
                     reward = reward + state[51]*2 + state[52]*2 + state[53]*2 -10
                     return [Regent, actor, Type, 'investiture_become_vassal_friend', decision, friend, '', '', '',  success, reward, state, False, message]
             # investiture_claim_province
-            elif decision[47] == 1:  # 47
+            elif decision[47] == 1:  # 47, Target
                 if state[3]==1 or state[95]==1 or state[96]==0 or state[117]==0:
                     return [Regent, actor, Type, 'investure_claim_province', decision, '', '', '', '',  False, -1, state, True, '']
                 else:
-                    Province = pd.merge(self.Troops[self.Troops['Regent']==Regent], self.Provinces[self.Provinces['Regent']==''], on='Province',how='inner')['Province'].values[0]
-                    success, reward, message = self.domain_action_investiture(Regent, Target=Province, Claim=True)
+                    if Target == None:
+                        Target = pd.merge(self.Troops[self.Troops['Regent']==Regent], self.Provinces[self.Provinces['Regent']==''], on='Province',how='inner')['Province'].values[0]
+                    success, reward, message = self.domain_action_investiture(Regent, Target=Target, Claim=True)
                     reward = reward + 10*state[97]
                     return [Regent, actor, Type, 'investure_claim_provinces', decision, '', Province, '', '',  success, reward, state, False, message]
             # rule_holdings
@@ -3856,7 +3859,24 @@ class Regency(object):
                                              '''
                 if lieu == True:
                     action_lst = action_lst + 'Skip (to save Lieutenent Action for later)'
+                action_lst = action_lst + '''\n
+                                List -> list of actions
+                                Relationships -> Your relationships
+                                Projects -> Your projects
+                                Troops -> your troops
+                                Navy -> your navy
+                                        '''
                 print(action_lst)
+            elif qy.lower() == 'relationships':
+                print(self.Relationships[self.Relationships['Regent']==Regent].to_string(index=False))
+            elif qy.lower() == 'projects':
+                print(self.Projects[self.Projects['Regent']==Regent].to_string(index=False))
+                print()
+                print('Projects with negative gold bars remaining will complete at the end of the action; 1d6 gold bars completes for each action at the end of the season.\n')
+            elif qy.lower() == 'troops':
+                print(self.Troops[self.Troops['Regent']==Regent].to_string(index=False))
+            elif qy.lower() == 'navy':
+                print(self.Navy[self.Navy['Regent']==Regent].to_string(index=False))
             # skip
             elif qy.lower() == 'skip' and lieu==True:
                 action = 44
@@ -4362,49 +4382,183 @@ class Regency(object):
                 lst = ['Invest']
                 if self.Provinces[self.Provinces['Contested']==True].shape[0] + self.Holdings[self.Holdings['Contested']==1].shape[0] > 0:
                     lst.append('Divest')
-                lst.append('Become Vassal')
+                if self.Relationships[self.Relationships['Other']==Regent][self.Relationships['Vassalage']>0].shape[0] == 0:
+                    lst.append('Become Vassal')
                 temp = pd.merge(self.Provinces[self.Provinces['Regent']==''], self.Troops[self.Troops['Regent']==Regent][['Province','Type']].groupby('Province').count().reset_index(), on='Province', how='left').fillna(0)
                 if temp[temp['Type']>0].shape[0]>0:
-                    lst.append('Claim')
+                    lst.append('Claim Province')
                 while q1 not in [str(a) for a in range(len(lst)+1)]:
                     q1 = input('What type of Investiture?\n[' + ', '.join(['[{}] {}'.format(i+1,a) for i, a in enumerate(lst)]) + '; [0] to exit]\n')
                 if q1 != '0':
-                    if q1 == '1':  # Investiture
-                        while q1 not in list(self.Regents['Regent']):
-                            q1 = input('Who are you going to Invest your lands or holdings to?\n')
+                    invlst = []
+                    if lst[int(q1)-1] == 'Invest':  # Investiture
+                        while q1 not in list(self.Regents['Regent']) + ['0']:
+                            q1 = input('Who will you invest your Provinces or Holdings to?\n')
                         if q1 != '0':
-                            while q1 != '0':
-                                friend = q1
-                                action = 44
-                                if len(provinces) > 0:
-                                    print('Investing Provinces: '+', '.join(provinces))
-                                if len(holdings) > 0:
-                                    print('Investing Holdings: ' + ', '.join(['{} in {}'.format(a[1],a[0]) for a in holdings]))
-                                in_lst = []
-                                if self.Provinces[self.Provinces['Regent']==Regent].shape[0]>0:
-                                    in_lst.append('Provinces')
-                                if self.Holdings[self.Holdings['Regent']==Regent].shape[0]>0:
-                                    in_lst.append('Holdings')
-                                while q1 not in [str(a) for a in range(len(in_lst)+1)]:
-                                    q1 = input('Which to Invest: '+','.join(['[{}] {}'.format(i+1,a) for i, a in enumerate(in_lst)]))
-                                if q1 != '0':
-                                    if in_lst[int(q1)-1] == 'Provinces':
-                                        temp = self.Provinces[self.Provinces['Regent']==Regent]
-                                        while q1 not in list(temp['Province']) + ['0']:
-                                            q1 = input('Invest which province:\n[' + ', '.join(list(temp['Province'])) + ']\n')
+                            friend = q1
+                            thename = self.Regents[self.Regents['Regent']==friend]['Full Name'].values[0]
+                            pvs = self.Provinces[self.Provinces['Regent']==Regent]
+                            hld = self.Holdings[self.Holdings['Regent']==Regent]
+                            lst = ['Exit/Finish']
+                            if pvs.shape[0]>0:
+                                lst.append('Province')
+                            if hld.shape[0]>0:
+                                lst.append('Holding')
+                            while q1 != '0':  # assign the holdings.
+                                if len(invlst) > 0:
+                                    print('\nInvesting {} with '.format(thename)+', '.join(invlst))
+                                while q1 not in [str(a) for a in range(len(lst))]:
+                                    q1 = input('Which type of property will you Invest:\n['+', '.join(['[{}] {}'.format(i, a) for  i, a in enumerate(lst)])+']\n')
+                                if lst[int(q1)] == 'Province':
+                                    while q1 not in list(pvs['Province']) + ['0']:
+                                        print(pvs[['Province','Domain','Population','Castle Name','Castle']].to_string(index=None))
+                                        q1 = input('Which Province are you investing to {}?\n'.format(thename))
+                                    if q1 != '0':
                                         provinces.append(q1)
-                                    elif in_lst[int(q1)-1] == 'Holdings':
-                                        temp = self.Holdings[self.Holdings['Regent']==Regent]
-                                        while q1 not in list(temp['Type']):
-                                            q1 = input('Invest which type of holding:\n[' + ', '.join(list(set(temp['Type']))) + ']\n')
-                                        AA = q1
-                                        while q1 not in list(temp[temp['Type']==AA]['Province']):
-                                            q1 = input('Invest which {} holding:\n[' + ', '.join(list(set(temp[temp['Type']==AA]['Province']))) + ']\n')
-                                        BB = q1
-                                        holdings.append((BB,AA))
-
-                            
-                                        
+                                        invlst.append('the province of {}'.format(q1))
+                                        action = 44
+                                elif lst[int(q1)] == 'Holding':
+                                    while q1 not in list(hld['Province']) + ['0']:
+                                        print(hld[['Province','Type','Level']].to_string(index=None))
+                                        q1 = input('Which Province?\n')
+                                    if q1 != '0':
+                                        a = q1
+                                        while q1 not in list(hld[hld['Province']==a]['Type']) + ['0']:
+                                            q1 = input('Which type of holding?\n')
+                                        if q1 != '0':
+                                            action = 44
+                                            holdings.append((a,q1))
+                                            invlst.append('a {} holding in {}'.format(q1, a))
+                    elif lst[int(q1)-1] == 'Divest':  # divest
+                        temp = pd.concat([self.Provinces[self.Provinces['Contested']==True][['Regent']] , self.Holdings[self.Holdings['Contested']==1][['Regent']]])
+                        while q1 not in list(temp['Regent']) + ['0']:
+                            q1 = input('Who will you divest of their Provinces or Holdings?\n['+', '.join(list(set(temp['Regent'])))+']\n')
+                        if q1 != '0':
+                            enemy = q1
+                            thename = self.Regents[self.Regents['Regent']==enemy]['Full Name'].values[0]
+                            pvs = self.Provinces[self.Provinces['Regent']==enemy][self.Provinces['Contested']==True]
+                            hld = self.Holdings[self.Holdings['Regent']==enemy][self.Holdings['Contested']==1]
+                            lst = ['Exit/Finish']
+                            if pvs.shape[0]>0:
+                                lst.append('Province')
+                            if hld.shape[0]>0:
+                                lst.append('Holding')
+                            while q1 != '0':  # assign the holdings.
+                                if len(invlst) > 0:
+                                    print('\nDivesting {} of '.format(thename)+', '.join(invlst))
+                                while q1 not in [str(a) for a in range(len(lst))]:
+                                    q1 = input('Which type of property will you Divest:\n['+', '.join(['[{}] {}'.format(i, a) for  i, a in enumerate(lst)])+']\n')
+                                if lst[int(q1)] == 'Province':
+                                    while q1 not in list(pvs['Province']) + ['0']:
+                                        print(pvs[['Province','Domain','Population','Castle Name','Castle']].to_string(index=None))
+                                        q1 = input('Which Province are you divesting from {}?\n'.format(thename))
+                                    if q1 != '0':
+                                        provinces.append(q1)
+                                        invlst.append('the province of {}'.format(q1))
+                                        action = 45
+                                elif lst[int(q1)] == 'Holding':
+                                    while q1 not in list(hld['Province']) + ['0']:
+                                        print(hld[['Province','Type','Level']].to_string(index=None))
+                                        q1 = input('Which Province?\n')
+                                    if q1 != '0':
+                                        a = q1
+                                        while q1 not in list(hld[hld['Province']==a]['Type']) + ['0']:
+                                            q1 = input('Which type of holding?\n')
+                                        if q1 != '0':
+                                            action = 45
+                                            holdings.append((a,q1))
+                                            invlst.append('a {} holding in {}'.format(q1, a))
+                    elif lst[int(q1)-1] == 'Become Vassal':  # vassal!
+                        temp = self.Relationships[self.Relationships['Vassalage']>0]
+                        temp['check']=1
+                        temp['Other'] = temp['Regent']
+                        temp = pd.merge(self.Relationships[self.Relationships['Regent']==Regent], temp[['Other','check']], on='Other', how='left').fillna(0)
+                        temp = temp[temp['check']==0]
+                        temp = temp[temp['Diplomacy']>0]
+                        while q1 not in list(set(temp['Other'])) + ['0']:
+                            q1 = input('Whose Vassal would you like to become?\n['+', '.join(list(set(temp['Other']))) + ']\n')
+                        if q1 != '0':
+                            friend = q1
+                            action = 46
+                    elif lst[int(q1)-1] == 'Claim Province':  # Claim
+                        temp = pd.merge(self.Provinces[self.Provinces['Regent']==''], self.Troops[self.Troops['Regent']==Regent][['Province','Type']].groupby('Province').count().reset_index(), on='Province', how='left').fillna(0)
+                        temp = temp[temp['Type']>0]
+                        while q1 not in list(temp['Province']) + ['0']:
+                            print(temp[['Province','Domain','Population','Magic','Castle Name','Castle']].to_string(index=False))
+                            q1 = input('Which Province are you trying to claim?\n')
+                        if q1 != '0':
+                            action=47
+                            Target = q1
+            # rule
+            elif qy.lower() == 'rule' and bonus == False:
+                lst = ['Exit/Finish']
+                if self.Holdings[self.Holdings['Regent']==Regent].shape[0]>0:
+                    lst.append('Holdings')
+                if self.Provinces[self.Provinces['Regent']==Regent].shape[0]>0:
+                    lst.append('Province')
+                while q1 not in [str(a) for a in range(len(lst))]:
+                    q1 = input('What would you like to rule:\n   '+ ', '.join(['[{}] {}'.format(i,a) for i,a in enumerate(lst)])+'\n')
+                if lst[int(q1)] == 'Holdings':
+                    temp = pd.merge(self.Holdings[self.Holdings['Regent']==Regent],self.Provinces[['Province','Population', 'Magic']],on='Province',how='left')
+                    temp.pop('Contested')
+                    temp1 = temp[temp['Type']!='Source']
+                    temp2 = temp[temp['Type']=='Source']
+                    temp1 = temp1[temp1['Level']<temp1['Population']]
+                    temp2 = temp2[temp2['Level']<temp2['Magic']]
+                    temp = pd.concat([temp1,temp2])
+                    while q1 != '0':
+                        print(temp.to_string(index=None))
+                        print()
+                        if len(holdings)>0:
+                            print('Ruling over '+', '.join(['a {} holding in {}'.format(a[1],a[0]) for a in holdings]))
+                        
+                        while q1 not in list(temp['Province']) + ['0']:
+                            q1 = input('Which Province? ([0] to exit)\n')
+                        if q1 != '0':
+                            a = q1
+                            while q1 not in list(temp[temp['Province']==a]['Type'])+['0']:
+                                q1 = input('Which type of Holding?\n[' + ', '.join(list(temp[temp['Province']==a]['Type']))+']\n')
+                            if q1 != '0':
+                                holdings.append((a,q1))
+                                action = 48
+                                holdings = list(set(holdings))
+                if lst[int(q1)] == 'Province':
+                    temp = self.Provinces[self.Provinces['Regent']==Regent][self.Provinces['Population']<10]
+                    while q1 not in list(temp['Province']) + ['0']:
+                        print(temp[['Province','Domain','Capital','Population','Magic','Castle Name','Castle','Terrain']].to_string(index=False))
+                        q1 = input('Which Province will you rule?')
+                    if q1 != '0':
+                        if temp[temp['Province']==q1]['Capital'].values[0]==True:
+                            action = 49
+                            capital = q1
+                        elif np.mean(temp['Population']) < temp[temp['Province']==q1]['Population'].values[0]:
+                            action = 50
+                            high_pop = q1
+                        else:
+                            action = 51
+                            low_pop = q1
+            # trade routes
+            elif qy.lower() == 'trade' and bonus == False:
+                temp = self.Relationships[self.Relationships['Regent']==Regent][self.Relationships['Trade Permission']>0]
+                while temp.shape[0] > 0 and self.Provinces[self.Povinces['Regent']==Regent].shape[0]>0 and q1 not in list(temp['Other']) + ['0']:
+                    q1 = input('Who will you establish a trade route with?\n['+', '.join(list(temp['Other']))+']\n')
+                if q1 != '0':
+                    if temp[temp['Other']==q1]['Diplomacy'].values[0] > 1:
+                        friend = q1
+                        add_this = 0
+                    else:
+                        rando = q1
+                        add_this = 1
+                    targ = q1
+                    while q1 not in list(self.Provinces[self.Povinces['Regent']==Regent]['Province']) + ['0']:
+                        q1 = input('From which of your provinces?\n[' + ', '.join(self.Provinces[self.Povinces['Regent']==Regent]['Province']) + ']\n')
+                    if q1 != '0':
+                        provinces.append(q1)
+                        while q1 not in list(self.Provinces[self.Povinces['Regent']==targ]['Province']) + ['0']:
+                            q1 = input("To which of {}'s Provinces?\n[".format(self.Regents[self.Regents['Regent']==targ].values[0]) + ', '.join(self.Provinces[self.Povinces['Regent']==targ]['Province']) + ']\n')
+                        if q1 != '0':
+                            provinces.append(q1)
+                            action = 52 + add_this
             # next
         # the action!
         self.set_override(Regent, action, bonus, capital, high_pop, low_pop, enemy, friend, rando, enemy_capital, troops, provinces, Number, Name, Target, Type, holdings)
