@@ -4652,36 +4652,37 @@ class Regency(object):
                             action = 58
                     elif lst[int(q1)] == 'Demagogue':  #59 friend, 60 enemy
                         while q1 != '0':
+                            q1 = None
                             while q1 not in ['0','1','2']:
-                                q1 = input('Do you want to [1] Increase Loyalty or [2] Decrease Loyalty?')
-                            if q1 == '1':
-                                while q1 not in list(self.Provinces['Regent']) + ['0']:
-                                    q1 = input('Whose lands will you Demagogue?\n')
-                                if q1 != '0':
+                                q1 = input('Do you want to [1] Increase Loyalty or [2] Decrease Loyalty?\n')
+                            if q1 != '0':
+                                if q1 == '1':
+                                    while q1 not in list(self.Provinces['Regent']) + ['0']:
+                                        q1 = input('Whose lands will you cast demagogue on?\n')
                                     friend = q1
-                                    while q1 not in list(self.Provinces[self.Provinces['Regent']==friend]['Province']) + ['0'] and plevel >= Limits[len(provinces)]:
-                                        if len(provinces) > 0:
-                                            print('Casting Demagogue to increase the Loyalty of: '+', '.join(provinces))
-                                        q1 = input('Select a Province to Demagogue. ([0] if done) \n')
-                                    if q1 != '0':
-                                        provinces.append(q1)
-                                        action = 59
-                                    if plevel < Limits[len(provinces)]:  # limit reached
-                                        q1 = '0'
-                            elif q1 == '2':
-                                while q1 not in list(self.Provinces['Regent']) + ['0']:
-                                    q1 = input('Whose lands will you Demagogue?\n')
-                                if q1 != '0':
+                                    action = 59
+                                    while q1 != '0':
+                                        while q1 not in list(self.Provinces[self.Provinces['Regent']==friend]['Province']) + ['0']:
+                                            q1 = input('Which province(s) will you demagogue?\n['+', '.join(self.Provinces[self.Provinces['Regent']==friend]['Province'])+']\n')
+                                        if q1 != '0':
+                                            provinces.append(q1)
+                                            if len(provinces) < 4:
+                                                if Limits[len(provinces)+1] > plevel:
+                                                    q1 = '0'
+                                elif q1 == '2':
+                                    while q1 not in list(self.Provinces['Regent']) + ['0']:
+                                        q1 = input('Whose lands will you cast demagogue on?\n')
                                     enemy = q1
-                                    while q1 not in list(self.Provinces[self.Provinces['Regent']==friend]['Province']) + ['0'] and plevel >= Limits[len(provinces)]:
-                                        if len(provinces) > 0:
-                                            print('Casting Demagogue to decrease the Loyalty of: '+', '.join(provinces))
-                                        q1 = input('Select a Province to Demagogue. ([0] if done) \n')
-                                    if q1 != '0':
-                                        provinces.append(q1)
-                                        action = 60
-                                    if plevel < Limits[len(provinces)]:  # limit reached
-                                        q1 = '0'
+                                    action = 60
+                                    while q1 != '0':
+                                        while q1 not in list(self.Provinces[self.Provinces['Regent']==enemy]['Province']) + ['0']:
+                                            q1 = input('Which province(s) will you demagogue?\n['+', '.join(self.Provinces[self.Provinces['Regent']==enemy]['Province'])+']\n')
+                                        if q1 != '0':
+                                            provinces.append(q1)
+                                            if len(provinces) < 4:
+                                                print(len(provinces), Limits)
+                                                if Limits[len(provinces)+1] > plevel:
+                                                    q1 = '0'
                     elif lst[int(q1)] == 'Legion of the Dead':
                         while q1 != '0':
                             temp = self.Holdings[self.Holdings['Regent'] == Regent].copy()
@@ -4701,6 +4702,7 @@ class Regency(object):
                                     enemy = temp[temp['Province']==q1]['Regent'].values[0]
                                     action = 61
                                     provinces.append(q1)
+                                q1='0'
 
         # the action!
         self.set_override(Regent, action, bonus, capital, high_pop, low_pop, enemy, friend, rando, enemy_capital, troops, provinces, Number, Name, Target, Type, holdings)

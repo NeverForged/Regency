@@ -913,7 +913,7 @@ def main():
     Game.add_geo(p, 'Tireste', Border=1, RiverChasm=1)
     Game.add_geo(p, 'Ghiere', Border=1, RiverChasm=1)
     Game.add_geo(p, "Tuor's Hold", Border=1, RiverChasm=1)
-    Game.add_geo(p, "Almsreft", Border=1, RiverChasm=1)
+    Game.add_geo(p, "Alamsreft", Border=1, RiverChasm=1)
 
     p = 'Nortmoor'
     Game.add_province(p, d, Region, 'CA',  Population=1, Magic=4, x=1000, y=1785, Waterway=True)
@@ -1581,7 +1581,7 @@ def main():
     Game.add_holding(p, 'HTC', 'Temple', 3)
     Game.add_holding(p, 'Bor', 'Guild', 3)
     Game.add_holding(p, 'AI', 'Source', 2)
-    Game.add_geo(p, 'Biliene', Shipping=1)
+    Game.add_geo(p, 'Ciliene', Shipping=1)
     p = 'Calant'
     Game.add_province(p, d, Region, 'AB', Population=3, Magic=4, x=590, y=1765, Terrain = 'Forest')
     Game.add_holding(p, 'AB', 'Law', 3)
@@ -1706,7 +1706,7 @@ def main():
     Game.add_holding(p, 'BA', 'Guild', 2)
     Game.add_holding(p, 'SH', 'Guild', 0)
     Game.add_holding(p, 'TA', 'Source', 4)
-    p = 'Lindholme'
+    p = 'Lindholmee'
     Game.add_province(p, d, Region, 'TD', Population=5, Magic=2, x=660, y=1600, Terrain='Forest'
                       , Waterway=True)
     Game.add_geo(p, 'Fhoruile', Border=1, RiverChasm=1)
@@ -1731,7 +1731,7 @@ def main():
 
     p = 'Serimset'
     Game.add_province(p, d, Region, 'TD', Population=2, Magic=5, x=685, y=1530, Terrain='Forest')
-    Game.add_geo(p, 'Lindholme', Border=1, Road=1)
+    Game.add_geo(p, 'Lindholmee', Border=1, Road=1)
     Game.add_geo(p, 'Greensward', Border=1)
     Game.add_geo(p, 'Freestead', Border=1, Road=1)
     Game.add_geo(p, 'Ice Haven', Border=1)
@@ -1900,7 +1900,7 @@ def main():
     Game.add_regent('TA', 'Torele Anviras', Archetype='Mage', Culture='A', Bloodline='An'
                     , Regency_Bonus=3, Alignment='NG')
 
-    Game.add_geo('Lindholm', 'Seasdeep', Shipping=1)
+    Game.add_geo('Lindholme', 'Seasdeep', Shipping=1)
 
 
     Game.add_regent('EM', 'Duchess Eriene Mierelen (Brosengae Royal Guild)', Culture='A', Race='Human', Bloodline='Ba'
@@ -2271,7 +2271,7 @@ def main():
     Game.add_geo(p, 'Awallaigh', Border=1, Road=1)
     Game.add_geo(p, 'Bhindraith', Border=1)
     Game.add_geo(p, 'Braethindyr', Border=1)
-    Game.add_geo(p, 'Sonnielind', Caravan=1)
+    Game.add_geo(p, 'Sonnelind', Caravan=1)
     for a in range(3):
         Game.add_troops('Fh', p, 'Elf Archers')
         Game.add_troops('Fh', p, 'Elf Archers')
@@ -2345,7 +2345,7 @@ def main():
                     , Regency_Bonus=1, Alignment='CE', Attitude='Aggressive')
     Game.add_geo(p, 'Freestead', Border=1)
     Game.add_geo(p, 'Serimset', Border=1)
-    Game.add_geo(p, 'Lindholme', Border=1)
+    Game.add_geo(p, 'Lindholmee', Border=1)
     Game.add_holding(p, 'EO', 'Source', 4) 
     p = 'Floodspath'
     Game.add_province(p, d, Region, 'LfBn', Population=3, Magic=6, x=860, y=1595, Terrain='Forest', Capital=True)
@@ -2362,7 +2362,7 @@ def main():
                     , Culture='A', Race='Human', Attitude='Aggressive')
     Game.add_geo(p, 'Rivien', Border=1, RiverChasm=1)
     Game.add_geo(p, 'Dhalaese', Border=1, RiverChasm=1)
-    Game.add_geo(p, 'Lindholme', Border=1, RiverChasm=1)
+    Game.add_geo(p, 'Lindholmee', Border=1, RiverChasm=1)
     Game.add_holding(p, 'EO', 'Source', 4)
     Game.add_holding(p, 'VFP', 'Temple', 2)
     p = 'Puinol'
@@ -2562,7 +2562,7 @@ def main():
     Game.add_geo(p, 'Floodspath', Border=1)
     Game.add_geo(p, 'Crushing Hills', Border=1)
     Game.add_geo(p, 'Bloodbay', Border=1)
-    Game.add_geo(p, 'Mhlliviene', Border=1)
+    Game.add_geo(p, 'Mehlliviene', Border=1)
     Game.add_holding(p, 'TG', 'Law', 1)
     Game.add_holding(p, 'GTr', 'Temple', 1)
     Game.add_holding(p, 'AD', 'Guild', 1)
@@ -2714,6 +2714,7 @@ def main():
         Game.add_ship('FD', 'Nolien', 'Caravel')
         Game.add_ship('FD', 'Nolien', 'Knarr')
         Game.add_ship('FD', 'Nolien', 'Caravel')
+        print('ran to here')
         Game.add_ship('FD', 'Nolien', 'Knarr')
         Game.add_ship('FD', 'Nolien', 'Coaster')
         
