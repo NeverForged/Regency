@@ -4559,7 +4559,82 @@ class Regency(object):
                         if q1 != '0':
                             provinces.append(q1)
                             action = 52 + add_this
-            # next
+            # magic
+            elif qy.lower() == 'magic' and bonus == False:
+                lst = ['(Exit)']
+                if Arcane == True:
+                    atemp = self.Holdings[self.Holdings['Regent']==Regent][self.Holdings['Type']=='Source']
+                    slevel = max(atemp['Level'])
+                    if slevel >= 3:
+                        lst.append('Alchemy')
+                        lst.append('Demagogue')
+                        lst.append('Legion of the Dead')
+                    if slevel >= 5:
+                        lst.append('Death Plague')
+                        lst.append('Mass Destruction')
+                        lst.append('Raze')
+                    if slevel >= 7:
+                        lst.append('Stronghold')
+                if Divine == True:
+                    dtemp = self.Holdings[self.Holdings['Regent']==Regent][self.Holdings['Type']=='Temple']
+                    tlevel = max(dtemp['Level'])
+                    if tlevel >= 1:
+                        lst.append('Bless Land')
+                    if tlevel >= 3:
+                        lst.append('Blight')
+                Limits = [1,5,11,17]
+                plevel = self.Regents[self.Regents['Regent']==Regent]['Level'].values[0]
+                while q1 not in [str(a) for a in range(len(lst))]:
+                    q1 = input('Cast Which Realm Spell:\n   '+', '.join(['[{}] {}'.format(i,a) for i, a in enumerate(lst)])+'\n')
+                if q1 != '0':
+                    # Realm Magic for Players
+                    if lst[int(q1)] == 'Alchemy':  # 54, 55  ALCHEMY
+                        q1 = None
+                        while q1 not in [str(a) for a in range(int(RP/4)+1)]:
+                            q1 = input('It costs 4 RP per GB.  How many GB would you like to make?\n')
+                        if q1 != '0':
+                            Number = int(q1)
+                            while q1 not in list(self.Regents['Regent']) + ['0']:
+                                q1 = input('Which Regent will recieve the gold bars? [{} for yourself]\n'.format(Regent))
+                            if q1 != '0':
+                                if q1 == Regent:
+                                    action = 54
+                                else:
+                                    friend = q1
+                                    action = 55
+                    elif lst[int(q1)] == 'Bless Land':  # bless land 56
+                        while q1 != '0':
+                            while q1 not in list(self.Provinces['Province']) + ['0'] and plevel >= Limits[len(provinces)]:
+                                if len(provinces) > 0:
+                                    print('Blessing: '+', '.join(provinces))
+                                q1 = input('Select a Province to Bless. ([0] if done) \n')
+                            if q1 != '0':
+                                provinces.append(q1)
+                                action = 56
+                            if plevel < Limits[len(provinces)]:  # limit reached
+                                q1 = '0'
+                    elif lst[int(q1)] == 'Blight':  # blight 57
+                        while q1 != '0':
+                            while q1 not in list(self.Provinces['Regent']) + ['0']:
+                                q1 = input('Whose lands will you Blight?\n')
+                            if q1 != '0':
+                                enemy = q1
+                                while q1 not in list(self.Provinces[self.Provinces['Regent']==enemy]['Province']) + ['0'] and plevel >= Limits[len(provinces)]:
+                                    if len(provinces) > 0:
+                                        print('Blighting: '+', '.join(provinces))
+                                    q1 = input('Select a Province to Blight. ([0] if done) \n')
+                                if q1 != '0':
+                                    provinces.append(q1)
+                                    action = 57
+                                if plevel < Limits[len(provinces)]:  # limit reached
+                                    q1 = '0'
+                    elif lst[int(q1)] == 'Death Plague':  # 58, enemy Death Plague
+                        while q1 not in list(self.Provinces['Regent']) + ['0']:
+                            q1 = input('Whose lands will you target with a Death Plague?\n')
+                        if q1 != '0':
+                            enemy = q1
+                            action = 58
+                    
         # the action!
         self.set_override(Regent, action, bonus, capital, high_pop, low_pop, enemy, friend, rando, enemy_capital, troops, provinces, Number, Name, Target, Type, holdings)
         print(self.override)
@@ -6383,7 +6458,7 @@ class Regency(object):
         message = 'Lacks the resources to cast Alchemy'
         temp = temp[temp['Level']>=3]
         if temp.shape[0] > 0:
-            RP = self.Regents[self.Regents['Regent']==Regent]['Regency Points'].values[0]
+            RP = int(self.Regents[self.Regents['Regent']==Regent]['Regency Points'].values[0])
             if RP >= 4*Amount:
                 success = True
                 message = "{} cast 'Alchemy', generating {} Gold Bars for {}".format(self.Regents[self.Regents['Regent']==Regent]['Full Name'].values[0], Amount, self.Regents[self.Regents['Regent']==Target]['Full Name'].values[0])
