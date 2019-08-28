@@ -3572,6 +3572,14 @@ class Regency(object):
                 if state[3]==1 or state[37]==0 or state[94]==1 or state[95]==1 or state[97]==0:
                     return [Regent, actor, Type, 'realm_magic_demagogue_friend', decision, friend, '', '', '',  False, -1, state, True, '']
                 else:
+                    if len(provinces)==0:
+                        temp = self.Provinces[self.Provinces['Regent']==friend]
+                        if temp.shape[0]==0:
+                            return [Regent, actor, Type, 'realm_magic_demagogue_friend', decision, friend, '', '', '',  False, -1, state, True, '']
+                        else:
+                            temp['roll'] = temp['Loyalty'].str.replace('Rebellious','0').replace('Poor','2').replace('Average','4').replace('High','6').astype(int)+np.random.randint(1,6,temp.shape[0])
+                            temp = temp.sort_values('roll')
+                            provinces = temp['Province']
                     success, reward, message = self.realm_magic_demagogue(Regent, friend, Increase=True, provinces=provinces)
                     return [Regent, actor, Type, 'realm_magic_demagogue_friend', decision, friend, '', '', '',  success, reward, state, False, message]
              # realm_magic_demagogue_enemy
@@ -3579,6 +3587,14 @@ class Regency(object):
                 if state[3]==1 or state[37]==0 or state[94]==1 or state[95]==1 or state[98]==0:
                     return [Regent, actor, Type, 'realm_magic_demagogue_enemy', decision, enemy, '', '', '',  False, -1, state, True, '']
                 else:
+                    if len(provinces) == 0:
+                        temp = self.Provinces[self.Provinces['Regent']==enemy]
+                        if temp.shape[0]==0:
+                            return [Regent, actor, Type, 'realm_magic_demagogue_friend', decision, friend, '', '', '',  False, -1, state, True, '']
+                        else:
+                            temp['roll'] = temp['Loyalty'].str.replace('Rebellious','4').replace('Poor','1').replace('Average','2').replace('High','3').astype(int) + np.random.randint(1,6,temp.shape[0])
+                            temp = temp.sort_values('roll')
+                            provinces = temp['Province']
                     success, reward, message = self.realm_magic_demagogue(Regent, enemy, Increase=False, provinces=provinces)
                     return [Regent, actor, Type, 'realm_magic_demagogue_enemy', decision, enemy, '', '', '',  success, reward, state, False, message]
             # realm_magic_legion_of_the_dead_enemy
@@ -4634,7 +4650,58 @@ class Regency(object):
                         if q1 != '0':
                             enemy = q1
                             action = 58
-                    
+                    elif lst[int(q1)] == 'Demagogue':  #59 friend, 60 enemy
+                        while q1 != '0':
+                            while q1 not in ['0','1','2']:
+                                q1 = input('Do you want to [1] Increase Loyalty or [2] Decrease Loyalty?')
+                            if q1 == '1':
+                                while q1 not in list(self.Provinces['Regent']) + ['0']:
+                                    q1 = input('Whose lands will you Demagogue?\n')
+                                if q1 != '0':
+                                    friend = q1
+                                    while q1 not in list(self.Provinces[self.Provinces['Regent']==friend]['Province']) + ['0'] and plevel >= Limits[len(provinces)]:
+                                        if len(provinces) > 0:
+                                            print('Casting Demagogue to increase the Loyalty of: '+', '.join(provinces))
+                                        q1 = input('Select a Province to Demagogue. ([0] if done) \n')
+                                    if q1 != '0':
+                                        provinces.append(q1)
+                                        action = 59
+                                    if plevel < Limits[len(provinces)]:  # limit reached
+                                        q1 = '0'
+                            elif q1 == '2':
+                                while q1 not in list(self.Provinces['Regent']) + ['0']:
+                                    q1 = input('Whose lands will you Demagogue?\n')
+                                if q1 != '0':
+                                    enemy = q1
+                                    while q1 not in list(self.Provinces[self.Provinces['Regent']==friend]['Province']) + ['0'] and plevel >= Limits[len(provinces)]:
+                                        if len(provinces) > 0:
+                                            print('Casting Demagogue to decrease the Loyalty of: '+', '.join(provinces))
+                                        q1 = input('Select a Province to Demagogue. ([0] if done) \n')
+                                    if q1 != '0':
+                                        provinces.append(q1)
+                                        action = 60
+                                    if plevel < Limits[len(provinces)]:  # limit reached
+                                        q1 = '0'
+                    elif lst[int(q1)] == 'Legion of the Dead':
+                        while q1 != '0':
+                            temp = self.Holdings[self.Holdings['Regent'] == Regent].copy()
+                            temp = temp[temp['Type']=='Source'][['Type', 'Level', 'Province']]
+                            temp = temp[temp['Level']>=3]
+                            temp = pd.concat([temp[['Province']], self.LeyLines[self.LeyLines['Regent']==Regent][['Province']]])
+                            temp = pd.merge(temp, self.Provinces[['Province', 'Domain', 'Regent']]).drop_duplicates()
+                            while q1 not in list(temp['Province']) + ['0']:
+                                print(temp.to_string(index=None))
+                                q1 = input('\nWhere will you summon an undead Army?\n')
+                            if q1 != '0':
+                                if temp[temp['Province']==q1]['Regent'].values[0] == Regent:
+                                    capital = q1
+                                    action = 62
+                                    provinces.append(q1)
+                                else:
+                                    enemy = temp[temp['Province']==q1]['Regent'].values[0]
+                                    action = 61
+                                    provinces.append(q1)
+
         # the action!
         self.set_override(Regent, action, bonus, capital, high_pop, low_pop, enemy, friend, rando, enemy_capital, troops, provinces, Number, Name, Target, Type, holdings)
         print(self.override)
