@@ -2834,6 +2834,7 @@ class Regency(object):
                     # get enemy provinces
                     temp = self.Provinces[self.Provinces['Regent'] == enemy].copy()
                     # if bonus action, must have a Guild in that province
+                    Province = temp['Province'].values[0]
                     if state[3] == 1:
                         check = self.Holdings[self.Holdings['Regent']==Regent]
                         temp = pd.merge(check[check['Type']=='Guild'][['Province']], temp, on='Province', how='left')
@@ -4556,7 +4557,7 @@ class Regency(object):
             # trade routes
             elif qy.lower() == 'trade' and bonus == False:
                 temp = self.Relationships[self.Relationships['Regent']==Regent][self.Relationships['Trade Permission']>0]
-                while temp.shape[0] > 0 and self.Provinces[self.Povinces['Regent']==Regent].shape[0]>0 and q1 not in list(temp['Other']) + ['0']:
+                while temp.shape[0] > 0 and self.Provinces[self.Provinces['Regent']==Regent].shape[0]>0 and q1 not in list(temp['Other']) + ['0']:
                     q1 = input('Who will you establish a trade route with?\n['+', '.join(list(temp['Other']))+']\n')
                 if q1 != '0':
                     if temp[temp['Other']==q1]['Diplomacy'].values[0] > 1:
@@ -4566,18 +4567,21 @@ class Regency(object):
                         rando = q1
                         add_this = 1
                     targ = q1
-                    while q1 not in list(self.Provinces[self.Povinces['Regent']==Regent]['Province']) + ['0']:
-                        q1 = input('From which of your provinces?\n[' + ', '.join(self.Provinces[self.Povinces['Regent']==Regent]['Province']) + ']\n')
+                    while q1 not in list(self.Provinces[self.Provinces['Regent']==Regent]['Province']) + ['0']:
+                        q1 = input('From which of your provinces?\n[' + ', '.join(self.Provinces[self.Provinces['Regent']==Regent]['Province']) + ']\n')
                     if q1 != '0':
                         provinces.append(q1)
-                        while q1 not in list(self.Provinces[self.Povinces['Regent']==targ]['Province']) + ['0']:
-                            q1 = input("To which of {}'s Provinces?\n[".format(self.Regents[self.Regents['Regent']==targ].values[0]) + ', '.join(self.Provinces[self.Povinces['Regent']==targ]['Province']) + ']\n')
+                        while q1 not in list(self.Provinces[self.Provinces['Regent']==targ]['Province']) + ['0']:
+                            q1 = input("To which of {}'s Provinces?\n[".format(self.Regents[self.Regents['Regent']==targ].values[0]) + ', '.join(self.Provinces[self.Provinces['Regent']==targ]['Province']) + ']\n')
                         if q1 != '0':
                             provinces.append(q1)
                             action = 52 + add_this
             # magic
             elif qy.lower() == 'magic' and bonus == False:
                 lst = ['(Exit)']
+                Evil = False
+                if self.Regents[self.Regents['Regent']==Regent][self.Regents['Alignment'].str.contains('E')].shape[0]>0:
+                    Evil = True
                 if Arcane == True:
                     atemp = self.Holdings[self.Holdings['Regent']==Regent][self.Holdings['Type']=='Source']
                     slevel = max(atemp['Level'])
@@ -4586,10 +4590,11 @@ class Regency(object):
                         lst.append('Demagogue')
                         lst.append('Legion of the Dead')
                     if slevel >= 5:
-                        lst.append('Death Plague')
+                        if Evil == True:
+                            lst.append('Death Plague')
                         lst.append('Mass Destruction')
                         lst.append('Raze')
-                    if slevel >= 7:
+                    if slevel >= 7 and self.Provinces[self.Provinces['Regent']==Regent].shape[0]>0:
                         lst.append('Stronghold')
                 if Divine == True:
                     dtemp = self.Holdings[self.Holdings['Regent']==Regent][self.Holdings['Type']=='Temple']
@@ -4638,7 +4643,7 @@ class Regency(object):
                                 while q1 not in list(self.Provinces[self.Provinces['Regent']==enemy]['Province']) + ['0'] and plevel >= Limits[len(provinces)]:
                                     if len(provinces) > 0:
                                         print('Blighting: '+', '.join(provinces))
-                                    q1 = input('Select a Province to Blight. ([0] if done) \n')
+                                    q1 = input('Select a Province to Blight. ([0] if done) \n[' + ', '.join(list(self.Provinces[self.Provinces['Regent']==enemy]['Province']))+']\n')
                                 if q1 != '0':
                                     provinces.append(q1)
                                     action = 57
@@ -4650,39 +4655,48 @@ class Regency(object):
                         if q1 != '0':
                             enemy = q1
                             action = 58
+                            q1 = '0'
                     elif lst[int(q1)] == 'Demagogue':  #59 friend, 60 enemy
                         while q1 != '0':
                             q1 = None
                             while q1 not in ['0','1','2']:
                                 q1 = input('Do you want to [1] Increase Loyalty or [2] Decrease Loyalty?\n')
-                            if q1 != '0':
-                                if q1 == '1':
-                                    while q1 not in list(self.Provinces['Regent']) + ['0']:
-                                        q1 = input('Whose lands will you cast demagogue on?\n')
+                            if q1 == '1':
+                                while q1 not in list(self.Provinces['Regent']) + ['0']:
+                                    q1 = input('Whose Lands will you cast "Demagogue" on?\n')
+                                if q1 != '0':
                                     friend = q1
                                     action = 59
-                                    while q1 != '0':
+                                    while len(provinces) < 4 and q1 != '0':
                                         while q1 not in list(self.Provinces[self.Provinces['Regent']==friend]['Province']) + ['0']:
-                                            q1 = input('Which province(s) will you demagogue?\n['+', '.join(self.Provinces[self.Provinces['Regent']==friend]['Province'])+']\n')
+                                            if len(provinces)>0:
+                                                print('So Far: '+', '.join(provinces))
+                                            q1 = input('Which Province will you cast Demagogue on?\n['+', '.join(list(self.Provinces[self.Provinces['Regent']==friend]['Province'])) + ']\n')
                                         if q1 != '0':
                                             provinces.append(q1)
-                                            if len(provinces) < 4:
-                                                if Limits[len(provinces)+1] > plevel:
-                                                    q1 = '0'
-                                elif q1 == '2':
-                                    while q1 not in list(self.Provinces['Regent']) + ['0']:
-                                        q1 = input('Whose lands will you cast demagogue on?\n')
+                                            provinces = list(set(provinces))
+                                            if len(provinces) >= 4:
+                                                q1 = '0'
+                                            else:
+                                                q1 = None
+                            elif q1 == '2':
+                                while q1 not in list(self.Provinces['Regent']) + ['0']:
+                                    q1 = input('Whose Lands will you cast "Demagogue" on?\n')
+                                if q1 != '0':
                                     enemy = q1
                                     action = 60
-                                    while q1 != '0':
+                                    while len(provinces) < 4 and q1 != '0':
                                         while q1 not in list(self.Provinces[self.Provinces['Regent']==enemy]['Province']) + ['0']:
-                                            q1 = input('Which province(s) will you demagogue?\n['+', '.join(self.Provinces[self.Provinces['Regent']==enemy]['Province'])+']\n')
+                                            if len(provinces)>0:
+                                                print('So Far: '+', '.join(provinces))
+                                            q1 = input('Which Province will you cast Demagogue on?\n['+', '.join(list(self.Provinces[self.Provinces['Regent']==enemy]['Province'])) + ']\n')
                                         if q1 != '0':
                                             provinces.append(q1)
-                                            if len(provinces) < 4:
-                                                print(len(provinces), Limits)
-                                                if Limits[len(provinces)+1] > plevel:
-                                                    q1 = '0'
+                                            provinces = list(set(provinces))      
+                                            if len(provinces) >= 4:
+                                                q1 = '0'
+                                            else:
+                                                q1 = None
                     elif lst[int(q1)] == 'Legion of the Dead':
                         while q1 != '0':
                             temp = self.Holdings[self.Holdings['Regent'] == Regent].copy()
@@ -4703,11 +4717,73 @@ class Regency(object):
                                     action = 61
                                     provinces.append(q1)
                                 q1='0'
-
-        # the action!
+                    elif lst[int(q1)] == 'Mass Destruction':
+                        while q1 not in list(self.Provinces['Regent']) + ['0']:
+                            q1 = input('Whose Lands will you cast "Mass Destruction" on?\n')
+                        if q1 != '0':
+                            enemy = q1
+                            action = 63
+                            while len(provinces) < 4 and q1 != '0':
+                                while q1 not in list(self.Provinces[self.Provinces['Regent']==enemy]['Province']) + ['0']:
+                                    if len(provinces)>0:
+                                        print('So Far: '+', '.join(provinces))
+                                    q1 = input('Which Province will you cast "Mass Destruction" on?\n['+', '.join(list(self.Provinces[self.Provinces['Regent']==enemy]['Province'])) + ']\n')
+                                if q1 != '0':
+                                    provinces.append(q1)
+                                    provinces = list(set(provinces))      
+                                    if len(provinces) >= 4:
+                                        q1 = '0'
+                                    else:
+                                        q1 = None
+                    elif lst[int(q1)] == 'Raze':  # Raze"
+                        temp = Game.Holdings[Game.Holdings['Regent'] == Regent].copy()
+                        temp = temp[temp['Type']=='Source'][['Type', 'Level', 'Province']]
+                        temp = temp[temp['Level']>=5]
+                        temp = pd.concat([temp[['Province']], Game.LeyLines[Game.LeyLines['Regent']==Regent][['Province']]])
+                        temp = pd.merge(temp, Game.Troops[['Regent', 'Province']][Game.Troops['Regent']==Regent], on='Province', how='inner').fillna(0)
+                        temp = pd.merge(temp[['Province']], Game.Provinces[Game.Provinces['Regent']==enemy][['Province', 'Castle']], on='Province', how='inner')
+                        valid = list(set(temp['Regent']))
+                        if len(valid)==0:
+                            print('Not sieging any castles!')
+                        else:
+                            while q1 not in valid + ['0']:
+                                q1 = input('Whose castle will you "Raze"?\n['+', '.join(valid)+']\n')
+                            if q1 != '0':
+                                enemy = q1
+                                print(temp[temp['Regent']==enemy][['Province','Castle Name','Castle']].to_string(index=False))
+                                while q1 not in list(temp[temp['Regent']==enemy]['Province']) + ['0']:
+                                    q1 = input('Which Province will you target?\n')
+                                if q1 != '0':
+                                    provinces.append(q1)
+                                    action = 64
+                                    q1 = '0'
+                    elif lst[int(q1)] == 'Stronghold':
+                        temp = self.Provinces[self.Provinces['Regent']==Regent]
+                        while q1 not in list(temp['Province'])+['0']:
+                            q1 = input('Where will you cast "Stronghold"?\n[' + ', '.join(lst(temp['Province'])) + ']\n')
+                        if q1 != '0':
+                            if temp[temp['Province']==q1]['Capital'] == True:
+                                capital = q1
+                                action = 65
+                            else:
+                                pop = temp[temp['Province']==q1]['Population'].values[0]
+                                if pop > np.mean(temp['Population']):
+                                    high_pop = q1
+                                    action = 66
+                                else:
+                                    low_pop = q1
+                                    action = 67
+                            q1 = input('Permanent? [Y/N]\n')
+                            if q1.lower() == 'y':
+                                action = action + 3
+                            q1 = '0'
+                        
+                                
+                                
+    # the action!
         self.set_override(Regent, action, bonus, capital, high_pop, low_pop, enemy, friend, rando, enemy_capital, troops, provinces, Number, Name, Target, Type, holdings)
-        print(self.override)
-        print(self.bonus_override)
+        #print(self.override)
+        #print(self.bonus_override)
     
     # Bonus Actions First
     def bonus_action_build(self, Regent, Province, Road=None, Ship=None, Name=None, Actor=None):
