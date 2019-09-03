@@ -2790,6 +2790,8 @@ class Regency(object):
                         if temp[temp['Capital']==True].shape[0] == 0:
                             temp = temp.sort_values('Population', ascending=False)
                             Province = temp.iloc[0]['Province']  # hardest one to hit
+                        else:
+                            Province = temp[temp['Capital']==True]['Province'].values[0]
                         success, reward, message = self.domain_action_espionage(Regent, enemy, Province, 'Troops')
                         return [Regent, actor, Type, 'espionage_discover_troop_movements', decision, enemy, '', Province, '', success, reward, state, invalid, message]
                     else:
@@ -2893,8 +2895,8 @@ class Regency(object):
                             temp['roll'] = np.random.randint(1,temp.shape[0]+1,temp.shape[0])
                             temp = temp.sort_values('roll')
                             Province = temp['Province'].values[0]
-                        success, reward, message = self.domain_action_espionage(Regent, enemy, Province, 'Corruption')
-                        return [Regent, actor, Type, 'espionage_corruption', decision, enemy, '', Province, '', success, reward, state, invalid, message]
+                    success, reward, message = self.domain_action_espionage(Regent, enemy, Province, 'Corruption')
+                    return [Regent, actor, Type, 'espionage_corruption', decision, enemy, '', Province, '', success, reward, state, invalid, message]
             # espionage_heresy 
             elif decision[15] == 1:  # 15, enemy
                 if (state[3] == 1 and state[36] == 0) or state[94]==1 or state[98]==0:
@@ -5268,7 +5270,8 @@ class Regency(object):
         else:
             success, crit = self.make_roll(Regent, dc, 'Deception', action='Espionage: {}'.format(Type))
         # capital check
-        Capital = self.Provinces[self.Provinces['Province'] == Province]['Capital'].values[0]
+        # Capital = self.Provinces[self.Provinces['Province'] == Province]['Capital'].values[0]
+
         if cost > self.Regents[self.Regents['Regent']==Regent]['Gold Bars'].values[0]:
             success = False
         else:
