@@ -278,6 +278,8 @@ class DQNAgent(object):
         relationships['Regent'] = relationships['Regent'].astype(str)
         relationships = pd.merge(Game.Regents[Game.Regents['Regent'] != Regent][['Regent']], relationships, on='Regent', how='left').fillna(0)
         relationships = relationships[relationships['Regent'] != Regent].copy()
+        # restrict to Regents that matter...
+        realtionships = pd.merge(prov_regent_list[['Regent']], relationships, on='Regent', how='left')
         # randomized roll for choices
         relationships['roll'] = np.random.randint(1,100,relationships.shape[0])
 
@@ -692,11 +694,11 @@ class DQNAgent(object):
         temp = temp[temp['Loyalty'] != 'High']
         temp = temp[temp['Loyalty'] != 'Average']
         temp_ =  Game.Holdings[Game.Holdings['Type']=='Law']
-        temp_ = temp_[temp_['Regent'] != Regent]
+        temp_ = temp_[temp_['Regent'] == enemy]
         temp_ = temp_[temp_['Contested'] == False]
         temp = pd.merge(temp, temp_, on='Province', how='left').fillna(0)
         temp = temp[temp['Level']==0]
-        if temp.shape[0]>0:
+        if temp.shape[0]!=0:
             state[116] = 1  #enemy_has_provinces_I_can_contest
             
         temp = pd.merge(Game.Troops[Game.Troops['Regent']==Regent], Game.Provinces[Game.Provinces['Regent']==''], on='Province',how='inner')['Province']
