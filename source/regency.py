@@ -2884,6 +2884,8 @@ class Regency(object):
                         if temp[temp['Capital']==True].shape[0] == 0:
                             temp = temp.sort_values('Population', ascending=False)
                             Province = temp.iloc[0]['Province']  # hardest one to hit
+                        else:
+                            Province = temp[temp['Capital']==True]['Province'].values[0]
                     else:
                         Province = None
                         try:
