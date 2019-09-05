@@ -5554,7 +5554,7 @@ class Regency(object):
                                 ship_from = start
                                 ship_to = tp[k+1]
                                 navy = self.Navy[self.Navy['Regent']==Regent]
-                                capacity_old = np.sum(navy[navy['Province']==ship_to]['Troop capacity']) 
+                                capacity_old = np.sum(navy[navy['Province']==ship_to]['Troop Capacity']) 
                         
                 if int(points/10) <= gold:
                     # do this!
@@ -7276,8 +7276,8 @@ class Regency(object):
 
                 if len(set(attackers['Regent'])) > 1 or len(set(defenders['Regent'])) > 1:
                     message = message + '\n\nLeaders:'
-                    message = message + '\n[Offense]\n' + pd.merge(attackers[['Regent']],self.Regents[['Regent','Full Name']], on='Regent', how='left').copy().drop_duplicates()['Full Name'].values[0].to_string(index=False, header=False)
-                    message = message + '\n[Defense]\n' + pd.merge(defenders[['Regent']],self.Regents[['Regent','Full Name']], on='Regent', how='left').copy().drop_duplicates()['Full Name'].values[0].to_string(index=False, header=False)
+                    message = message + '\n[Offense]\n' + pd.merge(attackers[['Regent']],self.Regents[['Regent','Full Name']], on='Regent', how='left').copy().drop_duplicates()['Full Name'].to_string(index=False, header=False)
+                    message = message + '\n[Defense]\n' + pd.merge(defenders[['Regent']],self.Regents[['Regent','Full Name']], on='Regent', how='left').copy().drop_duplicates()['Full Name'].to_string(index=False, header=False)
                     
 
                 message = message + '\n\nStrength:'
@@ -7791,26 +7791,31 @@ class Regency(object):
         temp = pd.merge(temp, pd.concat([self.Relationships[self.Relationships['Other']==a] for a in [Regent, Target]], sort=False), on='Regent', how='left').fillna(0)
         # enemy spends Regency
         if hostile:
-            if temp[temp['Regent']==Target]['Player'].values[0]==True:
-                # ask player
-                q = None
-                while q not in [str(a) for a in range(11)]:
-                    q = input('Someone is trying to perform the following action against {} [{}]: {}\nHow much Regency will they spend to counter this?\n[RP {}, DC {}]'.format(temp[temp['Regent']==Target]['Full Name'].values[0], Target, action, temp[temp['Regent']==Target]['Regency Points'].values[0], base))
-                rbid = int(q)
-            else:
-                try:
-                    check = self.Relationships[self.Relationships['Regent']==Target][self.Relationships['Other']==Regent]['Diplomacy'].values[0]
-                    war = self.Relationships[self.Relationships['Regent']==Target][self.Relationships['Other']==Regent]['At War'].values[0]
-                except:
-                    check = 0
+            try:
+                if temp[temp['Regent']==Target]['Player'].values[0]==True:
+                    # ask player
+                    q = None
+                    while q not in [str(a) for a in range(11)]:
+                        q = input('Someone is trying to perform the following action against {} [{}]: {}\nHow much Regency will they spend to counter this?\n[RP {}, DC {}]'.format(temp[temp['Regent']==Target]['Full Name'].values[0], Target, action, temp[temp['Regent']==Target]['Regency Points'].values[0], base))
+                    rbid = int(q)
+                else:
+                    try:
+                        check = self.Relationships[self.Relationships['Regent']==Target][self.Relationships['Other']==Regent]['Diplomacy'].values[0]
+                        war = self.Relationships[self.Relationships['Regent']==Target][self.Relationships['Other']==Regent]['At War'].values[0]
+                    except:
+                        check = 0
+                        war = 0
+                    rbid = int(temp[temp['Regent']==Target]['Regency Bonus']/10) + int(temp[temp['Regent']==Target]['Regency Bonus']/100)
+            except:
+                    rbid=0
+                    check=0
                     war = 0
-                rbid = int(temp[temp['Regent']==Target]['Regency Bonus']/10) + int(temp[temp['Regent']==Target]['Regency Bonus']/100)
-                if check < 0:
-                    rbid = rbid - check
-                if war == 1:
-                    rbid = rbid + 3
-                if assassination == True:
-                    rbid = 10  # max!
+            if check < 0:
+                rbid = rbid - check
+            if war == 1:
+                rbid = rbid + 3
+            if assassination == True:
+                rbid = 10  # max!
         if rbid > 10:
             rbid = 10
         try:
