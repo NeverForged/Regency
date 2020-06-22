@@ -664,8 +664,180 @@ class Regency(object):
             self.edit_relationship(Target, Faction, -1)
             mystring = mystring + ' and got caught!'
     
+    def action_build_stronghold(self, Faction, Stronghold, Location=None, Name=None, Settlement=None):
+        '''
+        Build or Expand stronghold (Action)
+        Build_castle_1
+        build_castle_2
+        build_castle_3
+        build_guild
+        build_temple_1
+        build_temple_3
+        build_monestary
+        build_mystic
 
+        Builds a stronghold.  No roll needed, just money.  If this is an upgrade to a 
+        current stronghold, the payment and time is the difference as the current building 
+        is incorporated into the new one.  Must either be the first stronghold built OR 
+        must have a stronghold adjacent to the area in which a stronghold will be built.
+        '''
+        if self.strongholds[self.strongholds['Faction']==Faction].shape[0] > 0:
+            temp1 = self.strongholds[['Faction','Area']].copy()
+            temp1['Neighbor'] = temp1['Area']
+            if Stronghold not in ['Tower','Circle']:  # Mystic has no road restriction
+                temp = pd.merge(self.strongholds[['Faction','Area']],self.geography[self.geography['Road/Port']==1][['Area','Neighbor']])
+            else:
+                temp = pd.merge(self.strongholds[['Faction','Area']],self.geography[['Area','Neighbor']])
+            temp = pd.concat([temp,temp1])
+            temp = temp[temp['Faction']==Faction].copy()
+            temp = pd.merge(temp,self.strongholds[['Area','Type','Faction','Level']], left_on=['Neighbor','Faction'], right_on=['Area','Faction'], how='left').fillna('')
+            areas = self.areas[self.areas['Waterway']==0][['Area','Population','Magic']].copy()
+            temp = pd.merge(temp,areas,left_on='Neighbor',right_on='Area',how='inner')
+        else:  # Any area will do
+            temp = pd.merge(self.strongholds[['Faction','Area']],self.geography[['Area','Neighbor']])
+            temp = pd.merge(temp,self.strongholds[['Area','Type','Faction','Level']], left_on=['Neighbor','Faction'], right_on=['Area','Faction'], how='left').fillna('')
+            areas = self.areas[self.areas['Waterway']==0][['Area','Population','Magic']].copy()
+            temp = pd.merge(temp,areas,left_on='Neighbor',right_on='Area',how='inner')
+
+        # make sure they don't already have a thing there
+        nolst = list(set(temp[temp['Type']==Stronghold]['Neighbor']))
+        if Stronghold == 'Small Temple':
+            nolst = list(set(nolst +  list(temp[temp['Type']=='Large Temple']['Neighbor'])))
+        if Stronghold in ['Manor', 'Keep', 'Castle']:  # Castle Stuff
+            if Stronghold == 'Manor' or Stronghold == 'Keep':
+                nolst = list(set(nolst +  list(temp[temp['Type']=='Keep']['Neighbor']) + list(temp[temp['Type']=='Palace']['Neighbor'])))
+            # check for castles in these areas already...
+            temp1 = pd.merge(self.strongholds,temp['Area'].drop_duplicates(),on='Area',how='left')
+            temp1 = pd.concat([temp1[
+            temp1['Type']==a] for a in ['Manor', 'Keep', 'Castle']])
+            temp1 = temp1[temp1['Faction'] != Faction]
+            [nolst.append(a) for a in list(temp1['Area'])]
+        elif Stronghold in ['Tower','Circle']:  # Magic needs Magic
+            [nolst.append(a) for a in list(temp[temp['Magic']==0]['Neighbor'])]
+        else:  # must be a temple, guild, or monastary, which means there needs to be people there
+            [nolst.append(a) for a in list(temp[temp['Population']==0]['Neighbor'])]
+        
+        # make sure I didn't already start a project there...
+        concheck = self.construction[self.construction['Faction']==Faction]
+        concheck = concheck[concheck['Type']==Stronghold]
+        if concheck.shape[0] > 0:
+            [nolst.append(a) for a in list(concheck['Area'])]
+            
+        if len(nolst) > 0:
+            for a in nolst:
+                temp = temp[temp['Neighbor']!=a]
+        lst = list(set(temp['Neighbor']))
+        if Location == None and len(lst) > 0:
+            Location = lst[rand.randint(0,len(lst)-1)]
+        if Location not in lst:
+            return 'Build {}: Failed to find a location.'.format(Stronghold)
+        else:   
+            temp = self.stronghold_types[self.stronghold_types['Stronghold']==Stronghold]
+            cost = temp['Cost'].values[0]
+            seasons = temp['Build Time'].values[0]
+            stype = temp['Type'].values[0]
+            print(stype)
+            temp = self.factions[self.factions['Name']==Faction]
+            gold = temp['Gold'].values[0]
+            
+            # check if its an upgrade to an existant structure
+            if Stronghold in ['Large Temple', 'Keep', 'Palace']:
+                upgrade = self.strongholds[self.strongholds['Faction']==Faction]
+                upgrade = pd.concat([upgrade[upgrade['Type']==a] for a in ['Small Temple', 'Manor', 'Keep']])
+                temp1 = self.construction[self.construction['Faction']==Faction]
+                temp1 = pd.concat([temp1[temp1['Type']==a] for a in ['Small Temple', 'Manor', 'Keep']])
+                upgrade['Seasons'] = 0
+                upgrade = pd.concat([upgrade[['Faction', 'Area', 'Type', 'Name', 'Seasons']], temp1])
+                upgrade = pd.merge(upgrade, self.stronghold_types[['Stronghold','Cost','Build Time']], left_on='Type', right_on='Stronghold', how='left')
+                upgrade = upgrade[upgrade['Area']==Location]
+                upgrade['Subtract'] = upgrade['Build Time'] - upgrade['Seasons']
+                if Stronghold == 'Large Temple':
+                    upgrade = upgrade[upgrade['Type']=='Small Temple']
+                else:
+                    upgrade = upgrade[upgrade['Type']=='Small Temple']
+                if upgrade.shape[0]>0:
+                    cost = cost - np.sum(upgrade['Cost'])
+                    seasons = seasons - np.sum(upgrade['Subtract'])
+
+            
+            if gold >= cost:
+                culture = temp['Culture'].values[0]
+                temp = self.areas[self.areas['Area']==Location]
+                settlement = temp['Settlement Name'].values[0]
+                terrain = temp['Terrain'].values[0]
+                if settlement == '':
+                    # name The Settlement
+                    if Settlement == None:
+                        settlement = self.generate_stronghold_name(Faction, culture, Location, 'Settlement', terrain, settlement, Stronghold)
+                    else:
+                        settlement = Settlement  # allows humans to name their own          
+               
+                # Name it
+                if Name == None:
+                    Name = self.generate_stronghold_name(Faction, culture, Location, stype, terrain, settlement, Stronghold)
+                # pay for it
+                self.edit_faction(Faction, 'Gold', int(gold-cost))
+                # add it to build list
+                new_row = {'Faction':Faction, 'Area':Location, 'Type':Stronghold, 'Name':Name,'Seasons':seasons}
+                self.construction = self.construction.append(new_row, ignore_index=True)
+                return 'Build {}: Built {} in {} ({}).'.format(Stronghold, Name, settlement, Location)
+            else:
+                return 'Build {}: Not enough gold.'.format(Stronghold)
                 
+                
+    def action_expand_stronghold(self,Faction,Stronghold=None,Target=None):
+        '''
+        Increase stronghold Power (Action)
+        expand_weakest_stronghold
+        expand_stronghold_near_enemy
+        This raises the value of a stronghold.  This has a gold cost and a Charisma (Persuasion) check DC.  
+        This may also lead to contestments.  A stronghold may only be raised one point at a time.  
+        A Castle stronghold’s Power Level raises the Population if the new power level would be larger 
+        than the population.  Stronghold must be able to accommodate the new Power Level.
+        
+        Target should not be used by players, since this will lead to failures for no reason.
+
+        '''
+       
+        temp = pd.merge(self.strongholds[self.strongholds['Faction']==Faction],self.areas,on='Area',how='left')
+        if Target != None:  # targeting enemy
+            temp = pd.merge(self.strongholds[self.strongholds['Faction']==Faction],self.areas,on='Area',how='left')
+            temp1 = pd.merge(self.strongholds[self.strongholds['Faction']==Target]['Area'],self.geography, on='Area', how='left')
+            temp2 = temp1.copy()
+            temp1['Area'] = temp1['Neighbor']
+            temp1 = pd.concat([temp1, temp2]).drop_duplicates()
+            temp = pd.merge(temp1['Area'], temp, on='Area', how='left').dropna().drop_duplicates()
+        temp = pd.merge(temp,self.stronghold_types, left_on='Type', right_on='Stronghold', how='left')
+        types = ['Castle', 'Guild','Temple','Monastery','Mystic']
+        lst = [temp[temp['Type_y']==a] for a in types]
+        for n in [1,2,3]:
+            lst[n] = lst[n][lst[n]['Level']<lst[n]['Population']]
+            lst[n] = lst[n][lst[n]['Level']<lst[n]['Max Level']]
+        lst[4] = lst[4][lst[4]['Level']<lst[4]['Magic']]
+        lst[4] = lst[4][lst[4]['Level']<lst[4]['Max Level']]
+        lst[0] = lst[0][lst[0]['Level']<3]
+        temp = pd.concat(lst).sort_values('Level')
+        if Stronghold != None:
+            temp = temp[temp['Name']==Stronghold]
+        
+        if temp.shape[0]>0:
+            if Stronghold == None:  # pick one!
+                Stronghold = temp['Name'].values[0]
+            # check gold
+            gold = self.factions[self.factions['Name']==Faction]['Gold'].values[0]
+            level = self.strongholds[self.strongholds['Name']==Stronghold]['Level'].values[0]
+            cost = 100 * level * level
+
+            if gold>cost:
+                # can afford it
+                self.edit_faction(Faction, 'Gold', int(gold-cost))  # spend it
+                if self.roll_skill(Faction, 'Persuasion') > [0,10,13,15][level]:  # roll it
+                    self.edit_stronghold(Stronghold,'Level',level+1)
+                    return "Expand Stronghold: Raised {} to {}".format(Stronghold,int(level+1))
+            return 'Expand Stronghold: Failed to Expand {}'.format(Stronghold)    
+
+        return 'Expand Stronghold: Nothing to Expand'
+        
     #   ---   RUN SEASON   ---
     def run_season(self, train=False, train_often=False, dc=None):
         '''
@@ -673,8 +845,6 @@ class Regency(object):
         
         current_season = working DF that determines order and holds actions for the final report.
         '''
-        
-        
         # Int DC
         if dc != None:
             self.IntDC = dc
@@ -770,21 +940,26 @@ class Regency(object):
                 
             #   ---   ACTION   ---
             if action == 19:  # build_manor
-                alst.append(action_build_stronghold(row['Faction'], 'Manor'))
+                alst.append(self.action_build_stronghold(row['Faction'], 'Manor'))
             elif action == 20:  # build_keep
-                alst.append(action_build_stronghold(row['Faction'], 'Keep'))
+                alst.append(self.action_build_stronghold(row['Faction'], 'Keep'))
             elif action == 21:  # build_palace
-                alst.append(action_build_stronghold(row['Faction'], 'Palace'))
+                alst.append(self.action_build_stronghold(row['Faction'], 'Palace'))
             elif action == 22:  # build_guild
-                alst.append(action_build_stronghold(row['Faction'], 'Guildhall'))
+                alst.append(self.action_build_stronghold(row['Faction'], 'Guildhall'))
             elif action == 23:  # build_small_temple
-                alst.append(action_build_stronghold(row['Faction'], 'Small Temple'))
+                alst.append(self.action_build_stronghold(row['Faction'], 'Small Temple'))
             elif action == 24:  # build_large_temple
-                alst.append(action_build_stronghold(row['Faction'], 'Large Temple'))
+                alst.append(self.action_build_stronghold(row['Faction'], 'Large Temple'))
             elif action == 25:  # build_abbey
-                alst.append(action_build_stronghold(row['Faction'], 'Abbey'))
+                alst.append(self.action_build_stronghold(row['Faction'], 'Abbey'))
             elif action == 26:  # build_tower
-                alst.append(action_build_stronghold(row['Faction'], 'Tower'))
+                alst.append(self.action_build_stronghold(row['Faction'], 'Tower'))
+            elif action == 27:  # expand_weakest_stronghold
+                alst.append(self.action_expand_stronghold(row['Faction']))
+            elif action == 28:  # expand_wstronghold_near_enemy
+                alst.append(self.action_expand_stronghold(row['Faction'], Target=row['Enemy']))
+
                 
         # Cleanup
         if self.new_roads.shape[0] > 0:  # cleanup roads
