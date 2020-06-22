@@ -1,0 +1,86 @@
+Area,Neighbor,Road/Port
+Portsmouth,Mons Hills,0
+Portsmouth,Lannduin River,1
+Portsmouth,Disputed Moor,0
+Portsmouth,Underdark,0
+Mons Hills,Disputed Moor,0
+Mons Hills,Sea of Grass,0
+Mons Hills,Elfswood,0
+Mons Hills,Earkarod Mountains,0
+Mons Hills,Portsmouth,0
+Lannduin River,Portsmouth,1
+Lannduin River,Elfswood,1
+Lannduin River,Mons Hills,0
+Lannduin River,Disputed Moor,0
+Lannduin River,Earkarod Mountains,0
+Lannduin River,Sea of Grass,0
+Disputed Moor,Portsmouth,0
+Disputed Moor,Mons Hills,0
+Disputed Moor,Shipwreck Shoals,0
+Disputed Moor, Elfswood,0
+Elfswood,Lannduin River,1
+Elfswood,Mons Hills,0
+Elfswood,Disputed Moor,0
+Elfswood,Dragon Wastes,0
+Elfswood,Earkorod Mountains,0
+Elfswood,Shipwreck Shoals,0
+Shipwreck Shoals,Elfswood,0
+Shipwreck Shoals,Disputed Moor,0
+Shipwreck Shoals,Elfswood,0
+Shipwreck Shoals,Dragon Wastes,0
+Sea of Grass,Lannduin River,0
+Sea of Grass,Earkarod Mountains,0
+Sea of Grass,Mons Hills,0
+Sea of Grass,Orc Hills,0
+Sea of Grass,Plains of Death,0
+Earkarod Mountains,Lannduin River,0
+Earkarod Mountains,Melkan Thurmmaz Khaz,1
+Earkarod Mountains,Sea of Grass,0
+Earkarod Mountains,Orc Hills,0
+Earkarod Mountains,Western Waste,0
+Earkarod Mountains,Dragon Wastes,0
+Earkarod Mountains,Elfswood,0
+Earkarod Mountains,Mons Hills,0
+Earkarod Mountains,River Numenduin,0
+Orc Hills,Melkan Thurmmaz Khaz,0
+Orc Hills,River Numenduin,0
+Orc Hills,Sea of Grass,0
+Orc Hills,Plains of Death,0
+Orc Hills,Western Waste,0
+Orc Hills,Earkarod Mountains,0
+River Numenduin,Orc Hills,0
+River Numenduin,Earkarod Mountains,0
+River Numenduin,Plains of Death,0
+River Numenduin,Southern Jungle,1
+River Numenduin,Western Waste,0
+Dragon Wastes,Melkan Thurmmaz Khaz,0
+Dragon Wastes,Earkarod Mountains,0
+Dragon Wastes,Elfswood,0
+Dragon Wastes,Shipwreck Shoals,0
+Western Waste,Earkarod Mountains,0
+Western Waste,Orc Hills,
+Western Waste,Plains of Death,0
+Western Waste,Volcanic Hills,0
+Western Waste,River Numenduin,0
+Plains of Death,River Numenduin,0
+Plains of Death,Western Waste,0
+Plains of Death,Southern Jungle,0
+Plains of Death,Orc Hills,0
+Southern Jungle,River Numenduin,1
+Southern Jungle,Plains of Death,0
+Southern Jungle,Volcanic Hills,0
+Volcanic Hills,River Numenduin,0
+Volcanic Hills,Southern Jungle,0
+Volcanic Hills,Western Waste,0
+Melkan Thrummaz Khaz,Earkarod Mountains,1
+Melkan Thrummaz Khaz,Orc Hills,0
+Melkan Thrummaz Khaz,Dragon Wastes,0
+Melkan Thrummaz Khaz,City of the Glass Pool,1
+Melkan Thrummaz Khaz,Underdark,0
+Underdark,Melkan Thrummaz Khaz,0
+Underdark,Portsmouth,0
+Underdark,City of the Glass Pool,0
+City of the Glass Pool,Underdark,0
+City of the Glass Pool,Melkan Thrummaz Khaz,0
+City of the Glass Pool,Sunless Sea,1
+Sunless Sea,City of the Glass Pool,1

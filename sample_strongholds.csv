@@ -1,0 +1,27 @@
+Name,Area,Type,Faction,Level,Sieged,Hit Points
+Iron Keep,Portsmouth,Palace,Edlund,3,0,22
+Silver Dagger House,Portsmouth,Guildhall,Edlund,1,0,15
+Tir Sianodel,Elfswood,Palace,The Elves,3,0,16
+Tel Tir,Elfswood,Tower,The Elves,1,0,11
+Whitestone Keep,Sea of Grass,Palace,Green Company,3,0,22
+The Cistern,Portsmouth,Guildhall,Ratfam,1,0,13
+Tower of Doom,Orc Hills,Palace,Orc Hoard,3,0,22
+Demonspire,Plains of Death,Palace,Gnolls,3,0,22
+Kefettlebyn,Underdark,Manor,Svirfniblin,1,0,8
+Caves of the Renegades,Melkan Thrummaz Khaz,Manor,Derro Renegades,1,0,8
+Caves of the Servitors,Melkan Thrummaz Khaz,Manor,Derro Servitors,1,0,8
+Glass Palace,City of the Glass Pool,Palace,Kuo-Toa,3,0,22
+Temple of Hatred,City of the Glass Pool,Large Temple,Kuo-Toa,3,0,13
+The Great Shaboath,Sunless Sea,Palace,Aboleth,3,0,22
+Tower of Domination,Sunless Sea,Tower,Aboleth,3,0,11
+The Black Tower,Earkarod Mountains,Manor,Kobolds,1,0,8
+Tower of the Serpent,Southern Jungle,Palace,Yuan-Ti,3,0,22
+The Trident Towers,Portsmouth,Large Temple,Church of Poseidon,1,0,13
+Hall of the Messenger,Portsmouth,Small Temple,Church of Hermes,1,0,5
+House of the Everlasting Sun,Portsmouth,Large Temple,Church of Re-Horakhty,1,0,13
+The Ratway,Portsmouth,Small Temple,Cult of the Blood Mother,0,0,5
+Dead Tree,Elfswood,Tower,Unseelie Court,2,0,99
+Sunken Ship,Shipwreck Shoals,Tower,Unseelie Court,2,0,99
+Ruined Fort,Disputed Moor,Tower,Unseelie Court,3,0,99
+The Stave,Earkarod Mountains,Circle,Seelie Court,2,0,99
+The Carved-Table Inn,Portsmouth,Tower,Seelie Court,1,0,99

@@ -1,0 +1,12 @@
+Name,Type,Str,Dex,Con,Int,Wis,Cha,Athletics,Acrobatics,Stealth,Arcana,Investigation,Religion,Perception,Persuasion,Special
+Wizard Tower,Mystic,8,10,10,12,10,10,0,0,0,1,1,0,1,0, 
+Thieves' Guild,Guild,8,12,10,10,10,10,0,1,2,0,0,0,0,1,'Expertise|Unpopular'
+Oligarchy,Castle,12,10,10,10,8,10,0,0,0,0,1,0,1,1, 
+Merchant Company,Guild,10,10,8,10,10,12,0,0,0,0,1,0,1,1, 
+Martial School,Monastey,8,10,10,10,12,10,0,1,0,0,0,0,1,1, 
+Guild,Guild,8,10,10,12,10,10,0,0,0,0,1,0,1,1, 
+Fiefdom,Castle,10,10,12,10,8,10,1,0,0,0,0,0,1,1, 
+Druid Circle,Mystic,10,10,8,10,12,10,0,1,0,1,0,0,1,0, 
+Democracy,Castle,8,10,10,10,12,10,0,0,0,0,1,0,1,1, 
+Cult,Temple,10,10,8,10,12,10,0,1,0,0,1,1,0,0, 
+Church,Temple,10,10,10,8,12,10,0,0,0,0,0,1,1,1, 

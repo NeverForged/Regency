@@ -1,0 +1,10 @@
+Stronghold,Type,Max Level,Cost,Hit Dice,HP,Build Time,Upkeep
+Abbey,Monastery,3,50000,3d8,13,5,1800
+Guildhall,Guild,3,5000,3d8,13,1,450
+Manor,Castle,1,25000,1d10,6,2,900
+Keep,Castle,2,50000,2d10,11,5,9000
+Palace,Castle,3,500000,3d10,16,13,36000
+Small Temple,Temple,1,5000,1d8,5,1,90
+Large Temple,Temple,3,50000,3d8,13,5,2250
+Tower,Mystic,3,15000,3d6,10,1,2250
+Circle,Mystic,3,15000,3d6,10,1,2250
