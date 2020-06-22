@@ -507,6 +507,27 @@ class Regency(object):
         roll = rand.randint(1,20)
         return roll + mod + ability
     
+    def roll_opposed_skill(self, skills, factions):
+        '''
+        Rolls opposed skill and picks winner, loser
+        '''
+        lst = []
+        for i, Faction in enumerate(factions):
+            if type(skills) == str:
+                skill = skills
+            else:
+                skill = skills[i]
+            rolls = [0,0]
+            rolls[0] = self.roll_skill(Faction, skill)
+            temp = self.espionage[self.espionage['Faction']==Faction]
+            if temp.shape[0]>0:
+                for i, row in temp.iterrows():
+                    if row['Target'] in factions:
+                        rolls[1] = self.roll_skill(Faction, skill)
+            lst.append((Faction, max(rolls)))
+            lst.sort(key=lambda x:x[1])
+        return lst[-1][0], lst[0][0], lst
+    
     #   ---   BONUS ACTIONS   ---
     def bonus_build_road(self, faction, area=None, target=None):
         '''
@@ -837,7 +858,93 @@ class Regency(object):
             return 'Expand Stronghold: Failed to Expand {}'.format(Stronghold)    
 
         return 'Expand Stronghold: Nothing to Expand'
+    
+    def action_rob_faction(self, Faction, Target):
+        '''
+        Make a Dexterity (Stealth) vs Wisdom (Perception) roll.  
+        If successful, target losses 100 * your power level * the roll difference in gold, and you gain the same amount.  
+        An opposed Dexterity (Stealth) vs Intelligence (Investigation) roll allows them to know it was you.  
+        Must have a stronghold in the same settlement as the faction to be robbed.
+
+        '''
+        # is target valid?
+        temp = pd.merge(self.strongholds[self.strongholds['Faction']==Faction]['Area'].drop_duplicates(),
+                    self.strongholds[self.strongholds['Faction']==Target], on='Area', how='left')
+        if temp.shape[0] <= 0:
+            return 'Rob Faction: {} does not have a Stronghold in the settlement'.format(Target)
+        else:
+            # robbery
+            winner, loser, rolls = self.roll_opposed_skill(['Stealth', 'Perception'], [Faction, Target])
+            ret = 'Rob Faction: '
+            if winner == Faction:
+                # robbed 'em'
+                gold = self.factions[self.factions['Name']==Target]['Gold'].values[0]
+                difference = rolls[-1][1] - rolls[0][1]
+                level = self.factions[self.factions['Name']==Faction]['Level'].values[0]
+                fgold = self.factions[self.factions['Name']==Faction]['Gold'].values[0]
+                amount = 100*difference*level
+                if amount > gold:  # can't steal what isn't there
+                    amount = gold
+                self.edit_faction(Target,'Gold',int(gold-amount))
+                self.edit_faction(Faction,'Gold',int(fgold+amount))
+                ret = ret + 'Stole {} gold from {}'.format(amount,Target)
+            else:
+                ret = ret + 'Failed to rob {}'.format(Target)
+            # did they notice
+            if self.roll_opposed_skill(['Stealth', 'Investigation'], [Faction, Target])[0] == Target:
+                self.edit_relationship(Target,Faction,-1)
+                ret = ret + " (and was caught)."
+        return ret
+    def action_sabotage_stronghold(self, Faction, Enemy =None, Target=None):
+        '''
+        Make a Dexterity (Stealth) vs Wisdom (Perception) roll. 
+        If successful, the opponent’s stronghold is damaged by 1d6+Dexterity Modifier.  
+        An opposed Dexterity (Stealth) vs Intelligence (Investigation) roll allows them to know it was you.  
         
+        Must have a stronghold in a settlement adjacent to a settlement in which the stronghold exists.
+
+
+        '''
+        # is there a target?
+        if Target==None:
+            temp = pd.merge(self.strongholds[self.strongholds['Faction']==Faction]['Area'].drop_duplicates(),
+                           self.geography, on='Area', how='left')
+            hold = temp.copy()
+            temp['Area'] = temp['Neighbor']
+            temp = pd.merge(pd.concat([hold['Area'], temp['Area']]).drop_duplicates(),
+                            self.strongholds[self.strongholds['Faction']==Enemy], on='Area', how='left').dropna().sort_values('Hit Points')
+            Target = temp['Name'].values[0]
+        ret = 'Sabotage Stronghold: '
+        if Target==None:
+            ret = ret + 'No valid targets for {}'.format(Enemy)
+        else:
+            # is Target valid?
+            temp = pd.merge(self.strongholds[self.strongholds['Faction']==Faction]['Area'].drop_duplicates(),
+                               self.geography, on='Area', how='left')
+            hold = temp.copy()
+            temp['Area'] = temp['Neighbor']
+            temp = pd.merge(pd.concat([hold['Area'], temp['Area']]).drop_duplicates(),
+                            self.strongholds[self.strongholds['Name']==Target], on='Area', how='left').dropna()
+           
+            if temp.shape[0] == 0:
+                ret = ret + "{} not a valid target."
+            else:
+                # have a target, and its valid...
+                Enemy = temp['Faction'].values[0]
+                if self.roll_opposed_skill(['Stealth', 'Perception'], [Faction, Enemy])[0] == Faction:
+                    # got it, time for damage....
+                    dex = int((self.factions[self.factions['Name']==Faction]['Dex']-10)/2)
+                    damage = rand.randint(1,6) + dex
+                    hp = self.strongholds[self.strongholds['Name']==Target]['Hit Points'].values[0]
+                    self.edit_stronghold(Target,'Hit Points',hp-damage)
+                    ret = ret + 'Damaged {}'.format(Target)
+                else:
+                    ret = ret + "Failed to damage {}".format(Target)
+                if self.roll_opposed_skill(['Stealth', 'Investigation'], [Faction, Enemy])[0] == Enemy:
+                    self.edit_relationship(Enemy,Faction,-1)
+                    ret = ret + " (and was caught)."
+            return ret
+            
     #   ---   RUN SEASON   ---
     def run_season(self, train=False, train_often=False, dc=None):
         '''
@@ -957,8 +1064,12 @@ class Regency(object):
                 alst.append(self.action_build_stronghold(row['Faction'], 'Tower'))
             elif action == 27:  # expand_weakest_stronghold
                 alst.append(self.action_expand_stronghold(row['Faction']))
-            elif action == 28:  # expand_wstronghold_near_enemy
+            elif action == 28:  # expand_stronghold_near_enemy
                 alst.append(self.action_expand_stronghold(row['Faction'], Target=row['Enemy']))
+            elif action == 29:  # rob_enemy
+                alst.append(self.action_expand_stronghold(row['Faction'], Target=row['Enemy']))
+            elif action == 30:  # sabotage_stronghold
+                alst.append(self.action_expand_stronghold(row['Faction'], Enemy=row['Enemy']))    
 
                 
         # Cleanup
