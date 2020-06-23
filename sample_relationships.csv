@@ -9,8 +9,8 @@ Orc Hoard,Green Company,-1
 Green Company,Orc Hoard,-1
 Gnolls,Orc Hoard,-1
 Orc Hoard,Gnolls,-1
-Edlund,The Elves,1
-The Elves, Edlund,1
+Edlund,Tel-Quessir,1
+Tel-Quessir, Edlund,1
 Edlund,Ratfam,-1
 Ratfam,Edlund,-1
 Green Company,Derro Servitors,1
@@ -26,15 +26,15 @@ Church of Re-Horakhty,Church of Hermes,-1
 Church of Re-Horakhty,Church of Poseidon,-1
 Church of Hermes,Church of Re-Horakhty,-1
 Church of Hermes,Church of Re-Horakhty,-1
-Kobolds,The Elves,-1
-Orc Hoard,The Elves,-1
-Green Company,The Elves,-1
+Kobolds,Tel-Quessir,-1
+Orc Hoard,Tel-Quessir,-1
+Green Company,Tel-Quessir,-1
 Svirfniblin,Edlund,1
 Cult of the Blood Mother,Aboleth,2
 Aboleth,Cult of the Blood Mother,2
 Seelie Court,Unseelie Court,-1
 Unseelie Court,Seelie Court,-1
-Seelie Court,The Elves,2
-Unseelie Court,The Elves,1
-The Elves,Seelie Court,2
-The Elves,Unseelie Court,1
+Seelie Court,Tel-Quessir,2
+Unseelie Court,Tel-Quessir,1
+Tel-Quessir,Seelie Court,2
+Tel-Quessir,Unseelie Court,1

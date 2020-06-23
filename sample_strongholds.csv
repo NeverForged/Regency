@@ -1,8 +1,8 @@
 Name,Area,Type,Faction,Level,Sieged,Hit Points
 Iron Keep,Portsmouth,Palace,Edlund,3,0,22
 Silver Dagger House,Portsmouth,Guildhall,Edlund,1,0,15
-Tir Sianodel,Elfswood,Palace,The Elves,3,0,16
-Tel Tir,Elfswood,Tower,The Elves,1,0,11
+Tir Sianodel,Elfswood,Palace,Tel-Quessir,3,0,16
+Tel Tir,Elfswood,Tower,Tel-Quessir,1,0,11
 Whitestone Keep,Sea of Grass,Palace,Green Company,3,0,22
 The Cistern,Portsmouth,Guildhall,Ratfam,1,0,13
 Tower of Doom,Orc Hills,Palace,Orc Hoard,3,0,22
@@ -16,7 +16,7 @@ The Great Shaboath,Sunless Sea,Palace,Aboleth,3,0,22
 Tower of Domination,Sunless Sea,Tower,Aboleth,3,0,11
 The Black Tower,Earkarod Mountains,Manor,Kobolds,1,0,8
 Tower of the Serpent,Southern Jungle,Palace,Yuan-Ti,3,0,22
-The Trident Towers,Portsmouth,Large Temple,Church of Poseidon,1,0,13
+The Trident Towers,Portsmouth,Large Temple,Church of Posiedon,1,0,13
 Hall of the Messenger,Portsmouth,Small Temple,Church of Hermes,1,0,5
 House of the Everlasting Sun,Portsmouth,Large Temple,Church of Re-Horakhty,1,0,13
 The Ratway,Portsmouth,Small Temple,Cult of the Blood Mother,0,0,5

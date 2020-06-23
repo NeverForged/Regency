@@ -69,6 +69,7 @@ class Regency(object):
         self.IntDC = 9001  # set to determine random activity
         self.espionage = pd.DataFrame(columns=['Faction','Target'])
         self.construction = pd.DataFrame(columns=['Faction', 'Area', 'Type', 'Name','Seasons'])
+        self.sieges = pd.DataFrame(columns=['Faction','Stronghold'])
         
         try:
             self.agent = pickle.load( open( 'agents/agent.pickle', "rb" ) )
@@ -945,6 +946,47 @@ class Regency(object):
                     ret = ret + " (and was caught)."
             return ret
             
+    def action_siege_stronghold(self,Faction,Target=None,Enemy=None):
+        '''
+        Attack an enemy stronghold.  
+        The cost to launch a war is the enemy’s stronghold Level Squared times 100 
+        (100 gp, 400 gp, or 900 gp).  Opposed checks are made (as if a Grapple Check).  
+        If the Attacker wins, he lays siege to the enemy stronghold, doing damage based on 
+        faction level.  A Sieged stronghold may not be repaired While the Siege lasts.  
+        
+        Must have a stronghold in a settlement adjacent to a settlement in which the sieged 
+        stronghold exists (or have a follower adjacent)   
+        '''
+        # do I have a target?
+        if Target == None:
+            # get self and all vassals
+            temp = self.vassalage_checked[self.vassalage_checked['Lord']==Faction]
+            temp = temp.append({'Faction':Faction, 'Lord': Faction, 'Weight':1.0}, ignore_index=True)
+            # find all areas adjacent to them
+            temp = pd.merge(temp['Faction'],self.strongholds,on='Faction',how='left').dropna()[['Area']].drop_duplicates()
+            temp = pd.merge(temp,self.geography,on='Area',how='left')
+            temp1 = temp.copy()
+            temp['Area'] = temp['Neighbor']
+            temp = pd.concat([temp1[['Area']],temp[['Area']]]).drop_duplicates()
+            # find all that the enemy has in those areas
+            temp = pd.merge(self.strongholds[self.strongholds['Faction']==Enemy],temp,on='Area',how='left')
+            if temp.shape[0]>0:
+                Target = temp['Name'].values[0]
+        if Target == None:
+            return 'Siege Stronghold: {} has no stronghold near enough to attack.'.format(enemy)
+        else: #we have a target...
+            gold = self.factions[self.factions['Name']=Faction]['Gold'].values[0]
+            level = self.strongholds[self.strongholds['Name']==Target]['Level'].values[0]
+            cost = level*level*100
+            if gold < cost:
+                return 'Siege Stronghold: Cannot afford to attack {}.'.format(Target)
+            else:
+                self.edit_faction(Faction,'Gold',gold-cost)
+                self.sieges = self.sieges.append({'Faction':Faction, 'Stronghold':Target}, ignore_index=True)
+                return 'Siege Stronghold: Laying siege to {}'.format(Target)
+        return 'Siege Stronghold: Error.'
+        
+        
     #   ---   RUN SEASON   ---
     def run_season(self, train=False, train_often=False, dc=None):
         '''
@@ -1045,7 +1087,7 @@ class Regency(object):
             elif bonus == 18: # spy_enemy
                 blst.append(self.bonus_action_spy(row['Faction'],row['Enemy']))
                 
-            #   ---   ACTION   ---
+            #   ---   ACTIONS   ---
             if action == 19:  # build_manor
                 alst.append(self.action_build_stronghold(row['Faction'], 'Manor'))
             elif action == 20:  # build_keep
@@ -1069,7 +1111,9 @@ class Regency(object):
             elif action == 29:  # rob_enemy
                 alst.append(self.action_expand_stronghold(row['Faction'], Target=row['Enemy']))
             elif action == 30:  # sabotage_stronghold
-                alst.append(self.action_expand_stronghold(row['Faction'], Enemy=row['Enemy']))    
+                alst.append(self.action_expand_stronghold(row['Faction'], Enemy=row['Enemy']))   
+            elif action == 31:  # attack_enemy_stronghold
+                alst.append(self.action_siege_stronghold(row['Faction'], Enemy=row['Enemy']))
 
                 
         # Cleanup
@@ -1078,4 +1122,5 @@ class Regency(object):
             self.geography = pd.concat([self.geography, self.new_roads]).groupby(['Area','Neighbor']).max().reset_index().fillna(0)
             self.geography['Road/Port'] = self.geography['Road/Port'].astype(int)
             self.new_roads = pd.DataFrame(columns=['Area','Neighbor'])
+        
         
