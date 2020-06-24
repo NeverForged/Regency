@@ -999,7 +999,8 @@ class Regency(object):
                 if self.roll_opposed_skill(['Stealth', 'Investigation'], [Faction, Enemy])[0] == Enemy:
                     self.edit_relationship(Enemy,Faction,-1)
                     ret = ret + " (and was caught)."
-            return ret
+        return ret
+
             
     def action_siege_stronghold(self,Faction,Target=None,Enemy=None):
         '''
@@ -1176,9 +1177,9 @@ class Regency(object):
             
             # training...
             for i, row in self.last_season.iterrows():
-                self.agent.remember(self, state=row['State'], action=row['Action1'], reward=row['Reward'], next_state=row['New State'], done=False)
-                self.agent.remember(self, state=row['State'], action=row['Action2'], reward=row['Reward'], next_state=row['New State'], done=False)
-        
+                self.agent.remember(state=row['State'], action=row['Bonus'], reward=row['Reward'], next_state=row['New State'], done=False)
+                self.agent.remember(state=row['State'], action=row['Action'], reward=row['Reward'], next_state=row['New State'], done=False)
+            self.agent.replay_new()
             
         # determine actions
         state = self.make_decision(state)
@@ -1195,8 +1196,7 @@ class Regency(object):
             bonus = np.argmax(row['Bonus'])
             # Action
             action = np.argmax(row['Action'])
-            print(row['Faction'], len(row['Bonus']), len(row['Action']),bonus,action)
-            # ---   BONUS ACTIONS   ---
+            
             if bonus == 0:  # build_road
                 blst.append(self.bonus_build_road(row['Faction']))
             elif bonus == 1:  # diplomacy_enemy
@@ -1267,8 +1267,8 @@ class Regency(object):
                 alst.append(self.action_swear_fealty(row['Faction'], row['Ally']))
             elif action == 33:  # swear_fealty_enemy
                 alst.append(self.action_swear_fealty(row['Faction'], row['Enemy']))
+        
         # save it for humans
-        print(len(alst),len(blst))
         state['A'] = alst
         state['B'] = blst
         state['Season {}'.format(self.season)] = state['A'] + ' \n[' + state['B'] + ']'
@@ -1319,5 +1319,7 @@ class Regency(object):
         temp_ = temp[temp['Type_y']=='Mystic']
         for i, row in temp_[temp_['Level']>temp_['Magic']].iterrows():
             self.contest_levels(row['Area'],'Mystic')
+            
+        self.agent.save()
         
         

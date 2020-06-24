@@ -281,7 +281,7 @@ class DQNAgent(object):
             model.load_weights(weights)
         return model
     
-    def remember(self, state, action, reward, next_state, type, done=False):
+    def remember(self, state, action, reward, next_state, done=False):
         self.memory.append((state, action, reward, next_state, done))
         
     def replay_new(self):
@@ -299,6 +299,7 @@ class DQNAgent(object):
             target_f = model.predict(np.array([state]))
             target_f[0][np.argmax(action)] = target
             model.fit(np.array([state]), target_f, epochs=1, verbose=0)
+        
         
     def save(self, filename=None):
         '''
