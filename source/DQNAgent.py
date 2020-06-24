@@ -167,7 +167,6 @@ class DQNAgent(object):
         temp['Area'] = temp['Area_x']
         temp = pd.merge(temp, regency.strongholds[['Faction','Area']].groupby(['Faction','Area']).sum().reset_index(),on='Area',how='left')
         temp = temp[['Faction']].drop_duplicates()
-        temp
 
         for i, row in regency.factions.iterrows():
             dct[row['Name']].append(1*(temp[temp['Faction']==row['Name']].shape[0]>0))
@@ -265,16 +264,15 @@ class DQNAgent(object):
         
     def network(self, N, K, weights=None):
         '''
-        Original had 3 outputs...
-        Setting this to N outputs.
+        Going for a simple network, N outputs, K inputs, middle layer of sqrt(N*K)
         '''
         model = Sequential()
-        model.add(Dense(units=K*10, activation='relu', input_dim=K))
+        model.add(Dense(units=int((K*N)**0.5), activation='relu', input_dim=K))
         model.add(Dropout(0.15))
-        model.add(Dense(units=K*10, activation='relu'))
-        model.add(Dropout(0.15))
-        model.add(Dense(units=K*10, activation='relu'))
-        model.add(Dropout(0.15))
+        # model.add(Dense(units=K*10, activation='relu'))
+        # model.add(Dropout(0.15))
+        # model.add(Dense(units=K*10, activation='relu'))
+        # model.add(Dropout(0.15))
         model.add(Dense(units=N, activation='softmax'))
         opt = Adam(self.learning_rate)
         model.compile(loss='mse', optimizer=opt)
@@ -284,7 +282,7 @@ class DQNAgent(object):
         return model
     
     def remember(self, state, action, reward, next_state, type, done=False):
-        self.memory[type].append((state, action, reward, next_state, done))
+        self.memory.append((state, action, reward, next_state, done))
         
     def replay_new(self):
         model = self.model

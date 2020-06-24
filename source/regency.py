@@ -32,8 +32,7 @@ class Regency(object):
         factions -> a list of factions
         areas -> area information
         relationships -> relationship information, defined as how faction feels towards other, -1 = Hostile, 0 = Indifferent, 1 = Helpful, 2 = Friendly
-        vassalage -> pay 500 gold per season and allow them to use your lands (they become friendly to you)
-        extortions -> pay 500 gold per season
+        vassalage -> pay 10% gold per season and allow them to use your lands (they become friendly to you)
         
         Default Values are the samples in the main folder, which you can edit to your heart's content.
         
@@ -260,6 +259,10 @@ class Regency(object):
         B = B[B['Lord']!=lord]
         self.vassalage = pd.concat([A,B]).reset_index(drop=True)
         
+        # immediate effects
+        self.check_vassalage()
+        self.calculatelevels_faction()
+        
     #   ---   AREA FUNCTIONS   ---
     def add_area(self, Area, Name, Terrain, Population, Waterway):
         '''
@@ -311,6 +314,7 @@ class Regency(object):
         else:
             self.relationships.loc[self.relationships[(self.relationships['Faction']==faction) & (self.relationships['Other']==other)].index[0],'Relationship'] = self.relationships.loc[self.relationships[(self.relationships['Faction']==faction) & (self.relationships['Other']==other)].index[0],'Relationship'] + change
             
+        self.relationships = self.relationships.groupby(['Faction','Other']).sum().reset_index()
         # make sure they are all in range
         A = self.relationships[self.relationships['Relationship']>2].copy()
         B = self.relationships[self.relationships['Relationship']<=2].copy()
@@ -469,7 +473,8 @@ class Regency(object):
             if roll < self.IntDC or roll == 1:   #Fails a dc 5 int check and does something random
                 move = (to_categorical(rand.randint(0, 18), num_classes=N),to_categorical(rand.randint(19, 33), num_classes=N))
             else:
-                move =  (to_categorical(np.argmax(prediction[0][:18]), num_classes=N), to_categorical(np.argmax(prediction[0][19:]), num_classes=N))
+                move =  (to_categorical(np.argmax(prediction[0][:18]), num_classes=N),
+                         to_categorical(np.argmax(prediction[0][19:]) + 19, num_classes=N))
             bonus.append(move[0])
             action.append(move[1])
         state['Bonus'] = bonus
@@ -528,6 +533,54 @@ class Regency(object):
             lst.append((Faction, max(rolls)))
             lst.sort(key=lambda x:x[1])
         return lst[-1][0], lst[0][0], lst
+        
+    def contest_levels(self, Area, Type):
+        '''
+        When the combined power in a given category exceeds the maximum power of the category for 
+        the area, a contest occurs.  All involved roll a Skill Check, lowest roll loses a point of 
+        power in that area.  Continues until the combined power level is at the maximum.  
+
+        Table: Contests by Type
+        Type
+        Skill Contest
+        Guildhall
+        Charisma (Persuasion)
+        Temple
+        Wisdom (Religion)
+        Monasteries
+        Charisma (Persuasion)
+        Mystical (based on Caster Score)
+        Intelligence, Wisdom, or Charisma (Arcana)*
+
+
+        '''
+        # get number
+        Goal = self.areas[self.areas['Area']==Area]['Population'].values[0]
+        skill = 'Persuasion'
+
+        if Type == 'Mystic':
+            skill = 'Arcana'
+            Goal = self.areas[self.areas['Area']==Area]['Magic'].values[0]
+
+        if Type == 'Temple':
+            skill = 'Religion'
+
+        temp = pd.merge(self.strongholds[self.strongholds['Area']==Area],
+                        self.stronghold_types[self.stronghold_types['Type']==Type][['Stronghold']],
+                        left_on='Type', right_on='Stronghold', how='left').dropna()
+
+
+
+        while np.sum(temp['Level']) > Goal:
+            factions = temp[['Faction']].drop_duplicates()
+            _, loser, _ = self.roll_opposed_skill(skill, list(factions['Faction']))
+            level = temp[temp['Faction']==loser]['Level'].values[0]
+            name = temp[temp['Faction']==loser]['Name'].values[0]
+            self.edit_stronghold(name, 'Level', level-1)
+            temp = pd.merge(self.strongholds[self.strongholds['Area']==Area],
+                        self.stronghold_types[self.stronghold_types['Type']==Type][['Stronghold']],
+                        left_on='Type', right_on='Stronghold', how='left').dropna()
+
     
     #   ---   BONUS ACTIONS   ---
     def bonus_build_road(self, faction, area=None, target=None):
@@ -639,7 +692,7 @@ class Regency(object):
 
         '''
         # gather info
-        temp = pd.merge(self.strongholds,self.factions[['Name','Con','Gold']],left_on='Faction',right_on='Name',how='left')
+        temp = pd.merge(self.strongholds[self.strongholds['Sieged']==0],self.factions[['Name','Con','Gold']],left_on='Faction',right_on='Name',how='left')
         temp = pd.merge(temp,self.stronghold_types[['Stronghold','HP','Cost','Hit Dice']],left_on='Type',right_on='Stronghold',how='left')
         temp['Max HP'] = temp['HP'] + temp['Level']*((temp['Con']-10)/2).astype(int)
         temp = temp[temp['Hit Points']<temp['Max HP']]
@@ -685,6 +738,7 @@ class Regency(object):
         if self.roll_skill(Faction,'Investigation') > self.roll_skill(Faction,'Stealth'):
             self.edit_relationship(Target, Faction, -1)
             mystring = mystring + ' and got caught!'
+        return mystring
     
     def action_build_stronghold(self, Faction, Stronghold, Location=None, Name=None, Settlement=None):
         '''
@@ -758,7 +812,6 @@ class Regency(object):
             cost = temp['Cost'].values[0]
             seasons = temp['Build Time'].values[0]
             stype = temp['Type'].values[0]
-            print(stype)
             temp = self.factions[self.factions['Name']==Faction]
             gold = temp['Gold'].values[0]
             
@@ -896,6 +949,7 @@ class Regency(object):
                 self.edit_relationship(Target,Faction,-1)
                 ret = ret + " (and was caught)."
         return ret
+        
     def action_sabotage_stronghold(self, Faction, Enemy =None, Target=None):
         '''
         Make a Dexterity (Stealth) vs Wisdom (Perception) roll. 
@@ -914,7 +968,8 @@ class Regency(object):
             temp['Area'] = temp['Neighbor']
             temp = pd.merge(pd.concat([hold['Area'], temp['Area']]).drop_duplicates(),
                             self.strongholds[self.strongholds['Faction']==Enemy], on='Area', how='left').dropna().sort_values('Hit Points')
-            Target = temp['Name'].values[0]
+            if temp.shape[0] > 0:
+                Target = temp['Name'].values[0]
         ret = 'Sabotage Stronghold: '
         if Target==None:
             ret = ret + 'No valid targets for {}'.format(Enemy)
@@ -973,20 +1028,113 @@ class Regency(object):
             if temp.shape[0]>0:
                 Target = temp['Name'].values[0]
         if Target == None:
-            return 'Siege Stronghold: {} has no stronghold near enough to attack.'.format(enemy)
+            return 'Siege Stronghold: {} has no stronghold near enough to attack.'.format(Enemy)
         else: #we have a target...
-            gold = self.factions[self.factions['Name']=Faction]['Gold'].values[0]
+            gold = self.factions[self.factions['Name']==Faction]['Gold'].values[0]
             level = self.strongholds[self.strongholds['Name']==Target]['Level'].values[0]
             cost = level*level*100
             if gold < cost:
                 return 'Siege Stronghold: Cannot afford to attack {}.'.format(Target)
             else:
+                # drop fealty...
+                self.drop_vassalage(Faction,self.strongholds[self.strongholds['Name']==Target]['Faction'].values[0])
+                # make aggressive
+                self.edit_relationship(Faction,self.strongholds[self.strongholds['Name']==Target]['Faction'].values[0],-3)
+                
                 self.edit_faction(Faction,'Gold',gold-cost)
                 self.sieges = self.sieges.append({'Faction':Faction, 'Stronghold':Target}, ignore_index=True)
+                self.edit_stronghold(Target,'Sieged',1)
                 return 'Siege Stronghold: Laying siege to {}'.format(Target)
         return 'Siege Stronghold: Error.'
         
+    def action_swear_fealty(self,Faction,Lord):
+        '''
+        Swear_to_strongest_ally
+        swear_to_weakest_enemy
         
+        You become a Vassal of another Faction.  1/10th of your Revenue goes to that faction, and they gain 
+        power equal to half of your power level (round up).  
+        
+        '''
+        # Make sure there isn't a loop...
+        temp = self.vassalage_checked[self.vassalage_checked['Faction']==Lord]
+        temp = temp[temp['Lord']==Faction]
+        if temp.shape[0]>0:
+            return "Swear Fealty: Cannot Swear Fealty to your own Vassal."
+        
+        # make sure they are not already your lord...
+        temp = self.vassalage[self.vassalage['Faction']==Faction]
+        temp = temp[temp['Lord']==Lord]
+        if temp.shape[0] > 0:
+            return "Swear Fealty: {} is already {}'s Lord".format(Lord,Faction)
+        
+        # this will annoy your current Lord, if you have one
+        if self.vassalage[self.vassalage['Faction']==Faction].shape[0] > 0:
+            temp = self.vassalage[self.vassalage['Faction']==Faction]
+            self.edit_relationship(temp['Lord'].values[0],Faction,-1)
+            self.drop_vassalage(Faction,temp['Lord'].values[0])
+            if self.roll_skill(Faction,'Persuasion') < 10:  # chance they become enemies...
+                self.edit_relationship(temp['Lord'].values[0],Faction,-2)
+        
+     
+        # do the thing...
+        self.edit_relationship(Lord,Faction,2)
+        self.add_vassalage(Faction,Lord)
+        return 'Swear Fealty: Is now a Vassal of {}'.format(Lord)
+    
+    #  --- SIEGE FUNCTIONS ---
+    def handle_siege(self, Faction, Target):
+        '''
+        Opposed checks are made (as if a Grapple Check).  
+        If the Attacker wins, he lays siege to the enemy stronghold, doing damage based on 
+        faction level.  A Sieged stronghold may not be repaired While the Siege lasts.  
+        
+                    Faction Level
+                    Siege Damage
+                    1-4
+                    1d6 + Strength Modifier
+                    5-10
+                    2d6 + Strength Modifier
+                    11-16
+                    3d6 + Strength Modifier
+                    17+
+                    4d6 + Strength Modifier
+
+        '''
+        Besieged = self.strongholds[self.strongholds['Name']==Target]['Faction'].values[0]
+        
+        # get which skill they'll use...
+        lst = ['Level', 'Str', 'Dex', 'Athletics', 'Acrobatics']
+        rlst = []
+        for a in lst:
+            rlst.append([a,self.factions[self.factions['Name']==Besieged][a].values[0]])
+        mod = self.level_modifiers[self.level_modifiers['Faction Level']==rlst[0][1]]['Skill Modifier'].values[0]
+        rlst[3][1] = int((rlst[1][1]-10)/2) + mod*rlst[3][1]
+        rlst[4][1] = int((rlst[2][1]-10)/2) + mod*rlst[4][1]
+        if rlst[-2][1] > rlst[-1][1]:
+            skill = rlst[-2][0]
+        else:
+            skill = rlst[-1][0]
+
+        # make the check
+        tup = self.roll_opposed_skill(['Athletics',skill], [Faction,Besieged])
+        if tup[0] == Faction:  # attackers won!
+            siegerlevel = self.factions[self.factions['Name']==Faction]['Level'].values[0]
+            siegerstr = int((self.factions[self.factions['Name']==Faction]['Level'].values[0]-10)/2)
+            damage = rand.randint(1,6) + siegerstr
+            if siegerlevel >= 5:
+                damage = damage + rand.randint(1,6)
+            if siegerlevel >= 11:
+                damage = damage + rand.randint(1,6)
+            if siegerlevel >= 17:
+                damage = damage + rand.randint(1,6)
+            HP = self.strongholds[self.strongholds['Name']==Target]['Hit Points']
+            self.edit_stronghold(Target,'Hit Points',int(HP - damage))
+            return "{} Sieged {}".format(Faction, Target)
+        else:
+            self.edit_stronghold(Target,'Sieged',0)
+            return "The Siege of {} was broken".format(Target)
+    
     #   ---   RUN SEASON   ---
     def run_season(self, train=False, train_often=False, dc=None):
         '''
@@ -1003,7 +1151,7 @@ class Regency(object):
         
         # add Factions to the season list if not there already
         for i, row in self.factions.iterrows():
-            if row['Name'] not in self.seasons['Faction']:
+            if row['Name'] not in list(self.seasons['Faction']):
                 self.seasons = self.seasons.append({'Faction':row['Name']}, ignore_index=True).fillna('')
         
         # get revenue
@@ -1042,11 +1190,12 @@ class Regency(object):
         blst = []
         alst = []
         for i, row in state.iterrows():
+            
             # Bonus Action
             bonus = np.argmax(row['Bonus'])
             # Action
             action = np.argmax(row['Action'])
-            
+            print(row['Faction'], len(row['Bonus']), len(row['Action']),bonus,action)
             # ---   BONUS ACTIONS   ---
             if bonus == 0:  # build_road
                 blst.append(self.bonus_build_road(row['Faction']))
@@ -1086,7 +1235,7 @@ class Regency(object):
                 blst.append(self.bonus_repair_strongholds(row['Faction']))
             elif bonus == 18: # spy_enemy
                 blst.append(self.bonus_action_spy(row['Faction'],row['Enemy']))
-                
+            
             #   ---   ACTIONS   ---
             if action == 19:  # build_manor
                 alst.append(self.action_build_stronghold(row['Faction'], 'Manor'))
@@ -1111,16 +1260,64 @@ class Regency(object):
             elif action == 29:  # rob_enemy
                 alst.append(self.action_expand_stronghold(row['Faction'], Target=row['Enemy']))
             elif action == 30:  # sabotage_stronghold
-                alst.append(self.action_expand_stronghold(row['Faction'], Enemy=row['Enemy']))   
+                alst.append(self.action_sabotage_stronghold(row['Faction'], Enemy=row['Enemy']))   
             elif action == 31:  # attack_enemy_stronghold
                 alst.append(self.action_siege_stronghold(row['Faction'], Enemy=row['Enemy']))
-
-                
+            elif action == 32:  # swear_fealty_ally
+                alst.append(self.action_swear_fealty(row['Faction'], row['Ally']))
+            elif action == 33:  # swear_fealty_enemy
+                alst.append(self.action_swear_fealty(row['Faction'], row['Enemy']))
+        # save it for humans
+        print(len(alst),len(blst))
+        state['A'] = alst
+        state['B'] = blst
+        state['Season {}'.format(self.season)] = state['A'] + ' \n[' + state['B'] + ']'
+        self.seasons = pd.merge(self.seasons, state[['Faction','Season {}'.format(self.season)]], on='Faction',how='left').fillna('')
+        
         # Cleanup
         if self.new_roads.shape[0] > 0:  # cleanup roads
             self.new_roads['Road/Port'] = 1
             self.geography = pd.concat([self.geography, self.new_roads]).groupby(['Area','Neighbor']).max().reset_index().fillna(0)
             self.geography['Road/Port'] = self.geography['Road/Port'].astype(int)
             self.new_roads = pd.DataFrame(columns=['Area','Neighbor'])
+        if self.construction.shape[0]>0:  # build stuff
+            self.construction['Seasons'] = self.construction['Seasons'] -1
+            for i, row in self.construction[self.construction['Seasons']<=0].iterrows():
+                self.add_stronghold(row['Faction'], row['Area'], row['Type'], row['Name'], Level=0)
+            self.construction = self.construction[self.construction['Seasons']>0]
+        if self.strongholds[self.strongholds['Sieged']==1].shape[0] > 0:
+            for i, row in self.strongholds[self.strongholds['Sieged']==1].iterrows():
+                if self.sieges[self.sieges['Stronghold']==row['Name']].shape[0]==0:
+                    self.edit_stronghold(row['Name'],'Sieged',0)  # siege was ended by enemy doing something else
+        if self.sieges.shape[0] > 0:  # handle combat
+            for i, row in self.sieges.iterrows():
+                self.handle_siege(row['Faction'],row['Stronghold'])
+            self.sieges = pd.DataFrame(columns=['Faction','Stronghold'])  # clear sieges
+            
+        # clear wrecked strongholds
+        for i, row in self.strongholds[self.strongholds['Hit Points'] < 0].iterrows():
+            self.drop_stronghold(row['Name'])
+            
+        # contested levels...
+        temp = pd.merge(self.strongholds[['Area','Type','Level']],
+                 self.stronghold_types[['Stronghold','Type']],
+                 left_on='Type', right_on='Stronghold',how='left')
+        temp = temp[['Area','Level','Type_y']].groupby(['Area','Type_y']).sum().reset_index()
+        temp = pd.merge(temp,self.areas[['Area','Population','Magic']],on='Area',how='left')
+
+        # castles
+        castles = temp[temp['Type_y']=='Castle']
+        temp = temp[temp['Type_y']!='Castle']
+        for i, row in  castles[castles['Level']>castles['Population']].iterrows():
+            self.edit_area(row['Area'],'Population',row['Level'])
+        # fix magic
+        self.calculate_magic()
+        for a in ['Temple','Guild','Monastery']:
+            temp_ = temp[temp['Type_y']==a]
+            for i, row in temp_[temp_['Level']>temp_['Population']].iterrows():
+                self.contest_levels(row['Area'],a)
+        temp_ = temp[temp['Type_y']=='Mystic']
+        for i, row in temp_[temp_['Level']>temp_['Magic']].iterrows():
+            self.contest_levels(row['Area'],'Mystic')
         
         
