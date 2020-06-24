@@ -307,6 +307,7 @@ class DQNAgent(object):
         '''
         if filename == None:
             filename = 'agents/agent.pickle'
-        
         with open(filename, 'wb') as handle:
             pickle.dump(self, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+            
