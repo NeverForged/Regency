@@ -307,7 +307,7 @@ class Regency(object):
         '''
         # valid factions
         if self.factions[self.factions['Name']==faction].shape[0]==0 or self.factions[self.factions['Name']==other].shape[0]==0:
-            print('Factions must be valid')
+            print('Factions must be valid: {} not in factions'.format({}))
         elif self.relationships[(self.relationships['Faction']==faction) & (self.relationships['Other']==other)].shape[0] == 0:  # row not there yet
             new_row = {'Faction':faction, 'Other':other, 'Relationship':change}
             self.relationships = self.relationships.append(new_row, ignore_index=True).fillna('').reset_index(drop=True)
@@ -1109,6 +1109,12 @@ class Regency(object):
         rlst = []
         for a in lst:
             rlst.append([a,self.factions[self.factions['Name']==Besieged][a].values[0]])
+            
+        # levels are limited
+        if rlst[0][1] <=1:
+            rlst[0][1] = 1
+        if rlst[0][1] >= 21:
+            rlst[0][1] = 20
         mod = self.level_modifiers[self.level_modifiers['Faction Level']==rlst[0][1]]['Skill Modifier'].values[0]
         rlst[3][1] = int((rlst[1][1]-10)/2) + mod*rlst[3][1]
         rlst[4][1] = int((rlst[2][1]-10)/2) + mod*rlst[4][1]
@@ -1158,29 +1164,28 @@ class Regency(object):
         # get revenue
         revenue = self.get_revenue()
         
-        # get state
+        # get state  STARTEWX
         state = self.agent.get_state()
-        state = pd.merge(state, revenue[['Faction','Revenue']],on='Faction',how='left').fillna(0)
+        state = pd.merge(state, self.factions[['Name','Level']],left_on='Faction',right_on='Name', how='left').fillna(0)
+        state = state[['Faction', 'Enemy', 'Ally', 'State', 'Level']]
         
         
         # save the things from last time...  CHECK ONCE YOU HAVE STUFF
         if self.last_season.shape[0]>0 and train == True:
             lst = list(state.keys())
             state['New State'] = state['State']
-            self.last_season = pd.merge(self.last_season,state[['Faction','New State']],on='Faction',how='left')
-            state = state[lst]
-            lst = list(revenue.keys())
-            revenue['New Revenue'] = revenue['Revenue']
-            self.last_season = pd.merge(self.last_season,revenue[['Faction','New Revenue']],on='Faction',how='left')
-            revenue = revenue[lst]
-            self.last_season['Reward'] = self.last_season['New Revenue'] - self.last_season['Revenue']
+            state['New Level'] = state['Level']
             
+            self.last_season = pd.merge(self.last_season,state[['Faction','New State', 'New Level']],on='Faction',how='left')
+            self.last_season['Reward'] = self.last_season['New Level'] - self.last_season['Level']
+            state = state[lst]
             # training...
             for i, row in self.last_season.iterrows():
                 self.agent.remember(state=row['State'], action=row['Bonus'], reward=row['Reward'], next_state=row['New State'], done=False)
                 self.agent.remember(state=row['State'], action=row['Action'], reward=row['Reward'], next_state=row['New State'], done=False)
             self.agent.replay_new()
             
+            self.last_season = self.last_season[lst]
         # determine actions
         state = self.make_decision(state)
         
@@ -1319,7 +1324,9 @@ class Regency(object):
         temp_ = temp[temp['Type_y']=='Mystic']
         for i, row in temp_[temp_['Level']>temp_['Magic']].iterrows():
             self.contest_levels(row['Area'],'Mystic')
-            
+        
+        # cleanup failed factions
+        
         self.agent.save()
         
         
