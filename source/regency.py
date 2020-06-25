@@ -152,7 +152,7 @@ class Regency(object):
         Add a stronghold to the area
         '''
         if self.strongholds[self.strongholds['Name']==Name].shape[0] > 0:
-            print('Invalid Name')
+            print('Invalid Name (add_stronghold): {}'.format(Name))
             return False
         new_row = {'Name':Name, 'Area':Area, 'Type':Type, 'Faction':Faction, 'Level':Level, 'Sieged':0}
         ## Valid?
