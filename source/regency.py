@@ -69,6 +69,9 @@ class Regency(object):
         self.espionage = pd.DataFrame(columns=['Faction','Target'])
         self.construction = pd.DataFrame(columns=['Faction', 'Area', 'Type', 'Name','Seasons'])
         self.sieges = pd.DataFrame(columns=['Faction','Stronghold'])
+        self.save_level = self.factions[['Name','Level']]
+        self.save_level['Faction'] = self.save_level['Name']
+        self.save_level = self.save_level[['Faction','Level']]
         
         try:
             self.agent = pickle.load( open( 'agents/agent.pickle', "rb" ) )
@@ -94,6 +97,10 @@ class Regency(object):
             self.factions = self.factions.append(new_row, ignore_index=True).fillna(0)
         else:  # Not a Valid Class
             print('Invalid Class Choice')
+        # fix faction levels
+        self.calculatelevels_faction()  # fix initial values
+        new_row = {'Faction':Name, 'Level':self.factions[se;f.factions['Name']==Name]['Level'].values[0]}
+        self.save_level = self.save_level.append(new_row, ignore_index=True).fillna(0)
             
     def edit_faction(self,faction,Property,value):
         '''
@@ -152,7 +159,7 @@ class Regency(object):
         Add a stronghold to the area
         '''
         if self.strongholds[self.strongholds['Name']==Name].shape[0] > 0:
-            print('Invalid Name (add_stronghold): {}'.format(Name))
+            # print('Invalid Name (add_stronghold): {}'.format(Name))
             return False
         new_row = {'Name':Name, 'Area':Area, 'Type':Type, 'Faction':Faction, 'Level':Level, 'Sieged':0}
         ## Valid?
@@ -1177,7 +1184,10 @@ class Regency(object):
             state['New Level'] = state['Level']
             
             self.last_season = pd.merge(self.last_season,state[['Faction','New State', 'New Level']],on='Faction',how='left')
-            self.last_season['Reward'] = self.last_season['New Level'] - self.last_season['Level']
+            temp = self.save_level.copy()
+            temp['Original Level'] = temp['Level']
+            self.last_season = pd.merge(self.last_season, temp[['Faction','Original Level']], on='Faction', how='left')
+            self.last_season['Reward'] = self.last_seaons['New Level'] - self.last_season['Original Level']
             state = state[lst]
             # training...
             for i, row in self.last_season.iterrows():
