@@ -282,13 +282,13 @@ class DQNAgent(object):
         return model
     
     def remember(self, state, action, reward, next_state, done=False):
-        self.memory.append((state, action, reward, next_state, done))
+        self.memory.append([state, action, reward, next_state, done])
         
-    def replay_new(self):
+    def replay_new(self, mini=True):
         model = self.model
         memory = self.memory
        
-        if len(memory) > 1000:
+        if len(memory) > 1000 and mini==True:
             minibatch = random.sample(memory, 1000)
         else:
             minibatch = memory
@@ -300,7 +300,7 @@ class DQNAgent(object):
             target_f[0][np.argmax(action)] = target
             model.fit(np.array([state]), target_f, epochs=1, verbose=0)
         
-        
+     
     def save(self, filename=None):
         '''
         Save this using Pickle
@@ -309,5 +309,9 @@ class DQNAgent(object):
             filename = 'agents/agent.pickle'
         with open(filename, 'wb') as handle:
             pickle.dump(self, handle, protocol=pickle.HIGHEST_PROTOCOL)
-
+            
+    def clear_memory(self, save=True):
+        self.memory = []
+        if save==True:
+            self.save()
             

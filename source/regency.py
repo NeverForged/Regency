@@ -99,7 +99,7 @@ class Regency(object):
             print('Invalid Class Choice')
         # fix faction levels
         self.calculatelevels_faction()  # fix initial values
-        new_row = {'Faction':Name, 'Level':self.factions[se;f.factions['Name']==Name]['Level'].values[0]}
+        new_row = {'Faction':Name, 'Level':self.factions[self.factions['Name']==Name]['Level'].values[0]}
         self.save_level = self.save_level.append(new_row, ignore_index=True).fillna(0)
             
     def edit_faction(self,faction,Property,value):
@@ -477,7 +477,7 @@ class Regency(object):
             # predict action based on the old state
             prediction = self.agent.model.predict(np.transpose(np.array(row['State'])).reshape((1,self.agent.action_size)))
             roll = rand.randint(1, 20)   
-            if roll < self.IntDC or roll == 1:   #Fails a dc 5 int check and does something random
+            if roll < self.IntDC:   #Fails a dc 5 int check and does something random
                 move = (to_categorical(rand.randint(0, 18), num_classes=N),to_categorical(rand.randint(19, 33), num_classes=N))
             else:
                 move =  (to_categorical(np.argmax(prediction[0][:18]), num_classes=N),
@@ -1150,7 +1150,7 @@ class Regency(object):
             return "The Siege of {} was broken".format(Target)
     
     #   ---   RUN SEASON   ---
-    def run_season(self, train=False, train_often=False, dc=None):
+    def run_season(self, train=False, train_often=False, dc=None, done=False):
         '''
         Initiates a Season.
         
@@ -1187,13 +1187,14 @@ class Regency(object):
             temp = self.save_level.copy()
             temp['Original Level'] = temp['Level']
             self.last_season = pd.merge(self.last_season, temp[['Faction','Original Level']], on='Faction', how='left')
-            self.last_season['Reward'] = self.last_seaons['New Level'] - self.last_season['Original Level']
+            self.last_season['Reward'] = self.last_season['New Level'] - self.last_season['Original Level']
             state = state[lst]
             # training...
             for i, row in self.last_season.iterrows():
-                self.agent.remember(state=row['State'], action=row['Bonus'], reward=row['Reward'], next_state=row['New State'], done=False)
-                self.agent.remember(state=row['State'], action=row['Action'], reward=row['Reward'], next_state=row['New State'], done=False)
-            self.agent.replay_new()
+                self.agent.remember(state=row['State'], action=row['Bonus'], reward=row['Reward'], next_state=row['New State'], done=done)
+                self.agent.remember(state=row['State'], action=row['Action'], reward=row['Reward'], next_state=row['New State'], done=done)
+            if train_often == True:
+                self.agent.replay_new()
             
             self.last_season = self.last_season[lst]
         # determine actions
