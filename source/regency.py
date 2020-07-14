@@ -1016,7 +1016,7 @@ class Regency(object):
                 Enemy = temp['Faction'].values[0]
                 if self.roll_opposed_skill(['Stealth', 'Perception'], [Faction, Enemy])[0] == Faction:
                     # got it, time for damage....
-                    dex = int((self.factions[self.factions['Name']==Faction]['Dex']-10)/2)
+                    dex = int((self.factions[self.factions['Name']==Faction]['Dex'].values[0]-10)/2)
                     damage = rand.randint(1,6) + dex
                     hp = self.strongholds[self.strongholds['Name']==Target]['Hit Points'].values[0]
                     self.edit_stronghold(Target,'Hit Points',hp-damage)

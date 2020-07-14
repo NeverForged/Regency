@@ -21,7 +21,7 @@ class DQNAgent(object):
         self.regency = regency
         self.reward = 0
         self.gamma = 0.9
-        self.action_size = 57
+        self.action_size = 56
         self.action_choices = 34
         self.learning_rate = 0.0005
         self.model = self.network(N=self.action_choices, K=self.action_size)
@@ -60,13 +60,13 @@ class DQNAgent(object):
         '''
         dct = {}
         for a in list(regency.factions['Name']):
-            dct[a] = []
+            dct[a] = [0 for a in range(self.action_size)]
         lst = [100,180,400,500,900,1000,2500,5000,15000,25000,50000,500000]
         for i, row in regency.factions.iterrows():
-            for a in lst:
-                dct[row['Name']].append(1*(row['Gold']>=a))
-            for a in ['Athletics', 'Acrobatics', 'Stealth', 'Arcana', 'Investigation', 'Religion', 'Perception', 'Persuasion']:
-                dct[row['Name']].append(1*(row[a]>=1))
+            for j, a in enumerate(lst):
+                dct[row['Name']][j] = 1*(row['Gold']>=a)
+            for j, a in enumerate(['Athletics', 'Acrobatics', 'Stealth', 'Arcana', 'Investigation', 'Religion', 'Perception', 'Persuasion']):
+                dct[row['Name']][j+12] = 1*(row[a]>=1)
 
         '''
         20 more_gold_than_enemy
@@ -111,14 +111,15 @@ class DQNAgent(object):
         ally = {}
         enemy = {}
         lst = ['Gold', 'Level', 'Str', 'Dex', 'Con', 'Int', 'Wis', 'Cha']
-        for i, row in Ally.iterrows():
-            ally[row['Faction']] = row['Other']
-            for a in lst:
-                dct[row['Faction']].append(1*(row[a+'_x']>=row[a+'_y']))
         for i, row in Enemy.iterrows():
             enemy[row['Faction']] = row['Other']
-            for a in lst:
-                dct[row['Faction']].append(1*(row[a+'_x']>=row[a+'_y']))
+            for j, a in enumerate(lst):
+                dct[row['Faction']][j+20] = 1*(row[a+'_x']>=row[a+'_y'])
+        for i, row in Ally.iterrows():
+            ally[row['Faction']] = row['Other']
+            for j, a in enumerate(lst):
+                dct[row['Faction']][j+28] = 1*(row[a+'_x']>=row[a+'_y'])
+        
 
         '''
         36 can_upgrade_castle
@@ -151,11 +152,9 @@ class DQNAgent(object):
         lst = ['Castle','Temple','Guild','Monastery','Mystic']
         for i, row in regency.factions.iterrows():
             check = AA[AA['Faction']==row['Name']]
-            for a in lst:
+            for j, a in enumerate(lst):
                 if check.shape[0]>0:
-                    dct[row['Name']].append(1*(check[check['Type']==a].shape[0]>0))
-                else:
-                    dct[row['Name']].append(0)
+                    dct[row['Name']][j+36] = 1*(check[check['Type']==a].shape[0]>0)
 
         '''
         41 have_road_near_stronghold
@@ -169,7 +168,7 @@ class DQNAgent(object):
         temp = temp[['Faction']].drop_duplicates()
 
         for i, row in regency.factions.iterrows():
-            dct[row['Name']].append(1*(temp[temp['Faction']==row['Name']].shape[0]>0))
+            dct[row['Name']][41] = 1*(temp[temp['Faction']==row['Name']].shape[0]>0)
 
         '''
         42 have_smaller_castle_or_temple
@@ -182,7 +181,7 @@ class DQNAgent(object):
         temp = regency.strongholds.copy()
         lst = ['Manor', 'keep', 'Small Temple']
         lst2=[]
-        for a in lst:
+        for j, a in enumerate(lst):
             lst2.append(temp[temp['Type']==a].copy())
         temp2 = pd.concat(lst2)
 
@@ -218,51 +217,47 @@ class DQNAgent(object):
 
 
         for i, row in regency.factions.iterrows():
-            dct[row['Name']].append(1*(temp2[temp2['Faction']==row['Name']].shape[0]>0))
-            dct[row['Name']].append(1*(temp_low[temp_low['Faction']==row['Name']].shape[0]>0))
+            dct[row['Name']][42] = 1*(temp2[temp2['Faction']==row['Name']].shape[0]>0)
+            dct[row['Name']][43] = 1*(temp_low[temp_low['Faction']==row['Name']].shape[0]>0)
             check = temp_e[temp_e['is_enemy']==row['Name']].copy()
             if check.shape[0]>0:
-                dct[row['Name']].append(check['Sieged'].values[0])
-                dct[row['Name']].append(1*(check[check['Hit Points']<check['Max HP']].shape[0]>0))
-            else:
-                dct[row['Name']].append(0)
-                dct[row['Name']].append(0)
+                dct[row['Name']][44] = check['Sieged'].values[0]
+                dct[row['Name']][45] = 1*(check[check['Hit Points']<check['Max HP']].shape[0]>0)
             check = temp_a[temp_a['is_ally']==row['Name']].copy()
             if check.shape[0]>0:
-                dct[row['Name']].append(check['Sieged'].values[0])
-            else:
-                dct[row['Name']].append(0)
+                dct[row['Name']][46] = check['Sieged'].values[0]
+                
         '''
-        48 enemy_is_lord
-        49 ally_is_lord
-        50 enemy_is_vassal
-        51 ally_is_vassal
+        47 enemy_is_lord
+        48 ally_is_lord
+        49 enemy_is_vassal
+        50 ally_is_vassal
         '''
         temp = pd.merge(regency.vassalage,targets[['Name','Enemy','Ally']],left_on='Faction',right_on='Name',how='left')
         for i, row in regency.factions.iterrows():
             check = temp[temp['Name']==row['Name']]
-            dct[row['Name']].append(1*(check[check['Enemy']==check['Lord']].shape[0]>0))
-            dct[row['Name']].append(1*(check[check['Enemy']==check['Lord']].shape[0]>0))
+            dct[row['Name']][47] = 1*(check[check['Enemy']==check['Lord']].shape[0]>0)
+            dct[row['Name']][48] = 1*(check[check['Enemy']==check['Lord']].shape[0]>0)
         temp = pd.merge(regency.vassalage,targets[['Name','Enemy','Ally']],left_on='Lord',right_on='Name',how='left')
         for i, row in regency.factions.iterrows():
             check = temp[temp['Name']==row['Name']]
-            dct[row['Name']].append(1*(check[check['Enemy']==check['Faction']].shape[0]>0))
-            dct[row['Name']].append(1*(check[check['Enemy']==check['Faction']].shape[0]>0))
+            dct[row['Name']][49] = 1*(check[check['Enemy']==check['Faction']].shape[0]>0)
+            dct[row['Name']][50] = 1*(check[check['Enemy']==check['Faction']].shape[0]>0)
 
         '''
-        52 is_castle_faction
-        53 is_temple_faction
-        54 is_monastary_faction
-        55 is_guild_faction
-        56 is_mystic_faction
+        51 is_castle_faction
+        52 is_temple_faction
+        53 is_monastary_faction
+        54 is_guild_faction
+        55 is_mystic_faction
         '''
         temp = pd.merge(regency.factions[['Name','Class']], regency.faction_classes[['Name','Type']], left_on='Class', right_on='Name', how='left')
         for i, row in temp.iterrows():
-            dct[row['Name_x']].append(1*(row['Type']=='Castle'))
-            dct[row['Name_x']].append(1*(row['Type']=='Temple'))
-            dct[row['Name_x']].append(1*(row['Type']=='Monastery'))
-            dct[row['Name_x']].append(1*(row['Type']=='Guild'))
-            dct[row['Name_x']].append(1*(row['Type']=='Mystic'))
+            dct[row['Name_x']][51] = 1*(row['Type']=='Castle')
+            dct[row['Name_x']][52] = 1*(row['Type']=='Temple')
+            dct[row['Name_x']][53] = 1*(row['Type']=='Monastery')
+            dct[row['Name_x']][54] = 1*(row['Type']=='Guild')
+            dct[row['Name_x']][55] = 1*(row['Type']=='Mystic')
         
         '''
         Bring it all together....
