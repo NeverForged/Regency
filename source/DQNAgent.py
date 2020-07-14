@@ -21,7 +21,7 @@ class DQNAgent(object):
         self.regency = regency
         self.reward = 0
         self.gamma = 0.9
-        self.action_size = 56
+        self.action_size = 57
         self.action_choices = 34
         self.learning_rate = 0.0005
         self.model = self.network(N=self.action_choices, K=self.action_size)
@@ -256,13 +256,13 @@ class DQNAgent(object):
         55 is_guild_faction
         56 is_mystic_faction
         '''
-        pd.merge(regency.factions[['Name','Class']], regency.faction_classes[['Name','Type']], left_on='Class', right_on='Name', how='left')
+        temp = pd.merge(regency.factions[['Name','Class']], regency.faction_classes[['Name','Type']], left_on='Class', right_on='Name', how='left')
         for i, row in temp.iterrows():
-            dct[row['Name_x']].append(1*(temp['Type']=='Castle'))
-            dct[row['Name_x']].append(1*(temp['Type']=='Temple'))
-            dct[row['Name_x']].append(1*(temp['Type']=='Monastery'))
-            dct[row['Name_x']].append(1*(temp['Type']=='Guild'))
-            dct[row['Name_x']].append(1*(temp['Type']=='Mystic'))
+            dct[row['Name_x']].append(1*(row['Type']=='Castle'))
+            dct[row['Name_x']].append(1*(row['Type']=='Temple'))
+            dct[row['Name_x']].append(1*(row['Type']=='Monastery'))
+            dct[row['Name_x']].append(1*(row['Type']=='Guild'))
+            dct[row['Name_x']].append(1*(row['Type']=='Mystic'))
         
         '''
         Bring it all together....
