@@ -295,10 +295,13 @@ class DQNAgent(object):
         for state, action, reward, next_state, done in minibatch:
             target = reward
             if done == False:    
-                target = reward + self.gamma * np.amax(model.predict(np.array([next_state]))[0])
+                # target = reward + self.gamma * np.amax(model.predict(np.array([next_state]))[0])
+                target = self.gamma * np.amax(model.predict(np.array([next_state]))[0])
             target_f = model.predict(np.array([state]))
             target_f[0][np.argmax(action)] = target
             model.fit(np.array([state]), target_f, epochs=1, verbose=0)
+            
+        self.model = model
         
      
     def save(self, filename=None):
@@ -313,5 +316,22 @@ class DQNAgent(object):
     def clear_memory(self, save=True):
         self.memory = []
         if save==True:
-            self.save()
+            print('this does nothing')
+        
+    def reduce_memory(self):
+        df = pd.DataFrame(columns=[0,1,2,3,4])
+        for a in self.memory:
+            dct = {0:tuple(a[0]), 1:tuple(a[1]), 2:a[2], 3:tuple(a[3]), 4:a[4]}
+            df = df.append(dct, ignore_index=True)
+        df = df.drop_duplicates()
+        temp = []
+        for i, row in df.iterrows():
+            lst = [0,1,2,3,4]
+            lst[0] = list(row[0])
+            lst[1] = np.array(row[1])
+            lst[2] = row[2]
+            lst[3] = list(row[3])
+            lst[4] = row[4]
+            temp.append(lst)
+        self.memory = temp
             
