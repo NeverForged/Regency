@@ -116,7 +116,18 @@ class Regency(object):
             adding together
             appending new value
         '''
-        base = self.strongholds[['Faction','Level']].groupby('Faction').sum().reset_index()
+        # only get credit for the strongholds that match your class
+        temp = pd.merge(self.strongholds, self.stronghold_types[['Stronghold','Type']], left_on='Type', right_on='Stronghold',how='left')
+        temp['Type'] = temp['Type_y']
+        temp_ = temp[['Faction','Level','Type']]
+        temp = pd.merge(self.factions,self.faction_classes[['Name','Type']],left_on='Class',right_on='Name',how='left')
+        temp['Faction'] = temp['Name_x']
+        temp = temp[['Faction','Type']]
+        temp = pd.merge(temp_,temp,on='Faction',how='left')
+        temp = temp[temp['Type_y']==temp['Type_x']]
+        base = temp[['Faction','Level']].groupby('Faction').sum().reset_index()
+        
+        # determine vassalage bonus
         vassal = pd.merge(self.vassalage_checked,base,on='Faction',how='left')
         vassal['Add'] = np.ceil(vassal['Weight']*vassal['Level'])
         vassal = vassal[['Lord','Add']].groupby('Lord').sum().reset_index()
@@ -132,6 +143,15 @@ class Regency(object):
         self.factions = pd.merge(self.factions[lst],new,on='Name',how='left').fillna(0)
         self.factions['Level'] = self.factions['Level'].astype(int)
         self.factions = self.factions[lst2]
+        
+        # give the level of the lord's keeps as bonus to vassals
+        vassal = self.vassalage
+        temp = pd.merge(vassal,base, left_on='Lord', right_on='Faction')
+        temp['Faction'] = temp['Faction_y']
+        temp['Add'] = temp['Level']
+        temp = pd.merge(self.factions,temp[['Faction','Add']],left_on='Name', right_on='Faction',how='left').fillna(0)
+        temp = temp[list(self.factions.keys())]
+        self.factions = temp
         
         
     def remove_faction(self, faction):
